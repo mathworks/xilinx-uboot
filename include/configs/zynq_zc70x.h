@@ -30,6 +30,7 @@
 #define CONFIG_ZYNQ_SPI
 #define CONFIG_ZYNQ_I2C
 #define CONFIG_ZYNQ_EEPROM
+#define CONFIG_ZYNQ_ENV_FAT
 
 #include <configs/zynq_common.h>
 
