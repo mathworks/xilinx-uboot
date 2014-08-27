@@ -239,8 +239,11 @@
 		"mmcinfo && " \
 		"fatload mmc 0 0x3000000 ${kernel_image} && " \
 		"fatload mmc 0 0x2A00000 ${devicetree_image} && " \
-		"fatload mmc 0 0x2000000 ${ramdisk_image} && " \
-		"bootm 0x3000000 0x2000000 0x2A00000\0" \
+		"if fatload mmc 0 0x2000000 ${ramdisk_image}; then " \
+			"bootm 0x3000000 0x2000000 0x2A00000; " \
+		"else " \
+			"bootm 0x3000000 - 0x2A00000; " \
+		"fi; " \
 	"nandboot=echo Copying Linux from NAND flash to RAM... && " \
 		"nand read 0x3000000 0x100000 ${kernel_size} && " \
 		"nand read 0x2A00000 0x600000 ${devicetree_size} && " \
