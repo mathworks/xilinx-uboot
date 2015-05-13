@@ -1,14 +1,14 @@
 /*
  * (C) Copyright 2013 Xilinx, Inc.
  *
- * Configuration for Micro Zynq Evaluation and Development Board - MicroZedBoard
+ * Configuration for PicoZed SDR Zynq Board - PicoZedSDR
  * See zynq-common.h for Zynq common configs
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __CONFIG_ZYNQ_MICROZED_H
-#define __CONFIG_ZYNQ_MICROZED_H
+#ifndef __CONFIG_ZYNQ_PICOZED_SDR_H
+#define __CONFIG_ZYNQ_PICOZED_SDR_H
 
 #define CONFIG_SYS_SDRAM_SIZE		(1024 * 1024 * 1024)
 
@@ -27,4 +27,4 @@
 
 #include <configs/zynq-common.h>
 
-#endif /* __CONFIG_ZYNQ_MICROZED_H */
+#endif /* __CONFIG_ZYNQ_PICOZED_SDR_H*/
