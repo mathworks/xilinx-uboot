@@ -24,6 +24,9 @@ config TARGET_ZYNQ_AFX
 config TARGET_ZYNQ_CSE
 	bool "Zynq CSE Board"
 
+config TARGET_ZYNQ_PICOZED_SDR
+	bool "Zynq PicoZed SDR Board"
+
 endchoice
 
 config SYS_BOARD
@@ -43,5 +46,6 @@ config SYS_CONFIG_NAME
 	default "zynq_zybo" if TARGET_ZYNQ_ZYBO
 	default "zynq_cse" if TARGET_ZYNQ_CSE
 	default "zynq_afx" if TARGET_ZYNQ_AFX
+	default "zynq_picozed_sdr" if TARGET_ZYNQ_PICOZED_SDR
 
 endif
