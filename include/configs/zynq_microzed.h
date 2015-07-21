@@ -20,6 +20,8 @@
 
 #define CONFIG_ZYNQ_SDHCI0
 
+#define CONFIG_ZYNQ_ENV_FAT
+
 #include <configs/zynq-common.h>
 
 #endif /* __CONFIG_ZYNQ_MICROZED_H */

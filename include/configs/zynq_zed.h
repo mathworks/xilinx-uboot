@@ -24,6 +24,8 @@
 
 #define CONFIG_ZYNQ_BOOT_FREEBSD
 
+#define CONFIG_ZYNQ_ENV_FAT
+
 #include <configs/zynq-common.h>
 
 #endif /* __CONFIG_ZYNQ_ZED_H */
