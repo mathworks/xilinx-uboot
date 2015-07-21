@@ -230,7 +230,12 @@
 
 /* Environment */
 #ifndef CONFIG_ENV_IS_NOWHERE
-# ifndef CONFIG_SYS_NO_FLASH
+# if defined(CONFIG_ZYNQ_ENV_FAT)
+#  define CONFIG_ENV_IS_IN_FAT
+#  define FAT_ENV_INTERFACE         "mmc"
+#  define FAT_ENV_DEVICE_AND_PART   "0:1"
+#  define FAT_ENV_FILE              "uboot.env"
+# elif !defined(CONFIG_SYS_NO_FLASH)
 /* Environment in NOR flash */
 #  define CONFIG_ENV_IS_IN_FLASH
 # elif defined(CONFIG_ZYNQ_QSPI)
