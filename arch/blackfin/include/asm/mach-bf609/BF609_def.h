@@ -125,8 +125,13 @@
 #define WDOG1_CNT         0xFFC17804 /* WDOG1 Count Register */
 #define WDOG1_STAT        0xFFC17808 /* WDOG1 Watchdog Timer Status Register */
 
+#define SDU0_MSG_SET      0xFFC1F084 /* SDU0 Message Set Register */
+
 #define EMAC0_MACCFG      0xFFC20000 /* EMAC0 MAC Configuration Register */
 #define EMAC1_MACCFG      0xFFC22000 /* EMAC1 MAC Configuration Register */
+
+#define SPI0_REGBASE      0xFFC40400 /* SPI0 Base Address */
+#define SPI1_REGBASE      0xFFC40500 /* SPI1 Base Address */
 
 #define DMA10_DSCPTR_NXT  0xFFC05000 /* DMA10 Pointer to Next Initial Desc */
 #define DMA10_ADDRSTART   0xFFC05004 /* DMA10 Start Address of Current Buf */
@@ -243,5 +248,7 @@
 #define L1_INST_SRAM 0xFFA00000 /* 0xFFA00000->0xFFA07FFF Inst Bank A SRAM */
 #define L1_INST_SRAM_SIZE 0x8000
 #define L1_INST_SRAM_END (L1_INST_SRAM + L1_INST_SRAM_SIZE)
+
+#define COREB_L1_CODE_START       0xFF600000
 
 #endif /* __BFIN_DEF_ADSP_BF609_proc__ */

@@ -11,23 +11,7 @@
  * (C) Copyright 2011 Marvell Inc.
  * Lei Wen <leiwen@marvell.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Back ported to the 8xx platform (from the 8260 platform) by
  * Murray.Jensen@cmst.csiro.au, 27-Jan-01.
@@ -47,7 +31,7 @@
 #endif
 
 /* All transfers are described by this data structure */
-struct i2c_msg {
+struct mv_i2c_msg {
 	u8 condition;
 	u8 acknack;
 	u8 direction;
@@ -89,7 +73,7 @@ static void i2c_board_init(struct mv_i2c *base)
 }
 
 #ifdef CONFIG_I2C_MULTI_BUS
-static u32 i2c_regs[CONFIG_MV_I2C_NUM] = CONFIG_MV_I2C_REG;
+static unsigned long i2c_regs[CONFIG_MV_I2C_NUM] = CONFIG_MV_I2C_REG;
 static unsigned int bus_initialized[CONFIG_MV_I2C_NUM];
 static unsigned int current_bus;
 
@@ -173,7 +157,7 @@ static int i2c_isr_set_cleared(unsigned long set_mask,
  *          -5: illegal parameters
  *          -6: bus is busy and couldn't be aquired
  */
-int i2c_transfer(struct i2c_msg *msg)
+int i2c_transfer(struct mv_i2c_msg *msg)
 {
 	int ret;
 
@@ -302,7 +286,7 @@ void i2c_init(int speed, int slaveaddr)
  */
 int i2c_probe(uchar chip)
 {
-	struct i2c_msg msg;
+	struct mv_i2c_msg msg;
 
 	i2c_reset();
 
@@ -338,7 +322,7 @@ int i2c_probe(uchar chip)
  */
 int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
-	struct i2c_msg msg;
+	struct mv_i2c_msg msg;
 	u8 addr_bytes[3]; /* lowest...highest byte of data address */
 
 	PRINTD(("i2c_read(chip=0x%02x, addr=0x%02x, alen=0x%02x, "
@@ -426,7 +410,7 @@ int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len)
  */
 int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
-	struct i2c_msg msg;
+	struct mv_i2c_msg msg;
 	u8 addr_bytes[3]; /* lowest...highest byte of data address */
 
 	PRINTD(("i2c_write(chip=0x%02x, addr=0x%02x, alen=0x%02x, "

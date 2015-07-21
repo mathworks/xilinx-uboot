@@ -3,20 +3,7 @@
  *
  * Copyright (C) 2010 Marek Vasut <marek.vasut@gmail.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	__CONFIG_H
@@ -26,7 +13,7 @@
  * High Level Board Configuration Options
  */
 #define	CONFIG_CPU_PXA27X		1	/* Marvell PXA270 CPU */
-#define	CONFIG_BALLOON3		1	/* Balloon3 board */
+#define	CONFIG_BALLOON3			1	/* Balloon3 board */
 
 /*
  * Environment settings
@@ -67,6 +54,7 @@
 #undef	CONFIG_CMD_IMLS
 #define	CONFIG_CMD_USB
 #define	CONFIG_CMD_FPGA
+#define	CONFIG_CMD_FPGA_LOADMK
 #undef	CONFIG_LCD
 
 /*
@@ -74,7 +62,6 @@
  */
 #ifdef	CONFIG_CMD_KGDB
 #define	CONFIG_KGDB_BAUDRATE		230400	/* kgdb serial port speed */
-#define	CONFIG_KGDB_SER_INDEX		2	/* which serial port to use */
 #endif
 
 /*
@@ -86,7 +73,6 @@
 #ifdef	CONFIG_SYS_HUSH_PARSER
 #define	CONFIG_SYS_PROMPT		"$ "
 #else
-#define	CONFIG_SYS_PROMPT		"=> "
 #endif
 #define	CONFIG_SYS_CBSIZE		256
 #define	CONFIG_SYS_PBSIZE		\
@@ -98,19 +84,17 @@
 /*
  * Clock Configuration
  */
-#undef	CONFIG_SYS_CLKS_IN_HZ
-#define	CONFIG_SYS_HZ			3250000		/* Timer @ 3250000 Hz */
 #define	CONFIG_SYS_CPUSPEED		0x290		/* 520MHz */
 
 /*
  * DRAM Map
  */
-#define	CONFIG_NR_DRAM_BANKS		3		/* 2 banks of DRAM */
+#define	CONFIG_NR_DRAM_BANKS		3		/* 3 banks of DRAM */
 #define	PHYS_SDRAM_1			0xa0000000	/* SDRAM Bank #1 */
 #define	PHYS_SDRAM_1_SIZE		0x08000000	/* 128 MB */
 #define	PHYS_SDRAM_2			0xb0000000	/* SDRAM Bank #2 */
 #define	PHYS_SDRAM_2_SIZE		0x08000000	/* 128 MB */
-#define	PHYS_SDRAM_3			0x80000000	/* SDRAM Bank #2 */
+#define	PHYS_SDRAM_3			0x80000000	/* SDRAM Bank #3 */
 #define	PHYS_SDRAM_3_SIZE		0x08000000	/* 128 MB */
 
 #define	CONFIG_SYS_DRAM_BASE		0xa0000000	/* CS0 */
@@ -142,15 +126,15 @@
 
 #define	CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 
-#define	CONFIG_SYS_FLASH_ERASE_TOUT	(2*CONFIG_SYS_HZ)
-#define	CONFIG_SYS_FLASH_WRITE_TOUT	(2*CONFIG_SYS_HZ)
-#define	CONFIG_SYS_FLASH_LOCK_TOUT	(2*CONFIG_SYS_HZ)
-#define	CONFIG_SYS_FLASH_UNLOCK_TOUT	(2*CONFIG_SYS_HZ)
+#define	CONFIG_SYS_FLASH_ERASE_TOUT	240000
+#define	CONFIG_SYS_FLASH_WRITE_TOUT	240000
+#define	CONFIG_SYS_FLASH_LOCK_TOUT	240000
+#define	CONFIG_SYS_FLASH_UNLOCK_TOUT	240000
 #define	CONFIG_SYS_FLASH_PROTECTION
 #define	CONFIG_ENV_IS_IN_FLASH
 #else
 #define	CONFIG_SYS_NO_FLASH
-#define	CONFIG_SYS_ENV_IS_NOWHERE
+#define	CONFIG_ENV_IS_NOWHERE
 #endif
 
 #define	CONFIG_SYS_MONITOR_BASE		0x000000
@@ -206,7 +190,6 @@
 #define	CONFIG_SYS_MDMRS_VAL	0x00220022
 #define	CONFIG_SYS_FLYCNFG_VAL	0x00000000
 #define	CONFIG_SYS_SXCNFG_VAL	0x00000000
-#define	CONFIG_SYS_MEM_BUF_IMP	0x0f
 
 /*
  * PCMCIA and CF Interfaces

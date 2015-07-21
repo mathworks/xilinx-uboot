@@ -3,7 +3,7 @@
  *
  *	Copyright 1994 - 2000 Neil Russell.
  *	(See License)
- *
+ *	SPDX-License-Identifier:	GPL-2.0
  *
  * History
  *	9/16/00	  bor  adapted to TQM823L/STK8xxL board, RARP/TFTP boot added
@@ -39,7 +39,7 @@
 #define PKTALIGN	ARCH_DMA_MINALIGN
 
 /* IPv4 addresses are always 32 bits in size */
-typedef u32		IPaddr_t;
+typedef __be32		IPaddr_t;
 
 
 /**
@@ -81,7 +81,7 @@ enum eth_state_t {
 struct eth_device {
 	char name[16];
 	unsigned char enetaddr[6];
-	int iobase;
+	phys_addr_t iobase;
 	int state;
 
 	int  (*init) (struct eth_device *, bd_t *);
@@ -89,7 +89,7 @@ struct eth_device {
 	int  (*recv) (struct eth_device *);
 	void (*halt) (struct eth_device *);
 #ifdef CONFIG_MCAST_TFTP
-	int (*mcast) (struct eth_device *, u32 ip, u8 set);
+	int (*mcast) (struct eth_device *, const u8 *enetaddr, u8 set);
 #endif
 	int  (*write_hwaddr) (struct eth_device *);
 	struct eth_device *next;
@@ -129,23 +129,6 @@ extern int eth_setenv_enetaddr(char *name, const uchar *enetaddr);
  */
 extern int eth_getenv_enetaddr_by_index(const char *base_name, int index,
 					uchar *enetaddr);
-
-#ifdef CONFIG_RANDOM_MACADDR
-/*
- * The u-boot policy does not allow hardcoded ethernet addresses. Under the
- * following circumstances a random generated address is allowed:
- *  - in emergency cases, where you need a working network connection to set
- *    the ethernet address.
- *    Eg. you want a rescue boot and don't have a serial port to access the
- *    CLI to set environment variables.
- *
- * In these cases, we generate a random locally administered ethernet address.
- *
- * Args:
- *  enetaddr - returns 6 byte hardware address
- */
-extern void eth_random_enetaddr(uchar *enetaddr);
-#endif
 
 extern int usb_eth_initialize(bd_t *bi);
 extern int eth_init(bd_t *bis);			/* Initialize the device */
@@ -207,6 +190,8 @@ struct ethernet_hdr {
 
 /* Ethernet header size */
 #define ETHER_HDR_SIZE	(sizeof(struct ethernet_hdr))
+
+#define ETH_FCS_LEN	4		/* Octets in the FCS		*/
 
 struct e802_hdr {
 	uchar		et_dest[6];	/* Destination node		*/
@@ -357,7 +342,7 @@ struct icmp_hdr {
 		} echo;
 		ulong	gateway;
 		struct {
-			ushort	__unused;
+			ushort	unused;
 			ushort	mtu;
 		} frag;
 		uchar data[0];
@@ -499,9 +484,35 @@ extern void net_set_ip_header(uchar *pkt, IPaddr_t dest, IPaddr_t source);
 extern void net_set_udp_header(uchar *pkt, IPaddr_t dest, int dport,
 				int sport, int len);
 
-/* Checksum */
-extern int	NetCksumOk(uchar *, int);	/* Return true if cksum OK */
-extern uint	NetCksum(uchar *, int);		/* Calculate the checksum */
+/**
+ * compute_ip_checksum() - Compute IP checksum
+ *
+ * @addr:	Address to check (must be 16-bit aligned)
+ * @nbytes:	Number of bytes to check (normally a multiple of 2)
+ * @return 16-bit IP checksum
+ */
+unsigned compute_ip_checksum(const void *addr, unsigned nbytes);
+
+/**
+ * add_ip_checksums() - add two IP checksums
+ *
+ * @offset:	Offset of first sum (if odd we do a byte-swap)
+ * @sum:	First checksum
+ * @new_sum:	New checksum to add
+ * @return updated 16-bit IP checksum
+ */
+unsigned add_ip_checksums(unsigned offset, unsigned sum, unsigned new_sum);
+
+/**
+ * ip_checksum_ok() - check if a checksum is correct
+ *
+ * This works by making sure the checksum sums to 0
+ *
+ * @addr:	Address to check (must be 16-bit aligned)
+ * @nbytes:	Number of bytes to check (normally a multiple of 2)
+ * @return true if the checksum matches, false if not
+ */
+int ip_checksum_ok(const void *addr, unsigned nbytes);
 
 /* Callbacks */
 extern rxhand_f *net_get_udp_handler(void);	/* Get UDP RX packet handler */
@@ -596,12 +607,12 @@ static inline IPaddr_t NetReadIP(void *from)
 	return ip;
 }
 
-/* return ulong *in network byteorder* */
-static inline ulong NetReadLong(ulong *from)
+/* return u32 *in network byteorder* */
+static inline u32 netread32(void *from)
 {
-	ulong l;
+	u32 l;
 
-	memcpy((void *)&l, (void *)from, sizeof(l));
+	memcpy((void *)&l, from, sizeof(u32));
 	return l;
 }
 
@@ -617,10 +628,10 @@ static inline void NetCopyIP(void *to, void *from)
 	memcpy((void *)to, from, sizeof(IPaddr_t));
 }
 
-/* copy ulong */
-static inline void NetCopyLong(ulong *to, ulong *from)
+/* copy u32 */
+static inline void netcopy32(void *to, void *from)
 {
-	memcpy((void *)to, (void *)from, sizeof(ulong));
+	memcpy(to, from, sizeof(u32));
 }
 
 /**
@@ -674,6 +685,25 @@ static inline int is_valid_ether_addr(const u8 *addr)
 	return !is_multicast_ether_addr(addr) && !is_zero_ether_addr(addr);
 }
 
+/**
+ * eth_random_addr - Generate software assigned random Ethernet address
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Generate a random Ethernet address (MAC) that is not multicast
+ * and has the local assigned bit set.
+ */
+static inline void eth_random_addr(uchar *addr)
+{
+	int i;
+	unsigned int seed = get_timer(0);
+
+	for (i = 0; i < 6; i++)
+		addr[i] = rand_r(&seed);
+
+	addr[0] &= 0xfe;	/* clear multicast bit */
+	addr[0] |= 0x02;	/* set local assignment bit (IEEE802) */
+}
+
 /* Convert an IP address to a string */
 extern void ip_to_string(IPaddr_t x, char *s);
 
@@ -694,6 +724,9 @@ extern void copy_filename(char *dst, const char *src, int size);
 
 /* get a random source port */
 extern unsigned int random_port(void);
+
+/* Update U-Boot over TFTP */
+extern int update_tftp(ulong addr);
 
 /**********************************************************************/
 

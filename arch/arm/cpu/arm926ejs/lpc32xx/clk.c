@@ -1,20 +1,7 @@
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -109,6 +96,40 @@ unsigned int get_periph_clk_rate(void)
 		return get_sys_clk_rate();
 
 	return get_hclk_pll_rate() / get_periph_clk_div();
+}
+
+unsigned int get_sdram_clk_rate(void)
+{
+	unsigned int src_clk;
+
+	if (!(readl(&clk->pwr_ctrl) & CLK_PWR_NORMAL_RUN))
+		return get_sys_clk_rate();
+
+	src_clk = get_hclk_pll_rate();
+
+	if (readl(&clk->sdramclk_ctrl) & CLK_SDRAM_DDR_SEL) {
+		/* using DDR */
+		switch (readl(&clk->hclkdiv_ctrl) & CLK_HCLK_DDRAM_MASK) {
+		case CLK_HCLK_DDRAM_HALF:
+			return src_clk/2;
+		case CLK_HCLK_DDRAM_NOMINAL:
+			return src_clk;
+		default:
+			return 0;
+		}
+	} else {
+		/* using SDR */
+		switch (readl(&clk->hclkdiv_ctrl) & CLK_HCLK_ARM_PLL_DIV_MASK) {
+		case CLK_HCLK_ARM_PLL_DIV_4:
+			return src_clk/4;
+		case CLK_HCLK_ARM_PLL_DIV_2:
+			return src_clk/2;
+		case CLK_HCLK_ARM_PLL_DIV_1:
+			return src_clk;
+		default:
+			return 0;
+		}
+	}
 }
 
 int get_serial_clock(void)

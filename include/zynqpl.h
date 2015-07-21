@@ -4,23 +4,7 @@
  * (C) Copyright 2012
  * Joe Hershberger <joe.hershberger@ni.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ZYNQPL_H_
@@ -28,37 +12,60 @@
 
 #include <xilinx.h>
 
-extern int zynq_load(Xilinx_desc *desc, const void *image, size_t size);
-extern int zynq_dump(Xilinx_desc *desc, const void *buf, size_t bsize);
-extern int zynq_info(Xilinx_desc *desc);
+#ifdef CONFIG_CMD_ZYNQ_AES
+extern int zynq_decrypt_load(u32 srcaddr, u32 dstaddr, u32 srclen, u32 dstlen);
+#endif
+#if defined(CONFIG_FPGA_ZYNQPL)
+extern struct xilinx_fpga_op zynq_op;
+# define FPGA_ZYNQPL_OPS	&zynq_op
+#else
+# define FPGA_ZYNQPL_OPS	NULL
+#endif
 
 #define XILINX_ZYNQ_7010	0x2
+#define XILINX_ZYNQ_7015	0x1b
 #define XILINX_ZYNQ_7020	0x7
 #define XILINX_ZYNQ_7030	0xc
+#define XILINX_ZYNQ_7035	0x12
 #define XILINX_ZYNQ_7045	0x11
 #define XILINX_ZYNQ_7100	0x16
 
 /* Device Image Sizes */
 #define XILINX_XC7Z010_SIZE	16669920/8
+#define XILINX_XC7Z015_SIZE	28085344/8
 #define XILINX_XC7Z020_SIZE	32364512/8
 #define XILINX_XC7Z030_SIZE	47839328/8
+#define XILINX_XC7Z035_SIZE	106571232/8
 #define XILINX_XC7Z045_SIZE	106571232/8
 #define XILINX_XC7Z100_SIZE	139330784/8
 
 /* Descriptor Macros */
 #define XILINX_XC7Z010_DESC(cookie) \
-{ xilinx_zynq, devcfg, XILINX_XC7Z010_SIZE, NULL, cookie, "7z010" }
+{ xilinx_zynq, devcfg, XILINX_XC7Z010_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z010" }
+
+#define XILINX_XC7Z015_DESC(cookie) \
+{ xilinx_zynq, devcfg, XILINX_XC7Z015_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z015" }
 
 #define XILINX_XC7Z020_DESC(cookie) \
-{ xilinx_zynq, devcfg, XILINX_XC7Z020_SIZE, NULL, cookie, "7z020" }
+{ xilinx_zynq, devcfg, XILINX_XC7Z020_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z020" }
 
 #define XILINX_XC7Z030_DESC(cookie) \
-{ xilinx_zynq, devcfg, XILINX_XC7Z030_SIZE, NULL, cookie, "7z030" }
+{ xilinx_zynq, devcfg, XILINX_XC7Z030_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z030" }
+
+#define XILINX_XC7Z035_DESC(cookie) \
+{ xilinx_zynq, devcfg, XILINX_XC7Z035_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z035" }
 
 #define XILINX_XC7Z045_DESC(cookie) \
-{ xilinx_zynq, devcfg, XILINX_XC7Z045_SIZE, NULL, cookie, "7z045" }
+{ xilinx_zynq, devcfg, XILINX_XC7Z045_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z045" }
 
 #define XILINX_XC7Z100_DESC(cookie) \
-{ xilinx_zynq, devcfg, XILINX_XC7Z100_SIZE, NULL, cookie, "7z100" }
+{ xilinx_zynq, devcfg, XILINX_XC7Z100_SIZE, NULL, cookie, FPGA_ZYNQPL_OPS, \
+	"7z100" }
 
 #endif /* _ZYNQPL_H_ */

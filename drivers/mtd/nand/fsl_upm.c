@@ -4,10 +4,7 @@
  * Copyright (C) 2007 MontaVista Software, Inc.
  *                    Anton Vorontsov <avorontsov@ru.mvista.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -115,10 +112,10 @@ static void fun_cmd_ctrl(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 	fsl_upm_run_pattern(&fun->upm, fun->width, io_addr, mar);
 
 	/*
-         * Some boards/chips needs this.  At least the MPC8360E-RDK
-         * needs it.  Probably weird chip, because I don't see any
-         * need for this on MPC8555E + Samsung K9F1G08U0A.  Usually
-         * here are 0-2 unexpected busy states per block read.
+	 * Some boards/chips needs this.  At least the MPC8360E-RDK
+	 * needs it.  Probably weird chip, because I don't see any
+	 * need for this on MPC8555E + Samsung K9F1G08U0A.  Usually
+	 * here are 0-2 unexpected busy states per block read.
 	 */
 	if (fun->wait_flags & FSL_UPM_WAIT_RUN_PATTERN)
 		fun_wait(fun);
@@ -156,19 +153,6 @@ static void upm_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 		buf[i] = in_8(chip->IO_ADDR_R);
 }
 
-static int upm_nand_verify_buf(struct mtd_info *mtd, const u_char *buf, int len)
-{
-	int i;
-	struct nand_chip *chip = mtd->priv;
-
-	for (i = 0; i < len; i++) {
-		if (buf[i] != in_8(chip->IO_ADDR_R))
-			return -EFAULT;
-	}
-
-	return 0;
-}
-
 static int nand_dev_ready(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
@@ -194,7 +178,6 @@ int fsl_upm_nand_init(struct nand_chip *chip, struct fsl_upm_nand *fun)
 	chip->read_byte = upm_nand_read_byte;
 	chip->read_buf = upm_nand_read_buf;
 	chip->write_buf = upm_nand_write_buf;
-	chip->verify_buf = upm_nand_verify_buf;
 	if (fun->dev_ready)
 		chip->dev_ready = nand_dev_ready;
 

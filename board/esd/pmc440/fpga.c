@@ -2,23 +2,7 @@
  * (C) Copyright 2007
  * Matthias Fuchs, esd gmbh, matthias.fuchs@esd-electronics.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -36,7 +20,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define USE_SP_CODE
 
 #ifdef USE_SP_CODE
-Xilinx_Spartan3_Slave_Parallel_fns pmc440_fpga_fns = {
+xilinx_spartan3_slave_parallel_fns pmc440_fpga_fns = {
 	fpga_pre_config_fn,
 	fpga_pgm_fn,
 	fpga_init_fn,
@@ -52,7 +36,7 @@ Xilinx_Spartan3_Slave_Parallel_fns pmc440_fpga_fns = {
 	fpga_post_config_fn,
 };
 #else
-Xilinx_Spartan3_Slave_Serial_fns pmc440_fpga_fns = {
+xilinx_spartan3_slave_serial_fns pmc440_fpga_fns = {
 	fpga_pre_config_fn,
 	fpga_pgm_fn,
 	fpga_clk_fn,
@@ -63,7 +47,7 @@ Xilinx_Spartan3_Slave_Serial_fns pmc440_fpga_fns = {
 };
 #endif
 
-Xilinx_Spartan2_Slave_Serial_fns ngcc_fpga_fns = {
+xilinx_spartan2_slave_serial_fns ngcc_fpga_fns = {
 	ngcc_fpga_pre_config_fn,
 	ngcc_fpga_pgm_fn,
 	ngcc_fpga_clk_fn,
@@ -73,7 +57,7 @@ Xilinx_Spartan2_Slave_Serial_fns ngcc_fpga_fns = {
 	ngcc_fpga_post_config_fn
 };
 
-Xilinx_desc fpga[CONFIG_FPGA_COUNT] = {
+xilinx_desc fpga[CONFIG_FPGA_COUNT] = {
 	XILINX_XC3S1200E_DESC(
 #ifdef USE_SP_CODE
 		slave_parallel,

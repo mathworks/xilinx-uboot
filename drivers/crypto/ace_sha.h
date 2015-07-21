@@ -3,20 +3,7 @@
  *
  * Copyright (c) 2012  Samsung Electronics
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ACE_SHA_H
@@ -85,9 +72,10 @@ struct exynos_ace_sfr {
 	unsigned char   res12[0x30];
 	unsigned int	hash_result[8];
 	unsigned char   res13[0x20];
-	unsigned int	hash_seed[8];
-	unsigned int	hash_prng[8];
-	unsigned char   res14[0x180];
+	unsigned int	hash_seed[5];
+	unsigned char	res14[12];
+	unsigned int	hash_prng[5];
+	unsigned char	res15[0x18c];
 
 	unsigned int	pka_sfr[5];		/* base + 0x700 */
 };
@@ -304,6 +292,7 @@ struct exynos_ace_sfr {
 #define ACE_HASH_PRNGERROR_MASK	(1 << 7)
 #define ACE_HASH_PRNGERROR_OFF		(0 << 7)
 #define ACE_HASH_PRNGERROR_ON		(1 << 7)
+#define ACE_HASH_PRNG_REG_NUM		5
 
 #define ACE_SHA_TYPE_SHA1		1
 #define ACE_SHA_TYPE_SHA256		2

@@ -42,6 +42,7 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	int i;
 	u_char *datbuf, *oobbuf, *p;
 	static loff_t last;
+	int ret = 0;
 
 	if (repeat)
 		off = last + nand->writesize;
@@ -49,10 +50,16 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	last = off;
 
 	datbuf = memalign(ARCH_DMA_MINALIGN, nand->writesize);
-	oobbuf = memalign(ARCH_DMA_MINALIGN, nand->oobsize);
-	if (!datbuf || !oobbuf) {
+	if (!datbuf) {
 		puts("No memory for page buffer\n");
 		return 1;
+	}
+
+	oobbuf = memalign(ARCH_DMA_MINALIGN, nand->oobsize);
+	if (!oobbuf) {
+		puts("No memory for page buffer\n");
+		ret = 1;
+		goto free_dat;
 	}
 	off &= ~(nand->writesize - 1);
 	loff_t addr = (loff_t) off;
@@ -62,27 +69,29 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	ops.oobbuf = oobbuf;
 	ops.len = nand->writesize;
 	ops.ooblen = nand->oobsize;
-	ops.mode = MTD_OOB_RAW;
-	i = nand->read_oob(nand, addr, &ops);
+	ops.mode = MTD_OPS_RAW;
+	i = mtd_read_oob(nand, addr, &ops);
 	if (i < 0) {
 		printf("Error (%d) reading page %08lx\n", i, off);
-		free(datbuf);
-		free(oobbuf);
-		return 1;
+		ret = 1;
+		goto free_all;
 	}
 	printf("Page %08lx dump:\n", off);
-	i = nand->writesize >> 4;
-	p = datbuf;
 
-	while (i--) {
-		if (!only_oob)
+	if (!only_oob) {
+		i = nand->writesize >> 4;
+		p = datbuf;
+
+		while (i--) {
 			printf("\t%02x %02x %02x %02x %02x %02x %02x %02x"
 			       "  %02x %02x %02x %02x %02x %02x %02x %02x\n",
 			       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
 			       p[8], p[9], p[10], p[11], p[12], p[13], p[14],
 			       p[15]);
-		p += 16;
+			p += 16;
+		}
 	}
+
 	puts("OOB:\n");
 	i = nand->oobsize >> 3;
 	p = oobbuf;
@@ -91,10 +100,13 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 		p += 8;
 	}
-	free(datbuf);
-	free(oobbuf);
 
-	return 0;
+free_all:
+	free(oobbuf);
+free_dat:
+	free(datbuf);
+
+	return ret;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -404,13 +416,16 @@ static int raw_access(nand_info_t *nand, ulong addr, loff_t off, ulong count,
 			.oobbuf = ((u8 *)addr) + nand->writesize,
 			.len = nand->writesize,
 			.ooblen = nand->oobsize,
-			.mode = MTD_OOB_RAW
+			.mode = MTD_OPS_RAW
 		};
 
-		if (read)
-			ret = nand->read_oob(nand, off, &ops);
-		else
-			ret = nand->write_oob(nand, off, &ops);
+		if (read) {
+			ret = mtd_read_oob(nand, off, &ops);
+		} else {
+			ret = mtd_write_oob(nand, off, &ops);
+			if (!ret)
+				ret = nand_verify_page_oob(nand, &ops, off);
+		}
 
 		if (ret) {
 			printf("%s: error at offset %llx, ret %d\n",
@@ -423,6 +438,31 @@ static int raw_access(nand_info_t *nand, ulong addr, loff_t off, ulong count,
 	}
 
 	return ret;
+}
+
+/* Adjust a chip/partition size down for bad blocks so we don't
+ * read/write past the end of a chip/partition by accident.
+ */
+static void adjust_size_for_badblocks(loff_t *size, loff_t offset, int dev)
+{
+	/* We grab the nand info object here fresh because this is usually
+	 * called after arg_off_size() which can change the value of dev.
+	 */
+	nand_info_t *nand = &nand_info[dev];
+	loff_t maxoffset = offset + *size;
+	int badblocks = 0;
+
+	/* count badblocks in NAND from offset to offset + size */
+	for (; offset < maxoffset; offset += nand->erasesize) {
+		if (nand_block_isbad(nand, offset))
+			badblocks++;
+	}
+	/* adjust size if any bad blocks found */
+	if (badblocks) {
+		*size -= badblocks * nand->erasesize;
+		printf("size adjusted to 0x%llx (%d bad blocks)\n",
+		       (unsigned long long)*size, badblocks);
+	}
 }
 
 static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -568,22 +608,16 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		opts.spread = spread;
 
 		if (scrub) {
-			if (!scrub_yes)
-				puts(scrub_warn);
-
-			if (scrub_yes)
+			if (scrub_yes) {
 				opts.scrub = 1;
-			else if (getc() == 'y') {
-				puts("y");
-				if (getc() == '\r')
-					opts.scrub = 1;
-				else {
-					puts("scrub aborted\n");
-					return -1;
-				}
 			} else {
-				puts("scrub aborted\n");
-				return -1;
+				puts(scrub_warn);
+				if (confirm_yesno()) {
+					opts.scrub = 1;
+				} else {
+					puts("scrub aborted\n");
+					return 1;
+				}
 			}
 		}
 		ret = nand_erase_opts(nand, &opts);
@@ -616,8 +650,6 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		read = strncmp(cmd, "read", 4) == 0; /* 1 = read, 0 = write */
 		printf("\nNAND %s: ", read ? "read" : "write");
 
-		nand = &nand_info[dev];
-
 		s = strchr(cmd, '.');
 
 		if (s && !strcmp(s, ".raw")) {
@@ -625,6 +657,8 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 			if (arg_off(argv[3], &dev, &off, &size, &maxsize))
 				return 1;
+
+			nand = &nand_info[dev];
 
 			if (argc > 4 && !str2long(argv[4], &pagecount)) {
 				printf("'%s' is not a number\n", argv[4]);
@@ -642,8 +676,13 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 						&off, &size, &maxsize) != 0)
 				return 1;
 
+			/* size is unspecified */
+			if (argc < 5)
+				adjust_size_for_badblocks(&size, off, dev);
 			rwsize = size;
 		}
+
+		nand = &nand_info[dev];
 
 		if (!s || !strcmp(s, ".jffs2") ||
 		    !strcmp(s, ".e") || !strcmp(s, ".i")) {
@@ -654,7 +693,8 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			else
 				ret = nand_write_skip_bad(nand, off, &rwsize,
 							  NULL, maxsize,
-							  (u_char *)addr, 0);
+							  (u_char *)addr,
+							  WITH_WR_VERIFY);
 #ifdef CONFIG_CMD_NAND_TRIMFFS
 		} else if (!strcmp(s, ".trimffs")) {
 			if (read) {
@@ -663,30 +703,20 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			}
 			ret = nand_write_skip_bad(nand, off, &rwsize, NULL,
 						maxsize, (u_char *)addr,
-						WITH_DROP_FFS);
-#endif
-#ifdef CONFIG_CMD_NAND_YAFFS
-		} else if (!strcmp(s, ".yaffs")) {
-			if (read) {
-				printf("Unknown nand command suffix '%s'.\n", s);
-				return 1;
-			}
-			ret = nand_write_skip_bad(nand, off, &rwsize, NULL,
-						maxsize, (u_char *)addr,
-						WITH_YAFFS_OOB);
+						WITH_DROP_FFS | WITH_WR_VERIFY);
 #endif
 		} else if (!strcmp(s, ".oob")) {
 			/* out-of-band data */
 			mtd_oob_ops_t ops = {
 				.oobbuf = (u8 *)addr,
 				.ooblen = rwsize,
-				.mode = MTD_OOB_RAW
+				.mode = MTD_OPS_RAW
 			};
 
 			if (read)
-				ret = nand->read_oob(nand, off, &ops);
+				ret = mtd_read_oob(nand, off, &ops);
 			else
-				ret = nand->write_oob(nand, off, &ops);
+				ret = mtd_write_oob(nand, off, &ops);
 		} else if (raw) {
 			ret = raw_access(nand, addr, off, pagecount, read);
 		} else {
@@ -729,7 +759,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		while (argc > 0) {
 			addr = simple_strtoul(*argv, NULL, 16);
 
-			if (nand->block_markbad(nand, addr)) {
+			if (mtd_block_markbad(nand, addr)) {
 				printf("block 0x%08lx NOT marked "
 					"as bad! ERROR %d\n",
 					addr, ret);
@@ -817,11 +847,6 @@ static char nand_help_text[] =
 	"    'addr', skipping bad blocks and dropping any pages at the end\n"
 	"    of eraseblocks that contain only 0xFF\n"
 #endif
-#ifdef CONFIG_CMD_NAND_YAFFS
-	"nand write.yaffs - addr off|partition size\n"
-	"    write 'size' bytes starting at offset 'off' with yaffs format\n"
-	"    from memory address 'addr', skipping bad blocks.\n"
-#endif
 	"nand erase[.spread] [clean] off size - erase 'size' bytes "
 	"from offset 'off'\n"
 	"    With '.spread', erase enough for given file size, otherwise,\n"
@@ -864,7 +889,9 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	int r;
 	char *s;
 	size_t cnt;
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	image_header_t *hdr;
+#endif
 #if defined(CONFIG_FIT)
 	const void *fit_hdr = NULL;
 #endif
@@ -890,6 +917,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	bootstage_mark(BOOTSTAGE_ID_NAND_HDR_READ);
 
 	switch (genimg_get_format ((void *)addr)) {
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	case IMAGE_FORMAT_LEGACY:
 		hdr = (image_header_t *)addr;
 
@@ -898,6 +926,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 
 		cnt = image_get_image_size (hdr);
 		break;
+#endif
 #if defined(CONFIG_FIT)
 	case IMAGE_FORMAT_FIT:
 		fit_hdr = (const void *)addr;

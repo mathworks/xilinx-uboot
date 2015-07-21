@@ -15,6 +15,7 @@
 #include <asm/errno.h>
 #include <asm/byteorder.h>
 #include <asm/blackfin.h>
+#include <asm/clock.h>
 #include <asm/portmux.h>
 #include <asm/mach-common/bits/sdh.h>
 #include <asm/mach-common/bits/dma.h>
@@ -137,9 +138,9 @@ static int sdh_setup_data(struct mmc *mmc, struct mmc_data *data)
 	if (data->flags & MMC_DATA_WRITE)
 		return UNUSABLE_ERR;
 #ifndef RSI_BLKSZ
-	data_ctl |= ((ffs(data_size) - 1) << 4);
+	data_ctl |= ((ffs(data->blocksize) - 1) << 4);
 #else
-	bfin_write_SDH_BLK_SIZE(data_size);
+	bfin_write_SDH_BLK_SIZE(data->blocksize);
 #endif
 	data_ctl |= DTX_DIR;
 	bfin_write_SDH_DATA_CTL(data_ctl);
@@ -188,7 +189,8 @@ static int bfin_sdh_request(struct mmc *mmc, struct mmc_cmd *cmd,
 		do {
 			udelay(1);
 			status = bfin_read_SDH_STATUS();
-		} while (!(status & (DAT_BLK_END | DAT_END | DAT_TIME_OUT | DAT_CRC_FAIL | RX_OVERRUN)));
+		} while (!(status & (DAT_END | DAT_TIME_OUT | DAT_CRC_FAIL |
+			 RX_OVERRUN)));
 
 		if (status & DAT_TIME_OUT) {
 			bfin_write_SDH_STATUS_CLR(DAT_TIMEOUT_STAT);
@@ -273,30 +275,30 @@ static int bfin_sdh_init(struct mmc *mmc)
 	return 0;
 }
 
+static const struct mmc_ops bfin_mmc_ops = {
+	.send_cmd	= bfin_sdh_request,
+	.set_ios	= bfin_sdh_set_ios,
+	.init		= bfin_sdh_init,
+};
+
+static struct mmc_config bfin_mmc_cfg = {
+	.name		= "Blackfin SDH",
+	.ops		= &bfin_mmc_ops,
+	.host_caps	= MMC_MODE_4BIT,
+	.voltages	= MMC_VDD_32_33 | MMC_VDD_33_34,
+	.b_max		= CONFIG_SYS_MMC_MAX_BLK_COUNT,
+};
 
 int bfin_mmc_init(bd_t *bis)
 {
-	struct mmc *mmc = NULL;
+	struct mmc *mmc;
 
-	mmc = malloc(sizeof(struct mmc));
+	bfin_mmc_cfg.f_max = get_sclk();
+	bfin_mmc_cfg.f_min = bfin_mmc_cfg.f_max >> 9;
 
-	if (!mmc)
-		return -ENOMEM;
-	sprintf(mmc->name, "Blackfin SDH");
-	mmc->send_cmd = bfin_sdh_request;
-	mmc->set_ios = bfin_sdh_set_ios;
-	mmc->init = bfin_sdh_init;
-	mmc->getcd = NULL;
-	mmc->getwp = NULL;
-	mmc->host_caps = MMC_MODE_4BIT;
-
-	mmc->voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
-	mmc->f_max = get_sclk();
-	mmc->f_min = mmc->f_max >> 9;
-
-	mmc->b_max = 0;
-
-	mmc_register(mmc);
+	mmc = mmc_create(&bfin_mmc_cfg, NULL);
+	if (mmc == NULL)
+		return -1;
 
 	return 0;
 }

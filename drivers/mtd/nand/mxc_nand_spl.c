@@ -8,20 +8,7 @@
  * (C) Copyright 2006-2008
  * Stefan Roese, DENX Software Engineering, sr at denx.de.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -290,7 +277,7 @@ static int is_badblock(int pagenumber)
 	return 0;
 }
 
-static int nand_load(unsigned int from, unsigned int size, unsigned char *buf)
+int nand_spl_load_image(uint32_t from, unsigned int size, void *buf)
 {
 	int i;
 	unsigned int page;
@@ -303,6 +290,7 @@ static int nand_load(unsigned int from, unsigned int size, unsigned char *buf)
 	page = from / CONFIG_SYS_NAND_PAGE_SIZE;
 	i = 0;
 
+	size = roundup(size, CONFIG_SYS_NAND_PAGE_SIZE);
 	while (i < size / CONFIG_SYS_NAND_PAGE_SIZE) {
 		if (nfc_read_page(page, buf) < 0)
 			return -1;
@@ -332,6 +320,7 @@ static int nand_load(unsigned int from, unsigned int size, unsigned char *buf)
 	return 0;
 }
 
+#ifndef CONFIG_SPL_FRAMEWORK
 /*
  * The main entry for NAND booting. It's necessary that SDRAM is already
  * configured and available since this code loads the main U-Boot image
@@ -345,8 +334,9 @@ void nand_boot(void)
 	 * CONFIG_SYS_NAND_U_BOOT_OFFS and CONFIG_SYS_NAND_U_BOOT_SIZE must
 	 * be aligned to full pages
 	 */
-	if (!nand_load(CONFIG_SYS_NAND_U_BOOT_OFFS, CONFIG_SYS_NAND_U_BOOT_SIZE,
-		       (uchar *)CONFIG_SYS_NAND_U_BOOT_DST)) {
+	if (!nand_spl_load_image(CONFIG_SYS_NAND_U_BOOT_OFFS,
+			CONFIG_SYS_NAND_U_BOOT_SIZE,
+			(uchar *)CONFIG_SYS_NAND_U_BOOT_DST)) {
 		/* Copy from NAND successful, start U-boot */
 		uboot = (void *)CONFIG_SYS_NAND_U_BOOT_START;
 		uboot();
@@ -355,12 +345,7 @@ void nand_boot(void)
 		hang();
 	}
 }
+#endif
 
-/*
- * Called in case of an exception.
- */
-void hang(void)
-{
-	/* Loop forever */
-	while (1) ;
-}
+void nand_init(void) {}
+void nand_deselect(void) {}

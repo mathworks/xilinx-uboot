@@ -2,24 +2,7 @@
  * (C) Copyright 2001
  * Denis Peter, MPL AG, d.peter@mpl.ch.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * Floppy Disk support
@@ -644,72 +627,6 @@ int fdc_setup(int drive, FDC_COMMAND_STRUCT *pCMD, FD_GEO_STRUCT *pFG)
 	return true;
 }
 
-#if defined(CONFIG_CMD_FDOS)
-
-/* Low level functions for the Floppy-DOS layer                              */
-
-/**************************************************************************
-* int fdc_fdos_init
-* initialize the FDC layer
-*
-*/
-int fdc_fdos_init (int drive)
-{
-	FD_GEO_STRUCT *pFG = (FD_GEO_STRUCT *)floppy_type;
-	FDC_COMMAND_STRUCT *pCMD = &cmd;
-
-	/* setup FDC and scan for drives  */
-	if (fdc_setup(drive, pCMD, pFG) == false) {
-		printf("\n** Error in setup FDC **\n");
-		return false;
-	}
-	if (fdc_check_drive(pCMD, pFG) == false) {
-		printf("\n** Error in check_drives **\n");
-		return false;
-	}
-	if((pCMD->flags&(1<<drive))==0) {
-		/* drive not available */
-		printf("\n** Drive %d not available **\n",drive);
-		return false;
-	}
-	if((pCMD->flags&(0x10<<drive))==0) {
-		/* no disk inserted */
-		printf("\n** No disk inserted in drive %d **\n",drive);
-		return false;
-	}
-	/* ok, we have a valid source */
-	pCMD->drive=drive;
-
-	/* read first block */
-	pCMD->blnr=0;
-	return true;
-}
-/**************************************************************************
-* int fdc_fdos_seek
-* parameter is a block number
-*/
-int fdc_fdos_seek (int where)
-{
-	FD_GEO_STRUCT *pFG = (FD_GEO_STRUCT *)floppy_type;
-	FDC_COMMAND_STRUCT *pCMD = &cmd;
-
-	pCMD -> blnr = where ;
-	return (fdc_seek (pCMD, pFG));
-}
-/**************************************************************************
-* int fdc_fdos_read
-*  the length is in block number
-*/
-int fdc_fdos_read (void *buffer, int len)
-{
-	FD_GEO_STRUCT *pFG = (FD_GEO_STRUCT *)floppy_type;
-	FDC_COMMAND_STRUCT *pCMD = &cmd;
-
-	return (fdc_read_data (buffer, len, pCMD, pFG));
-}
-#endif
-
-#if defined(CONFIG_CMD_FDC)
 /****************************************************************************
  * main routine do_fdcboot
  */
@@ -718,7 +635,9 @@ int do_fdcboot (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	FD_GEO_STRUCT *pFG = (FD_GEO_STRUCT *)floppy_type;
 	FDC_COMMAND_STRUCT *pCMD = &cmd;
 	unsigned long addr,imsize;
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	image_header_t *hdr;  /* used for fdc boot */
+#endif
 	unsigned char boot_drive;
 	int i,nrofblk;
 #if defined(CONFIG_FIT)
@@ -772,12 +691,14 @@ int do_fdcboot (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	switch (genimg_get_format ((void *)addr)) {
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	case IMAGE_FORMAT_LEGACY:
 		hdr = (image_header_t *)addr;
 		image_print_contents (hdr);
 
 		imsize = image_get_image_size (hdr);
 		break;
+#endif
 #if defined(CONFIG_FIT)
 	case IMAGE_FORMAT_FIT:
 		fit_hdr = (const void *)addr;
@@ -829,4 +750,3 @@ U_BOOT_CMD(
 	"boot from floppy device",
 	"loadAddr drive"
 );
-#endif

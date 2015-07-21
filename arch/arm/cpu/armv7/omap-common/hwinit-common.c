@@ -9,37 +9,16 @@
  *	Aneesh V	<aneesh@ti.com>
  *	Steve Sakoman	<steve@sakoman.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <spl.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/emif.h>
 #include <asm/omap_common.h>
 #include <linux/compiler.h>
-#include <asm/cache.h>
 #include <asm/system.h>
-
-#define ARMV7_DCACHE_WRITEBACK  0xe
-#define	ARMV7_DOMAIN_CLIENT	1
-#define ARMV7_DOMAIN_MASK	(0x3 << 0)
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -59,16 +38,10 @@ static void set_mux_conf_regs(void)
 		set_muxconf_regs_essential();
 		break;
 	case OMAP_INIT_CONTEXT_UBOOT_AFTER_SPL:
-#ifdef CONFIG_SYS_ENABLE_PADS_ALL
-		set_muxconf_regs_non_essential();
-#endif
 		break;
 	case OMAP_INIT_CONTEXT_UBOOT_FROM_NOR:
 	case OMAP_INIT_CONTEXT_UBOOT_AFTER_CH:
 		set_muxconf_regs_essential();
-#ifdef CONFIG_SYS_ENABLE_PADS_ALL
-		set_muxconf_regs_non_essential();
-#endif
 		break;
 	}
 }
@@ -84,7 +57,7 @@ u32 cortex_rev(void)
 	return rev;
 }
 
-void omap_rev_string(void)
+static void omap_rev_string(void)
 {
 	u32 omap_rev = omap_revision();
 	u32 soc_variant	= (omap_rev & 0xF0000000) >> 28;
@@ -101,11 +74,6 @@ void omap_rev_string(void)
 }
 
 #ifdef CONFIG_SPL_BUILD
-static void init_boot_params(void)
-{
-	boot_params_ptr = (u32 *) &boot_params;
-}
-
 void spl_display_print(void)
 {
 	omap_rev_string();
@@ -115,6 +83,17 @@ void spl_display_print(void)
 void __weak srcomp_enable(void)
 {
 }
+
+#ifdef CONFIG_ARCH_CPU_INIT
+/*
+ * SOC specific cpu init
+ */
+int arch_cpu_init(void)
+{
+	save_omap_boot_params();
+	return 0;
+}
+#endif /* CONFIG_ARCH_CPU_INIT */
 
 /*
  * Routine: s_init
@@ -136,7 +115,8 @@ void s_init(void)
 	hw_data_init();
 
 #ifdef CONFIG_SPL_BUILD
-	if (warm_reset() && (omap_revision() <= OMAP5430_ES1_0))
+	if (warm_reset() &&
+	    (is_omap44xx() || (omap_revision() == OMAP5430_ES1_0)))
 		force_emif_self_refresh();
 #endif
 	watchdog_init();
@@ -145,20 +125,21 @@ void s_init(void)
 	srcomp_enable();
 	setup_clocks_for_console();
 
-	gd = &gdata;
-
-	preloader_console_init();
 	do_io_settings();
 #endif
 	prcm_init();
-#ifdef CONFIG_SPL_BUILD
-	timer_init();
+}
 
+#ifdef CONFIG_SPL_BUILD
+void board_init_f(ulong dummy)
+{
+#ifdef CONFIG_BOARD_EARLY_INIT_F
+	board_early_init_f();
+#endif
 	/* For regular u-boot sdram_init() is called from dram_init() */
 	sdram_init();
-	init_boot_params();
-#endif
 }
+#endif
 
 /*
  * Routine: wait_for_command_complete
@@ -196,7 +177,7 @@ u32 omap_sdram_size(void)
 {
 	u32 section, i, valid;
 	u64 sdram_start = 0, sdram_end = 0, addr,
-	    size, total_size = 0, trap_size = 0;
+	    size, total_size = 0, trap_size = 0, trap_start = 0;
 
 	for (i = 0; i < 4; i++) {
 		section	= __raw_readl(DMM_BASE + i*4);
@@ -205,8 +186,8 @@ u32 omap_sdram_size(void)
 		addr = section & EMIF_SYS_ADDR_MASK;
 
 		/* See if the address is valid */
-		if ((addr >= DRAM_ADDR_SPACE_START) &&
-		    (addr < DRAM_ADDR_SPACE_END)) {
+		if ((addr >= TI_ARMV7_DRAM_ADDR_SPACE_START) &&
+		    (addr < TI_ARMV7_DRAM_ADDR_SPACE_END)) {
 			size = ((section & EMIF_SYS_SIZE_MASK) >>
 				   EMIF_SYS_SIZE_SHIFT);
 			size = 1 << size;
@@ -219,12 +200,15 @@ u32 omap_sdram_size(void)
 					sdram_end = addr + size;
 			} else {
 				trap_size = size;
+				trap_start = addr;
 			}
-
 		}
-
 	}
-	total_size = (sdram_end - sdram_start) - (trap_size);
+
+	if ((trap_start >= sdram_start) && (trap_start < sdram_end))
+		total_size = (sdram_end - sdram_start) - (trap_size);
+	else
+		total_size = sdram_end - sdram_start;
 
 	return total_size;
 }
@@ -259,6 +243,7 @@ u32 get_device_type(void)
 				      (DEVICE_TYPE_MASK)) >> DEVICE_TYPE_SHIFT;
 }
 
+#if defined(CONFIG_DISPLAY_CPUINFO)
 /*
  * Print CPU information
  */
@@ -268,40 +253,5 @@ int print_cpuinfo(void)
 	omap_rev_string();
 
 	return 0;
-}
-#ifndef CONFIG_SYS_DCACHE_OFF
-void enable_caches(void)
-{
-	/* Enable D-cache. I-cache is already enabled in start.S */
-	dcache_enable();
-}
-
-void dram_bank_mmu_setup(int bank)
-{
-	bd_t *bd = gd->bd;
-	int	i;
-
-	u32 start = bd->bi_dram[bank].start >> 20;
-	u32 size = bd->bi_dram[bank].size >> 20;
-	u32 end = start + size;
-
-	debug("%s: bank: %d\n", __func__, bank);
-	for (i = start; i < end; i++)
-		set_section_dcache(i, ARMV7_DCACHE_WRITEBACK);
-
-}
-
-void arm_init_domains(void)
-{
-	u32 reg;
-
-	reg = get_dacr();
-	/*
-	* Set DOMAIN to client access so that all permissions
-	* set in pagetables are validated by the mmu.
-	*/
-	reg &= ~ARMV7_DOMAIN_MASK;
-	reg |= ARMV7_DOMAIN_CLIENT;
-	set_dacr(reg);
 }
 #endif

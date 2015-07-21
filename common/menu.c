@@ -1,21 +1,11 @@
 /*
  * Copyright 2010-2011 Calxeda, Inc.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cli.h>
 #include <malloc.h>
 #include <errno.h>
 #include <linux/list.h>
@@ -115,12 +105,9 @@ static inline void *menu_item_destroy(struct menu *m,
 	return NULL;
 }
 
-void __menu_display_statusline(struct menu *m)
+__weak void menu_display_statusline(struct menu *m)
 {
-	return;
 }
-void menu_display_statusline(struct menu *m)
-	__attribute__ ((weak, alias("__menu_display_statusline")));
 
 /*
  * Display a menu so the user can make a choice of an item. First display its
@@ -207,8 +194,9 @@ static inline int menu_interactive_choice(struct menu *m, void **choice)
 		menu_display(m);
 
 		if (!m->item_choice) {
-			readret = readline_into_buffer("Enter choice: ", cbuf,
-					m->timeout / 10);
+			readret = cli_readline_into_buffer("Enter choice: ",
+							   cbuf,
+							   m->timeout / 10);
 
 			if (readret >= 0) {
 				choice_item = menu_item_by_key(m, cbuf);

@@ -3,23 +3,7 @@
  *
  * Michal  SIMEK <monstr@monstr.eu>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* This is a board specific file.  It's OK to include board specific
@@ -27,14 +11,60 @@
 
 #include <common.h>
 #include <config.h>
+#include <fdtdec.h>
 #include <netdev.h>
 #include <asm/processor.h>
 #include <asm/microblaze_intc.h>
 #include <asm/asm.h>
 #include <asm/gpio.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 #ifdef CONFIG_XILINX_GPIO
 static int reset_pin = -1;
+#endif
+
+#ifdef CONFIG_OF_CONTROL
+ulong ram_base;
+
+void dram_init_banksize(void)
+{
+	gd->bd->bi_dram[0].start = ram_base;
+	gd->bd->bi_dram[0].size = get_effective_memsize();
+}
+
+int dram_init(void)
+{
+	int node;
+	fdt_addr_t addr;
+	fdt_size_t size;
+	const void *blob = gd->fdt_blob;
+
+	node = fdt_node_offset_by_prop_value(blob, -1, "device_type",
+					     "memory", 7);
+	if (node == -FDT_ERR_NOTFOUND) {
+		debug("DRAM: Can't get memory node\n");
+		return 1;
+	}
+	addr = fdtdec_get_addr_size(blob, node, "reg", &size);
+	if (addr == FDT_ADDR_T_NONE || size == 0) {
+		debug("DRAM: Can't get base address or size\n");
+		return 1;
+	}
+	ram_base = addr;
+
+	gd->ram_top = addr; /* In setup_dest_addr() is done +ram_size */
+	gd->ram_size = size;
+
+	return 0;
+};
+#else
+int dram_init(void)
+{
+	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+
+	return 0;
+}
 #endif
 
 int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])

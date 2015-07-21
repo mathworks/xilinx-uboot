@@ -8,10 +8,7 @@
  * Copyright (C) 2008 Nissin Systems Co.,Ltd.
  * March 2008 created
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -660,8 +657,11 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 #endif
 	xps_ll_temac_init(dev, bis);
 
-	printf("%s: Xilinx XPS LocalLink Tri-Mode Ether MAC #%d at 0x%08X.\n",
-		dev->name, 0, dev->iobase);
+	printf("%s: Xilinx XPS LocalLink Tri-Mode Ether MAC #%d at 0x%08lx.\n",
+		dev->name, dev->index, dev->iobase);
+
+	if (!ll_temac_setup_ctrl(dev))
+		return -1;
 
 #if DEBUG
 	for (i = 0; i < 32; i++)

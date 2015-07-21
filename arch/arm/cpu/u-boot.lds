@@ -4,24 +4,10 @@
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
+
+#include <config.h>
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
@@ -33,10 +19,39 @@ SECTIONS
 	. = ALIGN(4);
 	.text :
 	{
-		__image_copy_start = .;
+		*(.__image_copy_start)
+		*(.vectors)
 		CPUDIR/start.o (.text*)
 		*(.text*)
 	}
+
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT) || defined(CONFIG_ARMV7_PSCI)
+
+#ifndef CONFIG_ARMV7_SECURE_BASE
+#define CONFIG_ARMV7_SECURE_BASE
+#endif
+
+	.__secure_start : {
+		. = ALIGN(0x1000);
+		*(.__secure_start)
+	}
+
+	.secure_text CONFIG_ARMV7_SECURE_BASE :
+		AT(ADDR(.__secure_start) + SIZEOF(.__secure_start))
+	{
+		*(._secure.text)
+	}
+
+	. = LOADADDR(.__secure_start) +
+		SIZEOF(.__secure_start) +
+		SIZEOF(.secure_text);
+
+	__secure_end_lma = .;
+	.__secure_end : AT(__secure_end_lma) {
+		*(.__secure_end)
+		LONG(0x1d1071c);	/* Must output something to reset LMA */
+	}
+#endif
 
 	. = ALIGN(4);
 	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
@@ -57,20 +72,31 @@ SECTIONS
 
 	. = ALIGN(4);
 
-	__image_copy_end = .;
+	.image_copy_end :
+	{
+		*(.__image_copy_end)
+	}
+
+	.rel_dyn_start :
+	{
+		*(.__rel_dyn_start)
+	}
 
 	.rel.dyn : {
-		__rel_dyn_start = .;
 		*(.rel*)
-		__rel_dyn_end = .;
 	}
 
-	.dynsym : {
-		__dynsym_start = .;
-		*(.dynsym)
+	.rel_dyn_end :
+	{
+		*(.__rel_dyn_end)
 	}
 
-	_end = .;
+	.end :
+	{
+		*(.__end)
+	}
+
+	_image_binary_end = .;
 
 	/*
 	 * Deprecated: this MMU section is used by pxa at present but
@@ -101,11 +127,14 @@ SECTIONS
 		KEEP(*(.__bss_end));
 	}
 
-	/DISCARD/ : { *(.dynstr*) }
-	/DISCARD/ : { *(.dynamic*) }
-	/DISCARD/ : { *(.plt*) }
-	/DISCARD/ : { *(.interp*) }
-	/DISCARD/ : { *(.gnu*) }
-	/DISCARD/ : { *(.ARM.exidx*) }
-	/DISCARD/ : { *(.gnu.linkonce.armexidx.*) }
+	.dynsym _image_binary_end : { *(.dynsym) }
+	.dynbss : { *(.dynbss) }
+	.dynstr : { *(.dynstr*) }
+	.dynamic : { *(.dynamic*) }
+	.plt : { *(.plt*) }
+	.interp : { *(.interp*) }
+	.gnu.hash : { *(.gnu.hash) }
+	.gnu : { *(.gnu*) }
+	.ARM.exidx : { *(.ARM.exidx*) }
+	.gnu.linkonce.armexidx : { *(.gnu.linkonce.armexidx.*) }
 }

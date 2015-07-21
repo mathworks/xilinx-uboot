@@ -6,27 +6,8 @@
  * (C) Copyright 2001
  * Paolo Scaffardi, AIRVENT SAM s.p.a - RIMINI(ITALY), arsenio@tin.it
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
-
-/* We want the GNU version of basename() */
-#define _GNU_SOURCE
 
 #include <errno.h>
 #include <fcntl.h>
@@ -56,6 +37,8 @@ static void usage(const char *exec_name)
 	       "\t\tkey1=value1\n"
 	       "\t\tkey2=value2\n"
 	       "\t\t...\n"
+	       "\tEmpty lines are skipped, and lines with a # in the first\n"
+	       "\tcolumn are treated as comments (also skipped).\n"
 	       "\t-r : the environment has multiple copies in flash\n"
 	       "\t-b : the target is big endian (default is little endian)\n"
 	       "\t-p <byte> : fill the image with <byte> bytes instead of 0xff bytes\n"
@@ -231,19 +214,14 @@ int main(int argc, char **argv)
 		}
 		ret = close(txt_fd);
 	}
-	/* The +1 is for the additionnal ending \0. See below. */
-	if (filesize + 1 > envsize) {
-		fprintf(stderr, "The input file is larger than the environment partition size\n");
-		return EXIT_FAILURE;
-	}
 
-	/* Replace newlines separating variables with \0 */
-	for (fp = 0, ep = 0 ; fp < filesize ; fp++) {
+	/* Parse a byte at time until reaching the file OR until the environment fills
+	 * up. Check ep against envsize - 1 to allow for extra trailing '\0'. */
+	for (fp = 0, ep = 0 ; fp < filesize && ep < envsize - 1; fp++) {
 		if (filebuf[fp] == '\n') {
-			if (ep == 0) {
+			if (fp == 0 || filebuf[fp-1] == '\n') {
 				/*
-				 * Newlines at the beginning of the file ?
-				 * Ignore them.
+				 * Skip empty lines.
 				 */
 				continue;
 			} else if (filebuf[fp-1] == '\\') {
@@ -259,8 +237,31 @@ int main(int argc, char **argv)
 				/* End of a variable */
 				envptr[ep++] = '\0';
 			}
+		} else if ((fp == 0 || filebuf[fp-1] == '\n') && filebuf[fp] == '#') {
+			/* Comment, skip the line. */
+			while (++fp < filesize && filebuf[fp] != '\n')
+			continue;
 		} else {
 			envptr[ep++] = filebuf[fp];
+		}
+	}
+	/* If there are more bytes in the file still, it means the env filled up
+	 * before parsing the whole file.  Eat comments & whitespace here to see if
+	 * there was anything meaning full left in the file, and if so, throw a error
+	 * and exit. */
+	for( ; fp < filesize; fp++ )
+	{
+		if (filebuf[fp] == '\n') {
+			if (fp == 0 || filebuf[fp-1] == '\n') {
+				/* Ignore blank lines */
+				continue;
+			}
+		} else if ((fp == 0 || filebuf[fp-1] == '\n') && filebuf[fp] == '#') {
+			while (++fp < filesize && filebuf[fp] != '\n')
+			continue;
+		} else {
+			fprintf(stderr, "The environment file is too large for the target environment storage\n");
+			return EXIT_FAILURE;
 		}
 	}
 	/*

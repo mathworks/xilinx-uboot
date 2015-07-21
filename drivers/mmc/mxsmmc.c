@@ -15,23 +15,7 @@
  * (C) Copyright 2003
  * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <malloc.h>
@@ -41,7 +25,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/arch/dma.h>
+#include <asm/imx-common/dma.h>
 #include <bouncebuf.h>
 
 struct mxsmmc_priv {
@@ -51,6 +35,7 @@ struct mxsmmc_priv {
 	int			(*mmc_is_wp)(int);
 	int			(*mmc_cd)(int);
 	struct mxs_dma_desc	*desc;
+	struct mmc_config	cfg;	/* mmc configuration */
 };
 
 #define	MXSMMC_MAX_TIMEOUT	10000
@@ -150,7 +135,7 @@ static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
 static int
 mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 {
-	struct mxsmmc_priv *priv = (struct mxsmmc_priv *)mmc->priv;
+	struct mxsmmc_priv *priv = mmc->priv;
 	struct mxs_ssp_regs *ssp_regs = priv->regs;
 	uint32_t reg;
 	int timeout;
@@ -321,7 +306,7 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 
 static void mxsmmc_set_ios(struct mmc *mmc)
 {
-	struct mxsmmc_priv *priv = (struct mxsmmc_priv *)mmc->priv;
+	struct mxsmmc_priv *priv = mmc->priv;
 	struct mxs_ssp_regs *ssp_regs = priv->regs;
 
 	/* Set the clock speed */
@@ -350,7 +335,7 @@ static void mxsmmc_set_ios(struct mmc *mmc)
 
 static int mxsmmc_init(struct mmc *mmc)
 {
-	struct mxsmmc_priv *priv = (struct mxsmmc_priv *)mmc->priv;
+	struct mxsmmc_priv *priv = mmc->priv;
 	struct mxs_ssp_regs *ssp_regs = priv->regs;
 
 	/* Reset SSP */
@@ -379,6 +364,12 @@ static int mxsmmc_init(struct mmc *mmc)
 	return 0;
 }
 
+static const struct mmc_ops mxsmmc_ops = {
+	.send_cmd	= mxsmmc_send_cmd,
+	.set_ios	= mxsmmc_set_ios,
+	.init		= mxsmmc_init,
+};
+
 int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int))
 {
 	struct mmc *mmc = NULL;
@@ -389,20 +380,13 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int))
 	if (!mxs_ssp_bus_id_valid(id))
 		return -ENODEV;
 
-	mmc = malloc(sizeof(struct mmc));
-	if (!mmc)
-		return -ENOMEM;
-
 	priv = malloc(sizeof(struct mxsmmc_priv));
-	if (!priv) {
-		free(mmc);
+	if (!priv)
 		return -ENOMEM;
-	}
 
 	priv->desc = mxs_dma_desc_alloc();
 	if (!priv->desc) {
 		free(priv);
-		free(mmc);
 		return -ENOMEM;
 	}
 
@@ -415,18 +399,14 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int))
 	priv->id = id;
 	priv->regs = mxs_ssp_regs_by_bus(id);
 
-	sprintf(mmc->name, "MXS MMC");
-	mmc->send_cmd = mxsmmc_send_cmd;
-	mmc->set_ios = mxsmmc_set_ios;
-	mmc->init = mxsmmc_init;
-	mmc->getcd = NULL;
-	mmc->getwp = NULL;
-	mmc->priv = priv;
+	priv->cfg.name = "MXS MMC";
+	priv->cfg.ops = &mxsmmc_ops;
 
-	mmc->voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
+	priv->cfg.voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
 
-	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT |
-			 MMC_MODE_HS_52MHz | MMC_MODE_HS;
+	priv->cfg.host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT |
+			 MMC_MODE_HS_52MHz | MMC_MODE_HS |
+			 MMC_MODE_HC;
 
 	/*
 	 * SSPCLK = 480 * 18 / 29 / 1 = 297.731 MHz
@@ -434,10 +414,15 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int))
 	 * CLOCK_DIVIDE has to be an even value from 2 to 254, and
 	 * CLOCK_RATE could be any integer from 0 to 255.
 	 */
-	mmc->f_min = 400000;
-	mmc->f_max = mxc_get_clock(MXC_SSP0_CLK + mxsmmc_clk_id) * 1000 / 2;
-	mmc->b_max = 0x20;
+	priv->cfg.f_min = 400000;
+	priv->cfg.f_max = mxc_get_clock(MXC_SSP0_CLK + mxsmmc_clk_id) * 1000 / 2;
+	priv->cfg.b_max = 0x20;
 
-	mmc_register(mmc);
+	mmc = mmc_create(&priv->cfg, priv);
+	if (mmc == NULL) {
+		mxs_dma_desc_free(priv->desc);
+		free(priv);
+		return -ENOMEM;
+	}
 	return 0;
 }

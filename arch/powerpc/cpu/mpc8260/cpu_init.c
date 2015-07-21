@@ -2,23 +2,7 @@
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -104,9 +88,7 @@ static void config_8260_ioports (volatile immap_t * immr)
  */
 void cpu_init_f (volatile immap_t * immr)
 {
-#if !defined(CONFIG_COGENT)		/* done in start.S for the cogent */
 	uint sccr;
-#endif
 #if defined(CONFIG_BOARD_GET_CPU_CLK_F)
 	unsigned long cpu_clk;
 #endif
@@ -157,13 +139,11 @@ void cpu_init_f (volatile immap_t * immr)
 	/* initialize the PIT (4-42) */
 	immr->im_sit.sit_piscr = CONFIG_SYS_PISCR;
 
-#if !defined(CONFIG_COGENT)		/* done in start.S for the cogent */
 	/* System clock control register (9-8) */
 	sccr = immr->im_clkrst.car_sccr &
 		(SCCR_PCI_MODE | SCCR_PCI_MODCK | SCCR_PCIDF_MSK);
 	immr->im_clkrst.car_sccr = sccr |
 		(CONFIG_SYS_SCCR & ~(SCCR_PCI_MODE | SCCR_PCI_MODCK | SCCR_PCIDF_MSK) );
-#endif /* !CONFIG_COGENT */
 
 	/*
 	 * Memory Controller:

@@ -4,25 +4,9 @@
  * Steve Sakoman  <steve@sakoman.com>
  *
  * Configuration settings for the TI OMAP4 Panda board.
- * See omap4_common.h for OMAP4 common part
+ * See ti_omap4_common.h for OMAP4 common part
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_PANDA_H
@@ -52,18 +36,20 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
 
-#define CONFIG_USB_ULPI
-#define CONFIG_USB_ULPI_VIEWPORT_OMAP
-
-#include <configs/omap4_common.h>
+#include <configs/ti_omap4_common.h>
 #define CONFIG_CMD_NET
 
 /* GPIO */
 #define CONFIG_CMD_GPIO
 
 /* ENV related config options */
-#define CONFIG_ENV_IS_NOWHERE
 
-#define CONFIG_SYS_PROMPT		"Panda # "
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+#define CONFIG_ENV_IS_IN_FAT
+#define FAT_ENV_INTERFACE               "mmc"
+#define FAT_ENV_DEVICE_AND_PART         "0:1"
+#define FAT_ENV_FILE                    "uboot.env"
+#define CONFIG_CMD_SAVEENV
+#define CONFIG_ENV_OVERWRITE
 
 #endif /* __CONFIG_PANDA_H */

@@ -1,22 +1,7 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Tegra clock control functions */
@@ -33,6 +18,21 @@ enum clock_osc_freq {
 	CLOCK_OSC_FREQ_26_0,
 
 	CLOCK_OSC_FREQ_COUNT,
+};
+
+/*
+ * Note that no Tegra clock register actually uses all of bits 31:28 as
+ * the mux field. Rather, bits 30:28, 29:28, or 28 are used. However, in
+ * those cases, nothing is stored in the bits about the mux field, so it's
+ * safe to pretend that the mux field extends all the way to the end of the
+ * register. As such, the U-Boot clock driver is currently a bit lazy, and
+ * doesn't distinguish between 31:28, 30:28, 29:28 and 28; it just lumps
+ * them all together and pretends they're all 31:28.
+ */
+enum {
+	MASK_BITS_31_30,
+	MASK_BITS_31_29,
+	MASK_BITS_31_28,
 };
 
 #include <asm/arch/clock-tables.h>
@@ -128,9 +128,9 @@ void reset_set_enable(enum periph_id periph_id, int enable);
 enum crc_reset_id {
 	/* Things we can hold in reset for each CPU */
 	crc_rst_cpu = 1,
-	crc_rst_de = 1 << 2,	/* What is de? */
-	crc_rst_watchdog = 1 << 3,
-	crc_rst_debug = 1 << 4,
+	crc_rst_de = 1 << 4,	/* What is de? */
+	crc_rst_watchdog = 1 << 8,
+	crc_rst_debug = 1 << 12,
 };
 
 /**
@@ -319,5 +319,7 @@ int clock_set_rate(enum clock_id clkid, u32 n, u32 m, u32 p, u32 cpcon);
 
 /* SoC-specific TSC init */
 void arch_timer_init(void);
+
+void tegra30_set_up_pllp(void);
 
 #endif  /* _TEGRA_CLOCK_H_ */

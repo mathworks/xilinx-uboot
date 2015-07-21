@@ -1,54 +1,80 @@
 /*
  * Copyright (c) 2013 Xilinx Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARCH_HARDWARE_H
 #define _ASM_ARCH_HARDWARE_H
 
+#define ZYNQ_SERIAL_BASEADDR0		0xE0000000
+#define ZYNQ_SERIAL_BASEADDR1		0xE0001000
 #define ZYNQ_SYS_CTRL_BASEADDR		0xF8000000
 #define ZYNQ_DEV_CFG_APB_BASEADDR	0xF8007000
 #define ZYNQ_SCU_BASEADDR		0xF8F00000
-#define ZYNQ_SCUTIMER_BASEADDR		0xF8F00600
 #define ZYNQ_GEM_BASEADDR0		0xE000B000
 #define ZYNQ_GEM_BASEADDR1		0xE000C000
 #define ZYNQ_SDHCI_BASEADDR0		0xE0100000
 #define ZYNQ_SDHCI_BASEADDR1		0xE0101000
 #define ZYNQ_I2C_BASEADDR0		0xE0004000
 #define ZYNQ_I2C_BASEADDR1		0xE0005000
+#define ZYNQ_SPI_BASEADDR0		0xE0006000
+#define ZYNQ_SPI_BASEADDR1		0xE0007000
 #define ZYNQ_QSPI_BASEADDR		0xE000D000
 #define ZYNQ_SMC_BASEADDR		0xE000E000
 #define ZYNQ_NAND_BASEADDR		0xE1000000
 #define ZYNQ_DDRC_BASEADDR		0xF8006000
+#define ZYNQ_EFUSE_BASEADDR		0xF800D000
+#define ZYNQ_USB_BASEADDR0		0xE0002000
+#define ZYNQ_USB_BASEADDR1		0xE0003000
+
+/* Bootmode setting values */
+#define ZYNQ_BM_MASK		0x7
+#define ZYNQ_BM_QSPI		0x1
+#define ZYNQ_BM_NOR		0x2
+#define ZYNQ_BM_NAND		0x4
+#define ZYNQ_BM_SD		0x5
+#define ZYNQ_BM_JTAG		0x0
 
 /* Reflect slcr offsets */
 struct slcr_regs {
 	u32 scl; /* 0x0 */
 	u32 slcr_lock; /* 0x4 */
 	u32 slcr_unlock; /* 0x8 */
-	u32 reserved0[75];
+	u32 reserved0_1[61];
+	u32 arm_pll_ctrl; /* 0x100 */
+	u32 ddr_pll_ctrl; /* 0x104 */
+	u32 io_pll_ctrl; /* 0x108 */
+	u32 reserved0_2[5];
+	u32 arm_clk_ctrl; /* 0x120 */
+	u32 ddr_clk_ctrl; /* 0x124 */
+	u32 dci_clk_ctrl; /* 0x128 */
+	u32 aper_clk_ctrl; /* 0x12c */
+	u32 reserved0_3[2];
 	u32 gem0_rclk_ctrl; /* 0x138 */
 	u32 gem1_rclk_ctrl; /* 0x13c */
 	u32 gem0_clk_ctrl; /* 0x140 */
 	u32 gem1_clk_ctrl; /* 0x144 */
-	u32 reserved1[46];
+	u32 smc_clk_ctrl; /* 0x148 */
+	u32 lqspi_clk_ctrl; /* 0x14c */
+	u32 sdio_clk_ctrl; /* 0x150 */
+	u32 uart_clk_ctrl; /* 0x154 */
+	u32 spi_clk_ctrl; /* 0x158 */
+	u32 can_clk_ctrl; /* 0x15c */
+	u32 can_mioclk_ctrl; /* 0x160 */
+	u32 dbg_clk_ctrl; /* 0x164 */
+	u32 pcap_clk_ctrl; /* 0x168 */
+	u32 reserved0_4[1];
+	u32 fpga0_clk_ctrl; /* 0x170 */
+	u32 reserved0_5[3];
+	u32 fpga1_clk_ctrl; /* 0x180 */
+	u32 reserved0_6[3];
+	u32 fpga2_clk_ctrl; /* 0x190 */
+	u32 reserved0_7[3];
+	u32 fpga3_clk_ctrl; /* 0x1a0 */
+	u32 reserved0_8[8];
+	u32 clk_621_true; /* 0x1c4 */
+	u32 reserved1[14];
 	u32 pss_rst_ctrl; /* 0x200 */
 	u32 reserved2[15];
 	u32 fpga_rst_ctrl; /* 0x240 */
@@ -110,5 +136,13 @@ struct ddrc_regs {
 	u32 ecc_scrub; /* 0xF4 */
 };
 #define ddrc_base ((struct ddrc_regs *)ZYNQ_DDRC_BASEADDR)
+
+struct efuse_reg {
+	u32 reserved1[4];
+	u32 status;
+	u32 reserved2[3];
+};
+
+#define efuse_base ((struct efuse_reg *)ZYNQ_EFUSE_BASEADDR)
 
 #endif /* _ASM_ARCH_HARDWARE_H */

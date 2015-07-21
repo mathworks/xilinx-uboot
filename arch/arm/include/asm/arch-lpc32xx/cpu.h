@@ -1,20 +1,7 @@
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA  02110-1301, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LPC32XX_CPU_H
@@ -40,6 +27,7 @@
 #define HS_UART7_BASE	0x4001C000	/* High speed UART 7 registers base */
 #define RTC_BASE	0x40024000	/* RTC registers base               */
 #define GPIO_BASE	0x40028000	/* GPIO registers base              */
+#define MUX_BASE	0x40028100	/* MUX registers base               */
 #define WDT_BASE	0x4003C000	/* Watchdog timer registers base    */
 #define TIMER0_BASE	0x40044000	/* Timer0 registers base            */
 #define TIMER1_BASE	0x4004C000	/* Timer1 registers base            */
@@ -50,6 +38,8 @@
 #define UART4_BASE	0x40088000	/* UART 4 registers base            */
 #define UART5_BASE	0x40090000	/* UART 5 registers base            */
 #define UART6_BASE	0x40098000	/* UART 6 registers base            */
+#define I2C1_BASE	0x400A0000	/* I2C  1 registers base            */
+#define I2C2_BASE	0x400A8000	/* I2C  2 registers base            */
 
 /* External SDRAM Memory Bank base addresses */
 #define EMC_DYCS0_BASE	0x80000000	/* SDRAM DYCS0 base address         */

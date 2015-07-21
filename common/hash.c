@@ -7,29 +7,109 @@
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#ifndef USE_HOSTCC
 #include <common.h>
 #include <command.h>
+#include <malloc.h>
 #include <hw_sha.h>
-#include <hash.h>
-#include <sha1.h>
-#include <sha256.h>
 #include <asm/io.h>
+#include <asm/errno.h>
+#else
+#include "mkimage.h"
+#include <time.h>
+#include <image.h>
+#endif /* !USE_HOSTCC*/
+
+#include <hash.h>
+#include <u-boot/crc.h>
+#include <u-boot/sha1.h>
+#include <u-boot/sha256.h>
+#include <u-boot/md5.h>
+
+#ifdef CONFIG_SHA1
+static int hash_init_sha1(struct hash_algo *algo, void **ctxp)
+{
+	sha1_context *ctx = malloc(sizeof(sha1_context));
+	sha1_starts(ctx);
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_sha1(struct hash_algo *algo, void *ctx, const void *buf,
+			    unsigned int size, int is_last)
+{
+	sha1_update((sha1_context *)ctx, buf, size);
+	return 0;
+}
+
+static int hash_finish_sha1(struct hash_algo *algo, void *ctx, void *dest_buf,
+			    int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	sha1_finish((sha1_context *)ctx, dest_buf);
+	free(ctx);
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_SHA256
+static int hash_init_sha256(struct hash_algo *algo, void **ctxp)
+{
+	sha256_context *ctx = malloc(sizeof(sha256_context));
+	sha256_starts(ctx);
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_sha256(struct hash_algo *algo, void *ctx,
+			      const void *buf, unsigned int size, int is_last)
+{
+	sha256_update((sha256_context *)ctx, buf, size);
+	return 0;
+}
+
+static int hash_finish_sha256(struct hash_algo *algo, void *ctx, void
+			      *dest_buf, int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	sha256_finish((sha256_context *)ctx, dest_buf);
+	free(ctx);
+	return 0;
+}
+#endif
+
+static int hash_init_crc32(struct hash_algo *algo, void **ctxp)
+{
+	uint32_t *ctx = malloc(sizeof(uint32_t));
+	*ctx = 0;
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_crc32(struct hash_algo *algo, void *ctx,
+			     const void *buf, unsigned int size, int is_last)
+{
+	*((uint32_t *)ctx) = crc32(*((uint32_t *)ctx), buf, size);
+	return 0;
+}
+
+static int hash_finish_crc32(struct hash_algo *algo, void *ctx, void *dest_buf,
+			     int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	*((uint32_t *)dest_buf) = *((uint32_t *)ctx);
+	free(ctx);
+	return 0;
+}
 
 /*
  * These are the hash algorithms we support. Chips which support accelerated
@@ -47,26 +127,33 @@ static struct hash_algo hash_algo[] = {
 		SHA1_SUM_LEN,
 		hw_sha1,
 		CHUNKSZ_SHA1,
+#ifdef CONFIG_SHA_PROG_HW_ACCEL
+		hw_sha_init,
+		hw_sha_update,
+		hw_sha_finish,
+#endif
 	}, {
 		"sha256",
 		SHA256_SUM_LEN,
 		hw_sha256,
 		CHUNKSZ_SHA256,
+#ifdef CONFIG_SHA_PROG_HW_ACCEL
+		hw_sha_init,
+		hw_sha_update,
+		hw_sha_finish,
+#endif
 	},
 #endif
-	/*
-	 * This is CONFIG_CMD_SHA1SUM instead of CONFIG_SHA1 since otherwise
-	 * it bloats the code for boards which use SHA1 but not the 'hash'
-	 * or 'sha1sum' commands.
-	 */
-#ifdef CONFIG_CMD_SHA1SUM
+#ifdef CONFIG_SHA1
 	{
 		"sha1",
 		SHA1_SUM_LEN,
 		sha1_csum_wd,
 		CHUNKSZ_SHA1,
+		hash_init_sha1,
+		hash_update_sha1,
+		hash_finish_sha1,
 	},
-#define MULTI_HASH
 #endif
 #ifdef CONFIG_SHA256
 	{
@@ -74,16 +161,25 @@ static struct hash_algo hash_algo[] = {
 		SHA256_SUM_LEN,
 		sha256_csum_wd,
 		CHUNKSZ_SHA256,
+		hash_init_sha256,
+		hash_update_sha256,
+		hash_finish_sha256,
 	},
-#define MULTI_HASH
 #endif
 	{
 		"crc32",
 		4,
 		crc32_wd_buf,
 		CHUNKSZ_CRC32,
+		hash_init_crc32,
+		hash_update_crc32,
+		hash_finish_crc32,
 	},
 };
+
+#if defined(CONFIG_SHA256) || defined(CONFIG_CMD_SHA1SUM)
+#define MULTI_HASH
+#endif
 
 #if defined(CONFIG_HASH_VERIFY) || defined(CONFIG_CMD_HASH)
 #define MULTI_HASH
@@ -96,6 +192,40 @@ static struct hash_algo hash_algo[] = {
 #define multi_hash()	0
 #endif
 
+int hash_lookup_algo(const char *algo_name, struct hash_algo **algop)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
+		if (!strcmp(algo_name, hash_algo[i].name)) {
+			*algop = &hash_algo[i];
+			return 0;
+		}
+	}
+
+	debug("Unknown hash algorithm '%s'\n", algo_name);
+	return -EPROTONOSUPPORT;
+}
+
+int hash_progressive_lookup_algo(const char *algo_name,
+				 struct hash_algo **algop)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
+		if (!strcmp(algo_name, hash_algo[i].name)) {
+			if (hash_algo[i].hash_init) {
+				*algop = &hash_algo[i];
+				return 0;
+			}
+		}
+	}
+
+	debug("Unknown hash algorithm '%s'\n", algo_name);
+	return -EPROTONOSUPPORT;
+}
+
+#ifndef USE_HOSTCC
 /**
  * store_result: Store the resulting sum to an address or variable
  *
@@ -107,7 +237,7 @@ static struct hash_algo hash_algo[] = {
  * @allow_env_vars:	non-zero to permit storing the result to an
  *			variable environment
  */
-static void store_result(struct hash_algo *algo, const u8 *sum,
+static void store_result(struct hash_algo *algo, const uint8_t *sum,
 			 const char *dest, int allow_env_vars)
 {
 	unsigned int i;
@@ -134,7 +264,7 @@ static void store_result(struct hash_algo *algo, const u8 *sum,
 			sprintf(str_ptr, "%02x", sum[i]);
 			str_ptr += 2;
 		}
-		str_ptr = '\0';
+		*str_ptr = '\0';
 		setenv(dest, str_output);
 	} else {
 		ulong addr;
@@ -163,8 +293,8 @@ static void store_result(struct hash_algo *algo, const u8 *sum,
  *			address, and the * prefix is not expected.
  * @return 0 if ok, non-zero on error
  */
-static int parse_verify_sum(struct hash_algo *algo, char *verify_str, u8 *vsum,
-			    int allow_env_vars)
+static int parse_verify_sum(struct hash_algo *algo, char *verify_str,
+			    uint8_t *vsum, int allow_env_vars)
 {
 	int env_var = 0;
 
@@ -176,7 +306,7 @@ static int parse_verify_sum(struct hash_algo *algo, char *verify_str, u8 *vsum,
 			env_var = 1;
 	}
 
-	if (env_var) {
+	if (!env_var) {
 		ulong addr;
 		void *buf;
 
@@ -216,20 +346,7 @@ static int parse_verify_sum(struct hash_algo *algo, char *verify_str, u8 *vsum,
 	return 0;
 }
 
-static struct hash_algo *find_hash_algo(const char *name)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
-		if (!strcmp(name, hash_algo[i].name))
-			return &hash_algo[i];
-	}
-
-	return NULL;
-}
-
-static void show_hash(struct hash_algo *algo, ulong addr, ulong len,
-		      u8 *output)
+void hash_show(struct hash_algo *algo, ulong addr, ulong len, uint8_t *output)
 {
 	int i;
 
@@ -238,12 +355,34 @@ static void show_hash(struct hash_algo *algo, ulong addr, ulong len,
 		printf("%02x", output[i]);
 }
 
+int hash_block(const char *algo_name, const void *data, unsigned int len,
+	       uint8_t *output, int *output_size)
+{
+	struct hash_algo *algo;
+	int ret;
+
+	ret = hash_lookup_algo(algo_name, &algo);
+	if (ret)
+		return ret;
+
+	if (output_size && *output_size < algo->digest_size) {
+		debug("Output buffer size %d too small (need %d bytes)",
+		      *output_size, algo->digest_size);
+		return -ENOSPC;
+	}
+	if (output_size)
+		*output_size = algo->digest_size;
+	algo->hash_func_ws(data, len, output, algo->chunk_size);
+
+	return 0;
+}
+
 int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 		 int argc, char * const argv[])
 {
 	ulong addr, len;
 
-	if (argc < 2)
+	if ((argc < 2) || ((flags & HASH_FLAG_VERIFY) && (argc < 3)))
 		return CMD_RET_USAGE;
 
 	addr = simple_strtoul(*argv++, NULL, 16);
@@ -251,12 +390,11 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 
 	if (multi_hash()) {
 		struct hash_algo *algo;
-		u8 output[HASH_MAX_DIGEST_SIZE];
-		u8 vsum[HASH_MAX_DIGEST_SIZE];
+		uint8_t output[HASH_MAX_DIGEST_SIZE];
+		uint8_t vsum[HASH_MAX_DIGEST_SIZE];
 		void *buf;
 
-		algo = find_hash_algo(algo_name);
-		if (!algo) {
+		if (hash_lookup_algo(algo_name, &algo)) {
 			printf("Unknown hash algorithm '%s'\n", algo_name);
 			return CMD_RET_USAGE;
 		}
@@ -277,8 +415,6 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 #else
 		if (0) {
 #endif
-			if (!argc)
-				return CMD_RET_USAGE;
 			if (parse_verify_sum(algo, *argv, vsum,
 					flags & HASH_FLAG_ENV)) {
 				printf("ERROR: %s does not contain a valid "
@@ -288,7 +424,7 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 			if (memcmp(output, vsum, algo->digest_size) != 0) {
 				int i;
 
-				show_hash(algo, addr, len, output);
+				hash_show(algo, addr, len, output);
 				printf(" != ");
 				for (i = 0; i < algo->digest_size; i++)
 					printf("%02x", vsum[i]);
@@ -296,7 +432,7 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 				return 1;
 			}
 		} else {
-			show_hash(algo, addr, len, output);
+			hash_show(algo, addr, len, output);
 			printf("\n");
 
 			if (argc) {
@@ -315,11 +451,12 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 		printf("CRC32 for %08lx ... %08lx ==> %08lx\n",
 				addr, addr + len - 1, crc);
 
-		if (argc > 3) {
-			ptr = (ulong *)simple_strtoul(argv[3], NULL, 16);
+		if (argc >= 3) {
+			ptr = (ulong *)simple_strtoul(argv[0], NULL, 16);
 			*ptr = crc;
 		}
 	}
 
 	return 0;
 }
+#endif

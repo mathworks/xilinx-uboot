@@ -7,36 +7,15 @@ file.
 
 ---------------------------
 
-What:	Remove CONFIG_CMD_MEMTEST from default list
-When:	Release v2013.07
+What:	Remove unused CONFIG_SYS_MEMTEST_START/END
+When:	Release v2013.10
 
-Why:	The "mtest" command is of little practical use (if any), and
-	experience has shown that a large number of board configu-
-	rations define useless or even dangerous start and end
-	addresses.  If not even the board maintainers are able to
-	figure out which memory range can be reliably tested, how can
-	we expect such from the end users?  As this problem comes up
-	repeatedly, we rather do not enable this command by default,
-	so only people who know what they are doing will be confronted
-	with it.
+Why:	As the 'mtest' command is no longer default, a number of platforms
+	have not opted to turn the command back on and thus provide unused
+	defines (which are likely to be propogated to new platforms from
+	copy/paste).  Remove these defines when unused.
 
-Who:	Wolfgang Denk <wd@denx.de>
-
----------------------------
-
-What:	Remove CONFIG_SYS_ENABLE_PADS_ALL and CONFIG_SYS_CLOCKS_ENABLE_ALL
-When:	Release v2013.07
-
-Why:	When set these options enable "all" of the pads and clocks found
-	on OMAP4/5 platforms, so that the Linux Kernel does not have to.
-	It has been agreed that this goes against the U-Boot design
-	philosophy and since f3f98bb0 we have not enabled more than is
-	used in U-Boot.  The kernel has been updating drivers to enable
-	rather than assume pads/clocks have been enabled already.  Our
-	expectation is that by v2013.07 a suitable kernel shall exist that
-	does not need these options set for a reasonable I/O set to function.
-
-Who:	Tom Rini <trini@ti.com> and Sricharan R <r.sricharan@ti.com>
+Who:	Tom Rini <trini@ti.com>
 
 ---------------------------
 
@@ -47,7 +26,7 @@ Why:	We now have a PHY library, which allows everyone to share PHY
 	drivers. All new drivers should use this infrastructure, and
 	all old drivers should get converted to use it.
 
-Who:	Andy Fleming <afleming@freescale.com> and driver maintainers
+Who:	Andy Fleming <afleming@gmail.com> and driver maintainers
 
 ---------------------------
 

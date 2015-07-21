@@ -17,17 +17,9 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #include "tegra114-common.h"
-
-/* Must be off for Dalmore to boot !?!? FIXME */
-#define CONFIG_SYS_DCACHE_OFF
-
-/* Enable fdt support for Dalmore. Flash the image in u-boot-dtb.bin */
-#define CONFIG_DEFAULT_DEVICE_TREE	tegra114-dalmore
-#define CONFIG_OF_CONTROL
-#define CONFIG_OF_SEPARATE
 
 /* High-level configuration options */
 #define V_PROMPT		"Tegra114 (Dalmore) # "
@@ -40,14 +32,8 @@
 
 #define CONFIG_MACH_TYPE		MACH_TYPE_DALMORE
 
-#define CONFIG_BOARD_EARLY_INIT_F
-
 /* I2C */
-#define CONFIG_TEGRA_I2C
-#define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_MAX_I2C_BUS		TEGRA_I2C_NUM_CONTROLLERS
-#define CONFIG_SYS_I2C_SPEED		100000
+#define CONFIG_SYS_I2C_TEGRA
 #define CONFIG_CMD_I2C
 
 /* SD/MMC */
@@ -60,7 +46,7 @@
 #define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_SYS_MMC_ENV_PART		2
-#define CONFIG_ENV_OFFSET		((4096 * 1024) - CONFIG_ENV_SIZE)
+#define CONFIG_ENV_OFFSET		(-CONFIG_ENV_SIZE)
 
 #define MACH_TYPE_DALMORE	4304	/* not yet in mach-types.h */
 
@@ -74,6 +60,20 @@
 #define CONFIG_CMD_SPI
 #define CONFIG_CMD_SF
 #define CONFIG_SPI_FLASH_SIZE          (4 << 20)
+
+/* USB Host support */
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_TEGRA
+#define CONFIG_USB_STORAGE
+#define CONFIG_CMD_USB
+
+/* USB networking support */
+#define CONFIG_USB_HOST_ETHER
+#define CONFIG_USB_ETHER_ASIX
+
+/* General networking support */
+#define CONFIG_CMD_NET
+#define CONFIG_CMD_DHCP
 
 #include "tegra-common-post.h"
 

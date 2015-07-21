@@ -4,23 +4,7 @@
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -34,8 +18,6 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF5441x	/* define processor family */
-#define CONFIG_M54418		/* define processor type */
 #define CONFIG_M54418TWR	/* M54418TWR board */
 
 #define CONFIG_MCFUART
@@ -71,7 +53,6 @@
 #define CONFIG_CMD_MISC
 #define CONFIG_CMD_MII
 #undef CONFIG_CMD_NAND
-#undef CONFIG_CMD_NAND_YAFFS
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_NFS
 #define CONFIG_CMD_PING
@@ -93,7 +74,6 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define NAND_MAX_CHIPS			CONFIG_SYS_MAX_NAND_DEVICE
 #define CONFIG_SYS_NAND_SELECT_DEVICE
-#define	CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 #endif
 
 /* Network configuration */
@@ -213,9 +193,9 @@
 #undef CONFIG_MCFPIT
 
 /* I2c */
-#undef CONFIG_FSL_I2C
+#undef CONFIG_SYS_FSL_I2C
 #undef CONFIG_HARD_I2C		/* I2C with hardware support */
-#undef	CONFIG_SOFT_I2C		/* I2C bit-banged */
+#undef	CONFIG_SYS_I2C_SOFT	/* I2C bit-banged */
 /* I2C speed and slave address  */
 #define CONFIG_SYS_I2C_SPEED		80000
 #define CONFIG_SYS_I2C_SLAVE		0x7F
@@ -269,8 +249,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x10000)
 
-#define CONFIG_SYS_HZ			1000
-
 #define CONFIG_SYS_MBAR		0xFC000000
 
 /*
@@ -286,10 +264,8 @@
 /* End of used area in internal SRAM */
 #define CONFIG_SYS_INIT_RAM_SIZE	0x10000
 #define CONFIG_SYS_INIT_RAM_CTRL	0x221
-/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_SIZE	256
 #define CONFIG_SYS_GBL_DATA_OFFSET	((CONFIG_SYS_INIT_RAM_SIZE - \
-					CONFIG_SYS_GBL_DATA_SIZE) - 32)
+					GENERATED_GBL_DATA_SIZE) - 32)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 #define CONFIG_SYS_SBFHDR_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - 32)
 

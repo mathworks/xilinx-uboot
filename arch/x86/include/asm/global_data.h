@@ -2,23 +2,7 @@
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	__ASM_GBL_DATA_H
@@ -26,13 +10,64 @@
 
 #ifndef __ASSEMBLY__
 
+enum pei_boot_mode_t {
+	PEI_BOOT_NONE = 0,
+	PEI_BOOT_SOFT_RESET,
+	PEI_BOOT_RESUME,
+
+};
+
+struct memory_area {
+	uint64_t start;
+	uint64_t size;
+};
+
+struct memory_info {
+	int num_areas;
+	uint64_t total_memory;
+	uint64_t total_32bit_memory;
+	struct memory_area area[CONFIG_NR_DRAM_BANKS];
+};
+
+#define MAX_MTRR_REQUESTS	8
+
+/**
+ * A request for a memory region to be set up in a particular way. These
+ * requests are processed before board_init_r() is called. They are generally
+ * optional and can be ignored with some performance impact.
+ */
+struct mtrr_request {
+	int type;		/* MTRR_TYPE_... */
+	uint64_t start;
+	uint64_t size;
+};
+
 /* Architecture-specific global data */
 struct arch_global_data {
-	struct global_data *gd_addr;		/* Location of Global Data */
+	struct global_data *gd_addr;	/* Location of Global Data */
+	uint8_t x86;			/* CPU family */
+	uint8_t x86_vendor;		/* CPU vendor */
+	uint8_t x86_model;
+	uint8_t x86_mask;
+	uint32_t x86_device;
 	uint64_t tsc_base;		/* Initial value returned by rdtsc() */
 	uint32_t tsc_base_kclocks;	/* Initial tsc as a kclocks value */
 	uint32_t tsc_prev;		/* For show_boot_progress() */
+	uint32_t tsc_mhz;		/* TSC frequency in MHz */
 	void *new_fdt;			/* Relocated FDT */
+	uint32_t bist;			/* Built-in self test value */
+	enum pei_boot_mode_t pei_boot_mode;
+	const struct pch_gpio_map *gpio_map;	/* board GPIO map */
+	struct memory_info meminfo;	/* Memory information */
+#ifdef CONFIG_HAVE_FSP
+	void *hob_list;			/* FSP HOB list */
+#endif
+	struct mtrr_request mtrr_req[MAX_MTRR_REQUESTS];
+	int mtrr_req_count;
+	int has_mtrr;
+	/* MRC training data to save for the next boot */
+	char *mrc_output;
+	unsigned int mrc_output_len;
 };
 
 #endif
@@ -40,7 +75,7 @@ struct arch_global_data {
 #include <asm-generic/global_data.h>
 
 #ifndef __ASSEMBLY__
-static inline gd_t *get_fs_gd_ptr(void)
+static inline __attribute__((no_instrument_function)) gd_t *get_fs_gd_ptr(void)
 {
 	gd_t *gd_ptr;
 

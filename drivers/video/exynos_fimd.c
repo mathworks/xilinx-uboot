@@ -4,20 +4,7 @@
  * Author: InKi Dae <inki.dae@samsung.com>
  * Author: Donghwa Lee <dh09.lee@samsung.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -86,18 +73,19 @@ static void exynos_fimd_set_par(unsigned int win_id)
 	/* DATAPATH is DMA */
 	cfg |= EXYNOS_WINCON_DATAPATH_DMA;
 
-	if (pvid->logo_on) /* To get proprietary LOGO */
-		cfg |= EXYNOS_WINCON_WSWP_ENABLE;
-	else /* To get output console on LCD */
-		cfg |= EXYNOS_WINCON_HAWSWP_ENABLE;
+	cfg |= EXYNOS_WINCON_HAWSWP_ENABLE;
 
 	/* dma burst is 16 */
 	cfg |= EXYNOS_WINCON_BURSTLEN_16WORD;
 
-	if (pvid->logo_on) /* To get proprietary LOGO */
-		cfg |= EXYNOS_WINCON_BPPMODE_24BPP_888;
-	else /* To get output console on LCD */
+	switch (pvid->vl_bpix) {
+	case 4:
 		cfg |= EXYNOS_WINCON_BPPMODE_16BPP_565;
+		break;
+	default:
+		cfg |= EXYNOS_WINCON_BPPMODE_24BPP_888;
+		break;
+	}
 
 	writel(cfg, (unsigned int)&fimd_ctrl->wincon0 +
 			EXYNOS_WINCON(win_id));
@@ -263,6 +251,45 @@ void exynos_fimd_window_off(unsigned int win_id)
 	writel(cfg, &fimd_ctrl->winshmap);
 }
 
+#ifdef CONFIG_OF_CONTROL
+/*
+* The reset value for FIMD SYSMMU register MMU_CTRL is 3
+* on Exynos5420 and newer versions.
+* This means FIMD SYSMMU is on by default on Exynos5420
+* and newer versions.
+* Since in u-boot we don't use SYSMMU, we should disable
+* those FIMD SYSMMU.
+* Note that there are 2 SYSMMU for FIMD: m0 and m1.
+* m0 handles windows 0 and 4, and m1 handles windows 1, 2 and 3.
+* We disable both of them here.
+*/
+void exynos_fimd_disable_sysmmu(void)
+{
+	u32 *sysmmufimd;
+	unsigned int node;
+	int node_list[2];
+	int count;
+	int i;
+
+	count = fdtdec_find_aliases_for_id(gd->fdt_blob, "fimd",
+				COMPAT_SAMSUNG_EXYNOS_SYSMMU, node_list, 2);
+	for (i = 0; i < count; i++) {
+		node = node_list[i];
+		if (node <= 0) {
+			debug("Can't get device node for fimd sysmmu\n");
+			return;
+		}
+
+		sysmmufimd = (u32 *)fdtdec_get_addr(gd->fdt_blob, node, "reg");
+		if (!sysmmufimd) {
+			debug("Can't get base address for sysmmu fimdm0");
+			return;
+		}
+
+		writel(0x0, sysmmufimd);
+	}
+}
+#endif
 
 void exynos_fimd_lcd_init(vidinfo_t *vid)
 {
@@ -280,8 +307,13 @@ void exynos_fimd_lcd_init(vidinfo_t *vid)
 								node, "reg");
 	if (fimd_ctrl == NULL)
 		debug("Can't get the FIMD base address\n");
-#endif
+
+	if (fdtdec_get_bool(gd->fdt_blob, node, "samsung,disable-sysmmu"))
+		exynos_fimd_disable_sysmmu();
+
+#else
 	fimd_ctrl = (struct exynos_fb *)samsung_get_base_fimd();
+#endif
 
 	offset = exynos_fimd_get_base_offset();
 

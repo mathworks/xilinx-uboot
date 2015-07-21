@@ -2,23 +2,7 @@
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	__ASM_GBL_DATA_H
@@ -104,12 +88,6 @@ struct arch_global_data {
 	u32 ips_clk;
 	u32 csb_clk;
 #endif /* CONFIG_MPC512X */
-#if defined(CONFIG_MPC8220)
-	unsigned long inp_clk;
-	unsigned long vco_clk;
-	unsigned long pev_clk;
-	unsigned long flb_clk;
-#endif
 	unsigned long reset_status;	/* reset status register at boot */
 #if defined(CONFIG_MPC83xx)
 	unsigned long arbiter_event_attributes;
@@ -122,16 +100,13 @@ struct arch_global_data {
 #if defined(CONFIG_4xx)
 	u32 uart_clk;
 #endif /* CONFIG_4xx */
-#if defined(CONFIG_SYS_GT_6426x)
-	unsigned int mirror_hack[16];
-#endif
 #ifdef CONFIG_SYS_FPGA_COUNT
 	unsigned fpga_state[CONFIG_SYS_FPGA_COUNT];
 #endif
 #if defined(CONFIG_WD_MAX_RATE)
 	unsigned long long wdt_last;	/* trace watch-dog triggering rate */
 #endif
-#if defined(CONFIG_LWMON) || defined(CONFIG_LWMON5)
+#if defined(CONFIG_LWMON5)
 	unsigned long kbd_status;
 #endif
 };

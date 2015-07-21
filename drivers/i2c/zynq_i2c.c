@@ -7,23 +7,7 @@
  *
  * Copyright (c) 2012-2013 Xilinx, Michal Simek
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -80,18 +64,21 @@ struct zynq_i2c_registers {
 #define ZYNQ_I2C_FIFO_DEPTH		16
 #define ZYNQ_I2C_TRANSFERT_SIZE_MAX	255 /* Controller transfer limit */
 
-#if defined(CONFIG_ZYNQ_I2C0)
-# define ZYNQ_I2C_BASE	ZYNQ_I2C_BASEADDR0
-#else
-# define ZYNQ_I2C_BASE	ZYNQ_I2C_BASEADDR1
-#endif
-
-static struct zynq_i2c_registers *zynq_i2c =
-	(struct zynq_i2c_registers *)ZYNQ_I2C_BASE;
+static struct zynq_i2c_registers *i2c_select(struct i2c_adapter *adap)
+{
+	return adap->hwadapnr ?
+		/* Zynq PS I2C1 */
+		(struct zynq_i2c_registers *)ZYNQ_I2C_BASEADDR1 :
+		/* Zynq PS I2C0 */
+		(struct zynq_i2c_registers *)ZYNQ_I2C_BASEADDR0;
+}
 
 /* I2C init called by cmd_i2c when doing 'i2c reset'. */
-void i2c_init(int requested_speed, int slaveadd)
+static void zynq_i2c_init(struct i2c_adapter *adap, int requested_speed,
+			  int slaveadd)
 {
+	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
+
 	/* 111MHz / ( (3 * 17) * 22 ) = ~100KHz */
 	writel((16 << ZYNQ_I2C_CONTROL_DIV_B_SHIFT) |
 		(2 << ZYNQ_I2C_CONTROL_DIV_A_SHIFT), &zynq_i2c->control);
@@ -102,7 +89,7 @@ void i2c_init(int requested_speed, int slaveadd)
 }
 
 #ifdef DEBUG
-static void zynq_i2c_debug_status(void)
+static void zynq_i2c_debug_status(struct zynq_i2c_registers *zynq_i2c)
 {
 	int int_status;
 	int status;
@@ -144,7 +131,7 @@ static void zynq_i2c_debug_status(void)
 #endif
 
 /* Wait for an interrupt */
-static u32 zynq_i2c_wait(u32 mask)
+static u32 zynq_i2c_wait(struct zynq_i2c_registers *zynq_i2c, u32 mask)
 {
 	int timeout, int_status;
 
@@ -155,7 +142,7 @@ static u32 zynq_i2c_wait(u32 mask)
 			break;
 	}
 #ifdef DEBUG
-	zynq_i2c_debug_status();
+	zynq_i2c_debug_status(zynq_i2c);
 #endif
 	/* Clear interrupt status flags */
 	writel(int_status & mask, &zynq_i2c->interrupt_status);
@@ -167,8 +154,10 @@ static u32 zynq_i2c_wait(u32 mask)
  * I2C probe called by cmd_i2c when doing 'i2c probe'.
  * Begin read, nak data byte, end.
  */
-int i2c_probe(u8 dev)
+static int zynq_i2c_probe(struct i2c_adapter *adap, u8 dev)
 {
+	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
+
 	/* Attempt to read a byte */
 	setbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_CLR_FIFO |
 		ZYNQ_I2C_CONTROL_RW);
@@ -177,7 +166,7 @@ int i2c_probe(u8 dev)
 	writel(dev, &zynq_i2c->address);
 	writel(1, &zynq_i2c->transfer_size);
 
-	return (zynq_i2c_wait(ZYNQ_I2C_INTERRUPT_COMP |
+	return (zynq_i2c_wait(zynq_i2c, ZYNQ_I2C_INTERRUPT_COMP |
 		ZYNQ_I2C_INTERRUPT_NACK) &
 		ZYNQ_I2C_INTERRUPT_COMP) ? 0 : -ETIMEDOUT;
 }
@@ -186,11 +175,13 @@ int i2c_probe(u8 dev)
  * I2C read called by cmd_i2c when doing 'i2c read' and by cmd_eeprom.c
  * Begin write, send address byte(s), begin read, receive data bytes, end.
  */
-int i2c_read(u8 dev, uint addr, int alen, u8 *data, int length)
+static int zynq_i2c_read(struct i2c_adapter *adap, u8 dev, uint addr,
+			 int alen, u8 *data, int length)
 {
 	u32 status;
 	u32 i = 0;
 	u8 *cur_data = data;
+	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
 
 	/* Check the hardware can handle the requested bytes */
 	if ((length < 0) || (length > ZYNQ_I2C_TRANSFERT_SIZE_MAX))
@@ -203,20 +194,22 @@ int i2c_read(u8 dev, uint addr, int alen, u8 *data, int length)
 	 * Temporarily disable restart (by clearing hold)
 	 * It doesn't seem to work.
 	 */
-	clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_RW |
-		ZYNQ_I2C_CONTROL_HOLD);
+	clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
 	writel(0xFF, &zynq_i2c->interrupt_status);
-	while (alen--)
-		writel(addr >> (8*alen), &zynq_i2c->data);
-	writel(dev, &zynq_i2c->address);
+	if (alen) {
+		clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_RW);
+		writel(dev, &zynq_i2c->address);
+		while (alen--)
+			writel(addr >> (8 * alen), &zynq_i2c->data);
 
-	/* Wait for the address to be sent */
-	if (!zynq_i2c_wait(ZYNQ_I2C_INTERRUPT_COMP)) {
-		/* Release the bus */
-		clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
-		return -ETIMEDOUT;
+		/* Wait for the address to be sent */
+		if (!zynq_i2c_wait(zynq_i2c, ZYNQ_I2C_INTERRUPT_COMP)) {
+			/* Release the bus */
+			clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
+			return -ETIMEDOUT;
+		}
+		debug("Device acked address\n");
 	}
-	debug("Device acked address\n");
 
 	setbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_CLR_FIFO |
 		ZYNQ_I2C_CONTROL_RW);
@@ -226,7 +219,7 @@ int i2c_read(u8 dev, uint addr, int alen, u8 *data, int length)
 
 	/* Wait for data */
 	do {
-		status = zynq_i2c_wait(ZYNQ_I2C_INTERRUPT_COMP |
+		status = zynq_i2c_wait(zynq_i2c, ZYNQ_I2C_INTERRUPT_COMP |
 			ZYNQ_I2C_INTERRUPT_DATA);
 		if (!status) {
 			/* Release the bus */
@@ -242,7 +235,7 @@ int i2c_read(u8 dev, uint addr, int alen, u8 *data, int length)
 	clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
 
 #ifdef DEBUG
-	zynq_i2c_debug_status();
+	zynq_i2c_debug_status(zynq_i2c);
 #endif
 	return 0;
 }
@@ -251,30 +244,34 @@ int i2c_read(u8 dev, uint addr, int alen, u8 *data, int length)
  * I2C write called by cmd_i2c when doing 'i2c write' and by cmd_eeprom.c
  * Begin write, send address byte(s), send data bytes, end.
  */
-int i2c_write(u8 dev, uint addr, int alen, u8 *data, int length)
+static int zynq_i2c_write(struct i2c_adapter *adap, u8 dev, uint addr,
+			  int alen, u8 *data, int length)
 {
 	u8 *cur_data = data;
+	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
 
 	/* Write the register address */
 	setbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_CLR_FIFO |
 		ZYNQ_I2C_CONTROL_HOLD);
 	clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_RW);
 	writel(0xFF, &zynq_i2c->interrupt_status);
-	while (alen--)
-		writel(addr >> (8*alen), &zynq_i2c->data);
-	/* Start the tranfer */
 	writel(dev, &zynq_i2c->address);
-	if (!zynq_i2c_wait(ZYNQ_I2C_INTERRUPT_COMP)) {
-		/* Release the bus */
-		clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
-		return -ETIMEDOUT;
+	if (alen) {
+		while (alen--)
+			writel(addr >> (8 * alen), &zynq_i2c->data);
+		/* Start the tranfer */
+		if (!zynq_i2c_wait(zynq_i2c, ZYNQ_I2C_INTERRUPT_COMP)) {
+			/* Release the bus */
+			clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
+			return -ETIMEDOUT;
+		}
+		debug("Device acked address\n");
 	}
 
-	debug("Device acked address\n");
 	while (length--) {
 		writel(*(cur_data++), &zynq_i2c->data);
 		if (readl(&zynq_i2c->transfer_size) == ZYNQ_I2C_FIFO_DEPTH) {
-			if (!zynq_i2c_wait(ZYNQ_I2C_INTERRUPT_COMP)) {
+			if (!zynq_i2c_wait(zynq_i2c, ZYNQ_I2C_INTERRUPT_COMP)) {
 				/* Release the bus */
 				clrbits_le32(&zynq_i2c->control,
 					     ZYNQ_I2C_CONTROL_HOLD);
@@ -286,21 +283,25 @@ int i2c_write(u8 dev, uint addr, int alen, u8 *data, int length)
 	/* All done... release the bus */
 	clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
 	/* Wait for the address and data to be sent */
-	if (!zynq_i2c_wait(ZYNQ_I2C_INTERRUPT_COMP))
+	if (!zynq_i2c_wait(zynq_i2c, ZYNQ_I2C_INTERRUPT_COMP))
 		return -ETIMEDOUT;
 	return 0;
 }
 
-int i2c_set_bus_num(unsigned int bus)
+static unsigned int zynq_i2c_set_bus_speed(struct i2c_adapter *adap,
+			unsigned int speed)
 {
-	/* Only support bus 0 */
-	if (bus > 0)
-		return -1;
+	if (speed != 1000000)
+		return -EINVAL;
+
 	return 0;
 }
 
-unsigned int i2c_get_bus_num(void)
-{
-	/* Only support bus 0 */
-	return 0;
-}
+U_BOOT_I2C_ADAP_COMPLETE(zynq_0, zynq_i2c_init, zynq_i2c_probe, zynq_i2c_read,
+			 zynq_i2c_write, zynq_i2c_set_bus_speed,
+			 CONFIG_SYS_I2C_ZYNQ_SPEED, CONFIG_SYS_I2C_ZYNQ_SLAVE,
+			 0)
+U_BOOT_I2C_ADAP_COMPLETE(zynq_1, zynq_i2c_init, zynq_i2c_probe, zynq_i2c_read,
+			 zynq_i2c_write, zynq_i2c_set_bus_speed,
+			 CONFIG_SYS_I2C_ZYNQ_SPEED, CONFIG_SYS_I2C_ZYNQ_SLAVE,
+			 1)

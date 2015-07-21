@@ -4,23 +4,7 @@
  * Copyright (C) 2000, 2001,2002 Wolfgang Denk <wd@denx.de>
  * Copyright Freescale Semiconductor, Inc. 2004, 2006, 2008.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -36,7 +20,6 @@
 #include <version.h>
 
 #define CONFIG_83XX	1		/* needed for Linux kernel header files*/
-#define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file */
 
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
@@ -135,6 +118,11 @@ disable_addr_trans:
 	mtspr	SRR0, r4
 	mtspr	SRR1, r3
 	rfi
+
+	.globl get_svr
+get_svr:
+	mfspr	r3, SVR
+	blr
 
 	.globl get_pvr
 get_pvr:
@@ -295,6 +283,7 @@ in_flash:
 	bl	cpu_init_f
 
 	/* run 1st part of board init code (in Flash)*/
+	li	r3, 0		/* clear boot_flag for calling board_init_f */
 	bl	board_init_f
 
 	/* NOTREACHED - board_init_f() does not return */
@@ -970,18 +959,7 @@ clear_bss:
 	 * Now clear BSS segment
 	 */
 	lwz	r3,GOT(__bss_start)
-#if defined(CONFIG_HYMOD)
-	/*
-	 * For HYMOD - the environment is the very last item in flash.
-	 * The real .bss stops just before environment starts, so only
-	 * clear up to that point.
-	 *
-	 * taken from mods for FADS board
-	 */
-	lwz	r4,GOT(environment)
-#else
 	lwz	r4,GOT(__bss_end)
-#endif
 
 	cmplw	0, r3, r4
 	beq	6f

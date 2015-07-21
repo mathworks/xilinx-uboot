@@ -4,19 +4,7 @@
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -89,7 +77,18 @@ static int ehci_mxs_toggle_clock(const struct ehci_mxs_port *port, int enable)
 	return 0;
 }
 
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int __weak board_ehci_hcd_init(int port)
+{
+	return 0;
+}
+
+int __weak board_ehci_hcd_exit(int port)
+{
+	return 0;
+}
+
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 
 	int ret;
@@ -100,6 +99,10 @@ int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 		printf("Invalid port index (index = %d)!\n", index);
 		return -EINVAL;
 	}
+
+	ret = board_ehci_hcd_init(index);
+	if (ret)
+		return ret;
 
 	port = &mxs_port[index];
 
@@ -164,6 +167,8 @@ int ehci_hcd_stop(int index)
 
 	/* Disable USB clock */
 	ret = ehci_mxs_toggle_clock(port, 0);
+
+	board_ehci_hcd_exit(index);
 
 	return ret;
 }

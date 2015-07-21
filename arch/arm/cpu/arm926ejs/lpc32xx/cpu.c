@@ -1,26 +1,15 @@
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <netdev.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/wdt.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/io.h>
 
 static struct clk_pm_regs *clk = (struct clk_pm_regs *)CLK_PM_BASE;
@@ -65,6 +54,14 @@ int print_cpuinfo(void)
 	printf("AHB bus clock:    %uMHz\n", get_hclk_clk_rate() / 1000000);
 	printf("Peripheral clock: %uMHz\n", get_periph_clk_rate() / 1000000);
 
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_LPC32XX_ETH
+int cpu_eth_init(bd_t *bis)
+{
+	lpc32xx_eth_initialize(bis);
 	return 0;
 }
 #endif

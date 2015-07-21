@@ -1,23 +1,7 @@
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -26,6 +10,9 @@
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
+
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #ifdef CONFIG_BSC9132QDS
 #define CONFIG_BSC9132
@@ -38,7 +25,7 @@
 #define CONFIG_SYS_RAMBOOT
 #define CONFIG_SYS_EXTRA_ENV_RELOC
 #define CONFIG_SYS_TEXT_BASE		0x11000000
-#define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
+#define CONFIG_RESET_VECTOR_ADDRESS	0x110bfffc
 #endif
 #define CONFIG_SYS_FSL_ERRATUM_IFC_A002769	1
 #ifdef CONFIG_SPIFLASH
@@ -46,33 +33,62 @@
 #define CONFIG_SYS_RAMBOOT
 #define CONFIG_SYS_EXTRA_ENV_RELOC
 #define CONFIG_SYS_TEXT_BASE		0x11000000
-#define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
+#define CONFIG_RESET_VECTOR_ADDRESS	0x110bfffc
+#endif
+#ifdef CONFIG_NAND_SECBOOT
+#define CONFIG_RAMBOOT_NAND
+#define CONFIG_SYS_RAMBOOT
+#define CONFIG_SYS_EXTRA_ENV_RELOC
+#define CONFIG_SYS_TEXT_BASE		0x11000000
+#define CONFIG_RESET_VECTOR_ADDRESS	0x110bfffc
+#endif
+
+#ifdef CONFIG_NAND
+#define CONFIG_SPL_INIT_MINIMAL
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_NAND_SUPPORT
+#define CONFIG_SPL_NAND_BOOT
+#define CONFIG_SPL_FLUSH_IMAGE
+#define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
+
+#define CONFIG_SYS_TEXT_BASE		0x00201000
+#define CONFIG_SPL_TEXT_BASE		0xFFFFE000
+#define CONFIG_SPL_MAX_SIZE		8192
+#define CONFIG_SPL_RELOC_TEXT_BASE	0x00100000
+#define CONFIG_SPL_RELOC_STACK		0x00100000
+#define CONFIG_SYS_NAND_U_BOOT_SIZE	((768 << 10) - 0x2000)
+#define CONFIG_SYS_NAND_U_BOOT_DST	(0x00200000 - CONFIG_SPL_MAX_SIZE)
+#define CONFIG_SYS_NAND_U_BOOT_START	0x00200000
+#define CONFIG_SYS_NAND_U_BOOT_OFFS	0
+#define CONFIG_SYS_LDSCRIPT	"arch/powerpc/cpu/mpc85xx/u-boot-nand.lds"
 #endif
 
 #ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE		0x8ff80000
+#define CONFIG_SYS_TEXT_BASE		0x8ff40000
 #endif
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
 #define CONFIG_RESET_VECTOR_ADDRESS	0x8ffffffc
 #endif
 
-#ifndef CONFIG_SYS_MONITOR_BASE
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SYS_TEXT_BASE    /* start of monitor */
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SPL_TEXT_BASE
+#else
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #endif
-
 
 /* High Level Configuration Options */
 #define CONFIG_BOOKE			/* BOOKE */
 #define CONFIG_E500			/* BOOKE e500 family */
-#define CONFIG_MPC85xx
 #define CONFIG_FSL_IFC			/* Enable IFC Support */
+#define CONFIG_FSL_CAAM			/* Enable SEC/CAAM */
 #define CONFIG_SYS_HAS_SERDES		/* common SERDES init code */
 
 #define CONFIG_PCI			/* Enable PCI/PCIE */
 #if defined(CONFIG_PCI)
 #define CONFIG_PCIE1			/* PCIE controler 1 (slot 1) */
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_FSL_PCIE_RESET		/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
@@ -127,7 +143,7 @@
 #define CONFIG_SYS_MEMTEST_END		0x01ffffff
 
 /* DDR Setup */
-#define CONFIG_FSL_DDR3
+#define CONFIG_SYS_FSL_DDR3
 #define CONFIG_SYS_SPD_BUS_NUM		0
 #define SPD_EEPROM_ADDRESS1		0x54 /* I2C access */
 #define SPD_EEPROM_ADDRESS2		0x56 /* I2C access */
@@ -217,10 +233,18 @@ combinations. this should be removed later
 
 #define CONFIG_SYS_IMMR		CONFIG_SYS_CCSRBAR
 
+/* DSP CCSRBAR */
+#define CONFIG_SYS_FSL_DSP_CCSRBAR	CONFIG_SYS_FSL_DSP_CCSRBAR_DEFAULT
+#define CONFIG_SYS_FSL_DSP_CCSRBAR_PHYS	CONFIG_SYS_FSL_DSP_CCSRBAR_DEFAULT
+
 /*
  * IFC Definitions
  */
 /* NOR Flash on IFC */
+
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_SYS_NO_FLASH
+#endif
 #define CONFIG_SYS_FLASH_BASE		0x88000000
 #define CONFIG_SYS_MAX_FLASH_SECT	1024	/* Max number of sector: 32M */
 
@@ -296,12 +320,13 @@ combinations. this should be removed later
 /* NAND */
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define CONFIG_MTD_NAND_VERIFY_WRITE
 #define CONFIG_CMD_NAND
 
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(128 * 1024)
 
+#ifndef CONFIG_SPL_BUILD
 #define CONFIG_FSL_QIXIS
+#endif
 #ifdef CONFIG_FSL_QIXIS
 #define CONFIG_SYS_FPGA_BASE	0xffb00000
 #define CONFIG_SYS_I2C_FPGA_ADDR	0x66
@@ -331,12 +356,28 @@ combinations. this should be removed later
 #define CONFIG_SYS_CS2_FTIM1		(FTIM1_GPCM_TACO(0x0e) | \
 					FTIM1_GPCM_TRAD(0x1f))
 #define CONFIG_SYS_CS2_FTIM2		(FTIM2_GPCM_TCS(0x0e) | \
-					FTIM2_GPCM_TCH(0x0) | \
+					FTIM2_GPCM_TCH(0x8) | \
 					FTIM2_GPCM_TWP(0x1f))
 #define CONFIG_SYS_CS2_FTIM3		0x0
 #endif
 
 /* Set up IFC registers for boot location NOR/NAND */
+#if defined(CONFIG_NAND) || defined(CONFIG_NAND_SECBOOT)
+#define CONFIG_SYS_CSPR0		CONFIG_SYS_NAND_CSPR
+#define CONFIG_SYS_AMASK0		CONFIG_SYS_NAND_AMASK
+#define CONFIG_SYS_CSOR0		CONFIG_SYS_NAND_CSOR
+#define CONFIG_SYS_CS0_FTIM0		CONFIG_SYS_NAND_FTIM0
+#define CONFIG_SYS_CS0_FTIM1		CONFIG_SYS_NAND_FTIM1
+#define CONFIG_SYS_CS0_FTIM2		CONFIG_SYS_NAND_FTIM2
+#define CONFIG_SYS_CS0_FTIM3		CONFIG_SYS_NAND_FTIM3
+#define CONFIG_SYS_CSPR1		CONFIG_SYS_NOR_CSPR
+#define CONFIG_SYS_AMASK1		CONFIG_SYS_NOR_AMASK
+#define CONFIG_SYS_CSOR1		CONFIG_SYS_NOR_CSOR
+#define CONFIG_SYS_CS1_FTIM0		CONFIG_SYS_NOR_FTIM0
+#define CONFIG_SYS_CS1_FTIM1		CONFIG_SYS_NOR_FTIM1
+#define CONFIG_SYS_CS1_FTIM2		CONFIG_SYS_NOR_FTIM2
+#define CONFIG_SYS_CS1_FTIM3		CONFIG_SYS_NOR_FTIM3
+#else
 #define CONFIG_SYS_CSPR0		CONFIG_SYS_NOR_CSPR
 #define CONFIG_SYS_AMASK0		CONFIG_SYS_NOR_AMASK
 #define CONFIG_SYS_CSOR0		CONFIG_SYS_NOR_CSOR
@@ -351,6 +392,7 @@ combinations. this should be removed later
 #define CONFIG_SYS_CS1_FTIM1		CONFIG_SYS_NAND_FTIM1
 #define CONFIG_SYS_CS1_FTIM2		CONFIG_SYS_NAND_FTIM2
 #define CONFIG_SYS_CS1_FTIM3		CONFIG_SYS_NAND_FTIM3
+#endif
 
 #define CONFIG_BOARD_EARLY_INIT_F	/* Call board_pre_init */
 #define CONFIG_BOARD_EARLY_INIT_R
@@ -363,7 +405,7 @@ combinations. this should be removed later
 						- GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon*/
+#define CONFIG_SYS_MONITOR_LEN		(768 * 1024)
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)	/* Reserved for malloc*/
 
 /* Serial Port */
@@ -373,6 +415,9 @@ combinations. this should be removed later
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_NS16550_MIN_FUNCTIONS
+#endif
 
 #define CONFIG_SERIAL_MULTI	1 /* Enable both serial ports */
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV	/* determine from environment */
@@ -402,15 +447,14 @@ combinations. this should be removed later
 #define CONFIG_FIT
 #define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
-#define CONFIG_FSL_I2C			/* Use FSL common I2C driver */
-#define CONFIG_HARD_I2C			/* I2C with hardware support */
-#undef CONFIG_SOFT_I2C			/* I2C bit-banged */
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_CMD_TREE
-#define CONFIG_SYS_I2C_SPEED		400800 /* I2C speed and slave address*/
-#define CONFIG_SYS_I2C_SLAVE		0x7F
-#define CONFIG_SYS_I2C_OFFSET		0x3000
-#define CONFIG_SYS_I2C2_OFFSET		0x3100
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_FSL
+#define CONFIG_SYS_FSL_I2C_SPEED	400800 /* I2C speed and slave address*/
+#define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C2_SPEED	400800 /* I2C speed and slave address*/
+#define CONFIG_SYS_FSL_I2C2_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
+#define CONFIG_SYS_FSL_I2C2_OFFSET	0x3100
 
 /* I2C EEPROM */
 #define CONFIG_ID_EEPROM
@@ -502,9 +546,9 @@ combinations. this should be removed later
 /*
  * Environment
  */
-#if defined(CONFIG_SYS_RAMBOOT)
 #if defined(CONFIG_RAMBOOT_SDCARD)
 #define CONFIG_ENV_IS_IN_MMC
+#define CONFIG_FSL_FIXED_MMC_LOCATION
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_SIZE			0x2000
 #elif defined(CONFIG_RAMBOOT_SPIFLASH)
@@ -516,20 +560,20 @@ combinations. this should be removed later
 #define CONFIG_ENV_OFFSET	0x100000	/* 1MB */
 #define CONFIG_ENV_SECT_SIZE	0x10000
 #define CONFIG_ENV_SIZE		0x2000
-#else
+#elif defined(CONFIG_NAND) || defined(CONFIG_NAND_SECBOOT)
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_SIZE		CONFIG_SYS_NAND_BLOCK_SIZE
+#define CONFIG_ENV_OFFSET	((768 * 1024) + CONFIG_SYS_NAND_BLOCK_SIZE)
+#define CONFIG_ENV_RANGE	(3 * CONFIG_ENV_SIZE)
+#elif defined(CONFIG_SYS_RAMBOOT)
 #define CONFIG_ENV_IS_NOWHERE		/* Store ENV in memory only */
 #define CONFIG_ENV_ADDR			(CONFIG_SYS_MONITOR_BASE - 0x1000)
 #define CONFIG_ENV_SIZE			0x2000
-#endif
 #else
 #define CONFIG_ENV_IS_IN_FLASH
-#if CONFIG_SYS_MONITOR_BASE > 0xfff80000
-#define CONFIG_ENV_ADDR	0xfff80000
-#else
 #define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SECT_SIZE)
-#endif
 #define CONFIG_ENV_SIZE		0x2000
-#define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K (one sector) */
+#define CONFIG_ENV_SECT_SIZE	0x20000
 #endif
 
 #define CONFIG_LOADS_ECHO		/* echo on for serial download */
@@ -557,6 +601,12 @@ combinations. this should be removed later
 #define CONFIG_DOS_PARTITION
 #endif
 
+/* Hash command with SHA acceleration supported in hardware */
+#ifdef CONFIG_FSL_CAAM
+#define CONFIG_CMD_HASH
+#define CONFIG_SHA_HW_ACCEL
+#endif
+
 /*
  * Miscellaneous configurable options
  */
@@ -564,7 +614,6 @@ combinations. this should be removed later
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
@@ -575,7 +624,6 @@ combinations. this should be removed later
 						/* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE/* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq:1ms ticks */
 
 
 /*
@@ -588,7 +636,27 @@ combinations. this should be removed later
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
+#endif
+
+/*
+ * Dynamic MTD Partition support with mtdparts
+ */
+#ifndef CONFIG_SYS_NO_FLASH
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITIONS
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_FLASH_CFI_MTD
+#define MTDIDS_DEFAULT "nor0=88000000.nor,nand0=ff800000.flash,"
+#define MTDPARTS_DEFAULT "mtdparts=88000000.nor:256k(dtb),7m(kernel)," \
+			"55m(fs),1m(uboot);ff800000.flash:1m(uboot)," \
+			"8m(kernel),512k(dtb),-(fs)"
+#endif
+/*
+ * Override partitions in device tree using info
+ * in "mtdparts" environment variable
+ */
+#ifdef CONFIG_CMD_MTDPARTS
+#define CONFIG_FDT_FIXUP_PARTITIONS
 #endif
 
 /*
@@ -606,6 +674,7 @@ combinations. this should be removed later
 #define CONFIG_UBOOTPATH	"u-boot.bin"
 
 #define CONFIG_BAUDRATE		115200
+#define CONFIG_BOOTDELAY	10 /* -1 disable auto-boot */
 
 #ifdef CONFIG_SDCARD
 #define CONFIG_DEF_HWCONFIG	"hwconfig=usb1:dr_mode=host,phy_type=ulpi\0"
@@ -663,5 +732,11 @@ combinations. this should be removed later
 	"bootm $loadaddr $ramdiskaddr $fdtaddr"
 
 #define CONFIG_BOOTCOMMAND CONFIG_RAMBOOTCOMMAND
+
+#include <asm/fsl_secure_boot.h>
+
+#ifdef CONFIG_SECURE_BOOT
+#define CONFIG_CMD_BLOB
+#endif
 
 #endif	/* __CONFIG_H */

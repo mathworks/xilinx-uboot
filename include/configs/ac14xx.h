@@ -2,18 +2,7 @@
  * (C) Copyright 2009 Wolfgang Denk <wd@denx.de>
  * (C) Copyright 2010 DAVE Srl <www.dave.eu>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -24,6 +13,9 @@
 #define __CONFIG_H
 
 #define CONFIG_AC14XX 1
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
+
 /*
  * Memory map for the ifm AC14xx board:
  *
@@ -38,7 +30,6 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1	/* E300 Family */
-#define CONFIG_MPC512X		1	/* MPC512X family */
 
 #define CONFIG_SYS_TEXT_BASE	0xFFF00000
 
@@ -72,7 +63,7 @@
 #define CONFIG_SYS_MAX_RAM_SIZE		0x20000000
 
 /*
- * DDR Controller Configuration XXX TODO
+ * DDR Controller Configuration
  *
  * SYS_CFG:
  *	[31:31]	MDDRC Soft Reset:	Diabled
@@ -265,7 +256,6 @@
 
 /*
  * CS related parameters
- * TODO document these
  */
 /* CS0 Flash */
 #define CONFIG_SYS_CS0_CFG		0x00031110
@@ -302,9 +292,8 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_SRAM_BASE
 #define CONFIG_SYS_INIT_RAM_END		CONFIG_SYS_SRAM_SIZE
 
-#define CONFIG_SYS_GBL_DATA_SIZE	0x100
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - \
-					 CONFIG_SYS_GBL_DATA_SIZE)
+					 GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
@@ -331,8 +320,6 @@
 #endif
 
 #define CONFIG_BAUDRATE			115200	/* ... at 115200 bps */
-#define CONFIG_SYS_BAUDRATE_TABLE  \
-	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 115200}
 
 #define CONSOLE_FIFO_TX_SIZE		FIFOC_PSC3_TX_SIZE
 #define CONSOLE_FIFO_TX_ADDR		FIFOC_PSC3_TX_ADDR
@@ -366,6 +353,11 @@
 /* I2C speed and slave address */
 #define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_SYS_I2C_SLAVE		0x7F
+
+/*
+ * IIM - IC Identification Module
+ */
+#undef CONFIG_FSL_IIM
 
 /*
  * EEPROM configuration for Atmel AT24C01:
@@ -449,9 +441,6 @@
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
-/* decrementer freq: 1ms ticks */
-#define CONFIG_SYS_HZ		1000
-
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
@@ -483,7 +472,6 @@
 
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_KGDB_BAUDRATE		230400	/* speed of kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX		2	/* which serial port to use */
 #endif
 
 /*
@@ -492,30 +480,26 @@
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_TIMESTAMP
 
-#define CONFIG_HOSTNAME		ac14xx
-#define CONFIG_BOOTFILE		"ac14xx/uImage"
-#define CONFIG_ROOTPATH		"/opt/eldk/ppc_6xx"
-
 /* default load addr for tftp and bootm */
 #define CONFIG_LOADADDR		400000
 
 #define CONFIG_BOOTDELAY	2	/* -1 disables auto-boot */
 
-/* XXX TODO need to specify the builtin environment */
+/* the builtin environment and standard greeting */
 #define CONFIG_PREBOOT	"echo;"	\
 	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #define CONFIG_EXTRA_ENV_SETTINGS_DEVEL					\
-	"muster_nr=00\0"						\
+	"muster_nr=-00\0"						\
 	"fromram=run ramargs addip addtty; "				\
-		"tftp ${fdt_addr_r} k6m2/ac14xx.dtb-${muster_nr}; "	\
-		"tftp ${kernel_addr_r} k6m2/uImage-${muster_nr}; "	\
-		"tftp ${ramdisk_addr_r} k6m2/uFS-${muster_nr}; "	\
+		"tftp ${fdt_addr_r} ac14xx/ac14xx.dtb${muster_nr}; "	\
+		"tftp ${kernel_addr_r} ac14xx/uImage${muster_nr}; "	\
+		"tftp ${ramdisk_addr_r} ac14xx/uFS${muster_nr}; "	\
 		"bootm ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}\0" \
 	"fromnfs=run nfsargs addip addtty; "				\
-		"tftp ${fdt_addr_r} k6m2/ac14xx.dtb-${muster_nr}; "	\
-		"tftp ${kernel_addr_r} k6m2/uImage-${muster_nr}; "	\
+		"tftp ${fdt_addr_r} ac14xx/ac14xx.dtb${muster_nr}; "	\
+		"tftp ${kernel_addr_r} ac14xx/uImage${muster_nr}; "	\
 		"bootm ${kernel_addr_r} - ${fdt_addr_r}\0"		\
 	"fromflash=run nfsargs addip addtty; "				\
 		"bootm fc020000 - fc000000\0"				\
@@ -543,12 +527,11 @@
 	"u-boot=ac14xx/u-boot.bin\0"					\
 	"bootfile=ac14xx/uImage\0"					\
 	"fdtfile=ac14xx/ac14xx.dtb\0"					\
-	"rootpath=/opt/eldk/ppc_6xx\n"					\
 	"netdev=eth0\0"							\
 	"consdev=ttyPSC0\0"						\
 	"hostname=ac14xx\0"						\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
-		"nfsroot=${serverip}:${rootpath}-${muster_nr}\0"	\
+		"nfsroot=${serverip}:${rootpath}${muster_nr}\0"	\
 	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
 	"addip=setenv bootargs ${bootargs} "				\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
@@ -577,6 +560,8 @@
 	""
 
 #define CONFIG_BOOTCOMMAND	"run production"
+
+#define CONFIG_ARP_TIMEOUT	200UL
 
 #define CONFIG_FIT		1
 #define CONFIG_OF_LIBFDT	1

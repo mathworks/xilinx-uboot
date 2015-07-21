@@ -2,23 +2,7 @@
  * (C) Copyright 2007 - 2008
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -33,6 +17,8 @@
 
 #include <i2c.h>
 #include "../common/common.h"
+
+static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 /*
  * I/O Port configuration table
@@ -316,11 +302,9 @@ phys_size_t initdram(int board_type)
 	out_8(&memctl->memc_psrt, CONFIG_SYS_PSRT);
 	out_be16(&memctl->memc_mptpr, CONFIG_SYS_MPTPR);
 
-#ifndef CONFIG_SYS_RAMBOOT
 	/* 60x SDRAM setup:
 	 */
 	psize = probe_sdram(memctl);
-#endif /* CONFIG_SYS_RAMBOOT */
 
 	icache_enable();
 
@@ -411,9 +395,15 @@ int board_early_init_r(void)
 	return 0;
 }
 
+int misc_init_r(void)
+{
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	return 0;
+}
+
 int hush_init_var(void)
 {
-	ivm_read_eeprom();
+	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 
@@ -476,8 +466,10 @@ static void setports(int gpio)
 }
 #endif
 #if defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
 #endif /* defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT) */

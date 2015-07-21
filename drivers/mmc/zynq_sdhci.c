@@ -3,22 +3,17 @@
  *
  * Xilinx Zynq SD Host Controller Interface
  *
- * This program is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <fdtdec.h>
+#include <libfdt.h>
 #include <malloc.h>
 #include <sdhci.h>
 #include <asm/arch/sys_proto.h>
 
-int zynq_sdhci_init(u32 regbase)
+int zynq_sdhci_init(phys_addr_t regbase)
 {
 	struct sdhci_host *host = NULL;
 
@@ -30,7 +25,7 @@ int zynq_sdhci_init(u32 regbase)
 
 	host->name = "zynq_sdhci";
 	host->ioaddr = (void *)regbase;
-	host->quirks = SDHCI_QUIRK_NO_CD | SDHCI_QUIRK_WAIT_SEND_CMD |
+	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD |
 		       SDHCI_QUIRK_BROKEN_R1B;
 	host->version = sdhci_readw(host, SDHCI_HOST_VERSION);
 
@@ -39,3 +34,30 @@ int zynq_sdhci_init(u32 regbase)
 	add_sdhci(host, 52000000, 52000000 >> 9);
 	return 0;
 }
+
+#ifdef CONFIG_OF_CONTROL
+int zynq_sdhci_of_init(const void *blob)
+{
+	int offset = 0;
+	u32 ret = 0;
+	phys_addr_t reg;
+
+	debug("ZYNQ SDHCI: Initialization\n");
+
+	do {
+		offset = fdt_node_offset_by_compatible(blob, offset,
+					"arasan,sdhci-8.9a");
+		if (offset != -1) {
+			reg = fdtdec_get_addr(blob, offset, "reg");
+			if (reg != FDT_ADDR_T_NONE) {
+				ret |= zynq_sdhci_init(reg);
+			} else {
+				debug("ZYNQ SDHCI: Can't get base address\n");
+				return -1;
+			}
+		}
+	} while (offset != -1);
+
+	return ret;
+}
+#endif

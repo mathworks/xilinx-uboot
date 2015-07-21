@@ -2,10 +2,7 @@
  * Error Corrected Code Controller (ECC) - System peripherals regsters.
  * Based on AT91SAM9260 datasheet revision B.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef ATMEL_NAND_ECC_H
@@ -36,6 +33,9 @@
 /* Register access macros for PMECC */
 #define pmecc_readl(addr, reg) \
 	readl(&addr->reg)
+
+#define pmecc_readb(addr, reg) \
+	readb(&addr->reg)
 
 #define pmecc_writel(addr, reg, value) \
 	writel((value), &addr->reg)
@@ -123,6 +123,20 @@ struct pmecc_errloc_regs {
 	u32 sigma[25];	/* 0x28-0x88 Error Location Sigma Registers */
 	u32 el[24];	/* 0x8C-0xE8 Error Location Registers */
 	u32 reserved1[5];	/* 0xEC-0xFC Reserved */
+
+	/*
+	 * 0x100-0x1F8:
+	 *   Reserved for AT91SAM9X5, AT91SAM9N12.
+	 *   HSMC registers for SAMA5D3, SAMA5D4.
+	 */
+	u32 reserved2[63];
+
+	/*
+	 * 0x1FC:
+	 *   PMECC version for AT91SAM9X5, AT91SAM9N12.
+	 *   HSMC version for SAMA5D3, SAMA5D4. Can refer as PMECC version.
+	 */
+	u32 version;
 };
 
 /* For Error Location Configuration Register */
@@ -137,9 +151,19 @@ struct pmecc_errloc_regs {
 #define		PMERRLOC_ERR_NUM_MASK		(0x1f << 8)
 #define		PMERRLOC_CALC_DONE		(1 << 0)
 
+/* PMECC IP version */
+#define PMECC_VERSION_SAMA5D4			0x113
+#define PMECC_VERSION_SAMA5D3			0x112
+#define PMECC_VERSION_AT91SAM9N12		0x102
+#define PMECC_VERSION_AT91SAM9X5		0x101
+
 /* Galois field dimension */
 #define PMECC_GF_DIMENSION_13			13
 #define PMECC_GF_DIMENSION_14			14
+
+/* Primitive Polynomial used by PMECC */
+#define PMECC_GF_13_PRIMITIVE_POLY		0x201b
+#define PMECC_GF_14_PRIMITIVE_POLY		0x4443
 
 #define PMECC_INDEX_TABLE_SIZE_512		0x2000
 #define PMECC_INDEX_TABLE_SIZE_1024		0x4000

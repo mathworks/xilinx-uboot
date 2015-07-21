@@ -3,23 +3,7 @@
  *
  * Michal SIMEK <monstr@monstr.eu>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -27,8 +11,6 @@
 
 #include "../board/xilinx/microblaze-generic/xparameters.h"
 
-
-#define	CONFIG_MICROBLAZE	1	/* MicroBlaze CPU */
 #define	MICROBLAZE_V5		1
 
 /* Memory test handling */
@@ -104,9 +86,9 @@
 	#define CONFIG_XILINX_EMAC	1
 	#define CONFIG_SYS_ENET
 #endif
-#if defined(XILINX_EMACLITE_BASEADDR)
-	#define CONFIG_XILINX_EMACLITE	1
-	#define CONFIG_SYS_ENET
+#if defined(XILINX_EMACLITE_BASEADDR) || defined(CONFIG_OF_CONTROL)
+# define CONFIG_XILINX_EMACLITE	1
+# define CONFIG_SYS_ENET
 #endif
 #if defined(XILINX_LLTEMAC_BASEADDR)
 	#define CONFIG_XILINX_LL_TEMAC	1
@@ -152,36 +134,40 @@
 # define CONFIG_XILINX_TB_WATCHDOG	1
 #endif
 
-/*
- * memory layout - Example
- * TEXT_BASE = 0x1200_0000;
- * CONFIG_SYS_SRAM_BASE = 0x1000_0000;
- * CONFIG_SYS_SRAM_SIZE = 0x0400_0000;
- *
- * CONFIG_SYS_GBL_DATA_OFFSET = 0x1000_0000 + 0x0400_0000 - 0x1000 = 0x13FF_F000
- * CONFIG_SYS_MONITOR_BASE = 0x13FF_F000 - 0x40000 = 0x13FB_F000
- * CONFIG_SYS_MALLOC_BASE = 0x13FB_F000 - 0x40000 = 0x13F7_F000
- *
- * 0x1000_0000	CONFIG_SYS_SDRAM_BASE
- *					FREE
- * 0x1200_0000	TEXT_BASE
- *		U-BOOT code
- * 0x1202_0000
- *					FREE
- *
- *					STACK
- * 0x13F7_F000	CONFIG_SYS_MALLOC_BASE
- *					MALLOC_AREA	256kB	Alloc
- * 0x11FB_F000	CONFIG_SYS_MONITOR_BASE
- *					MONITOR_CODE	256kB	Env
- * 0x13FF_F000	CONFIG_SYS_GBL_DATA_OFFSET
- *					GLOBAL_DATA	4kB	bd, gd
- * 0x1400_0000	CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_SDRAM_SIZE
- */
-
+#ifndef CONFIG_OF_CONTROL
 /* ddr sdram - main memory */
-#define	CONFIG_SYS_SDRAM_BASE		XILINX_RAM_START
-#define	CONFIG_SYS_SDRAM_SIZE		XILINX_RAM_SIZE
+# define CONFIG_SYS_SDRAM_BASE	XILINX_RAM_START
+# define CONFIG_SYS_SDRAM_SIZE	XILINX_RAM_SIZE
+#endif
+
+#define CONFIG_SYS_MALLOC_LEN	0xC0000
+#ifndef CONFIG_SPL_BUILD
+# define CONFIG_SYS_MALLOC_F_LEN	1024
+#else
+# define CONFIG_SYS_MALLOC_SIMPLE
+# define CONFIG_SYS_MALLOC_F_LEN	0x150
+#endif
+
+/* Stack location before relocation */
+#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_TEXT_BASE
+
+/*
+ * CFI flash memory layout - Example
+ * CONFIG_SYS_FLASH_BASE = 0x2200_0000;
+ * CONFIG_SYS_FLASH_SIZE = 0x0080_0000;	  8MB
+ *
+ * SECT_SIZE = 0x20000;			128kB is one sector
+ * CONFIG_ENV_SIZE = SECT_SIZE;		128kB environment store
+ *
+ * 0x2200_0000	CONFIG_SYS_FLASH_BASE
+ *					FREE		256kB
+ * 0x2204_0000	CONFIG_ENV_ADDR
+ *					ENV_AREA	128kB
+ * 0x2206_0000
+ *					FREE
+ * 0x2280_0000	CONFIG_SYS_FLASH_BASE + CONFIG_SYS_FLASH_SIZE
+ *
+ */
 
 #if defined(XILINX_FLASH_START) /* Parallel Flash */
 	#define	FLASH
@@ -201,6 +187,8 @@
 
 	#define	CONFIG_ENV_ADDR		XILINX_FLASH_START
 	#define	CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
+	/* use buffered writes (20x faster) */
+	#define	CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 #else /* No flash memory at all */
 	/* ENV in RAM */
 	#define RAMENV
@@ -247,7 +235,10 @@
 /* FIXME: hack for zynq */
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_ECHO
-#define CONFIG_CMD_GPIO
+
+#ifdef XILINX_GPIO_BASEADDR
+# define CONFIG_CMD_GPIO
+#endif
 
 #undef CONFIG_CMD_NFS
 #undef CONFIG_CMD_JFFS2
@@ -294,7 +285,8 @@
 
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
-#define	CONFIG_SYS_HZ	1000
+
+#define	CONFIG_PREBOOT	"echo U-BOOT for ${hostname};setenv preboot;echo"
 
 #define CONFIG_ENV_OVERWRITE	/* Allow to overwrite the u-boot environment variables */
 #define	CONFIG_IPADDR		192.168.0.90
@@ -330,5 +322,51 @@
 # undef CONFIG_CMD_MII
 # undef CONFIG_PHYLIB
 #endif
+
+/* SPL part */
+#define CONFIG_CMD_SPL
+#define CONFIG_SPL_FRAMEWORK
+#define CONFIG_SPL_LIBCOMMON_SUPPORT
+#define CONFIG_SPL_LIBGENERIC_SUPPORT
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_BOARD_INIT
+
+#define CONFIG_SPL_LDSCRIPT	"arch/microblaze/cpu/u-boot-spl.lds"
+
+#define CONFIG_SPL_RAM_DEVICE
+#ifdef CONFIG_SYS_FLASH_BASE
+# define CONFIG_SPL_NOR_SUPPORT
+# define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_FLASH_BASE
+#endif
+
+/* for booting directly linux */
+#define CONFIG_SPL_OS_BOOT
+
+#define CONFIG_SYS_OS_BASE		(CONFIG_SYS_FLASH_BASE + \
+					 0x60000)
+#define CONFIG_SYS_FDT_BASE		(CONFIG_SYS_FLASH_BASE + \
+					 0x40000)
+#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_TEXT_BASE + \
+					 0x1000000)
+
+/* SP location before relocation, must use scratch RAM */
+/* BRAM start */
+#define CONFIG_SYS_INIT_RAM_ADDR	0x0
+/* BRAM size - will be generated */
+#define CONFIG_SYS_INIT_RAM_SIZE	0x100000
+
+# define CONFIG_SPL_STACK_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - \
+					 CONFIG_SYS_MALLOC_F_LEN)
+
+/* Just for sure that there is a space for stack */
+#define CONFIG_SPL_STACK_SIZE		0x100
+
+#define CONFIG_SYS_UBOOT_START		CONFIG_SYS_TEXT_BASE
+
+#define CONFIG_SPL_MAX_FOOTPRINT	(CONFIG_SYS_INIT_RAM_SIZE - \
+					 CONFIG_SYS_INIT_RAM_ADDR - \
+					 CONFIG_SYS_MALLOC_F_LEN - \
+					 CONFIG_SPL_STACK_SIZE)
 
 #endif	/* __CONFIG_H */

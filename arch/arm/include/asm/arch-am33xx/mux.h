@@ -23,6 +23,10 @@
 #include <asm/arch/mux_am33xx.h>
 #elif defined(CONFIG_TI814X)
 #include <asm/arch/mux_ti814x.h>
+#elif defined(CONFIG_TI816X)
+#include <asm/arch/mux_ti816x.h>
+#elif defined(CONFIG_AM43XX)
+#include <asm/arch/mux_am43xx.h>
 #endif
 
 struct module_pin_mux {
@@ -32,7 +36,7 @@ struct module_pin_mux {
 
 /* Pad control register offset */
 #define PAD_CTRL_BASE	0x800
-#define OFFSET(x)	(unsigned int) (&((struct pad_signals *) \
+#define OFFSET(x)	(unsigned int) (&((struct pad_signals *)\
 				(PAD_CTRL_BASE))->x)
 
 /*

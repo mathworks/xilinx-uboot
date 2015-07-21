@@ -7,30 +7,14 @@
  * Based on code from LTIB:
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/dma.h>
+#include <asm/imx-common/dma.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
@@ -38,12 +22,6 @@
 #include <linux/compiler.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-/* 1 second delay should be plenty of time for block reset. */
-#define	RESET_MAX_TIMEOUT	1000000
-
-#define	MXS_BLOCK_SFTRST	(1 << 31)
-#define	MXS_BLOCK_CLKGATE	(1 << 30)
 
 /* Lowlevel init isn't used on i.MX28, so just have a dummy here */
 inline void lowlevel_init(void) {}
@@ -82,70 +60,34 @@ void enable_caches(void)
 #endif
 }
 
-int mxs_wait_mask_set(struct mxs_register_32 *reg, uint32_t mask, unsigned
-								int timeout)
-{
-	while (--timeout) {
-		if ((readl(&reg->reg) & mask) == mask)
-			break;
-		udelay(1);
-	}
-
-	return !timeout;
-}
-
-int mxs_wait_mask_clr(struct mxs_register_32 *reg, uint32_t mask, unsigned
-								int timeout)
-{
-	while (--timeout) {
-		if ((readl(&reg->reg) & mask) == 0)
-			break;
-		udelay(1);
-	}
-
-	return !timeout;
-}
-
-int mxs_reset_block(struct mxs_register_32 *reg)
-{
-	/* Clear SFTRST */
-	writel(MXS_BLOCK_SFTRST, &reg->reg_clr);
-
-	if (mxs_wait_mask_clr(reg, MXS_BLOCK_SFTRST, RESET_MAX_TIMEOUT))
-		return 1;
-
-	/* Clear CLKGATE */
-	writel(MXS_BLOCK_CLKGATE, &reg->reg_clr);
-
-	/* Set SFTRST */
-	writel(MXS_BLOCK_SFTRST, &reg->reg_set);
-
-	/* Wait for CLKGATE being set */
-	if (mxs_wait_mask_set(reg, MXS_BLOCK_CLKGATE, RESET_MAX_TIMEOUT))
-		return 1;
-
-	/* Clear SFTRST */
-	writel(MXS_BLOCK_SFTRST, &reg->reg_clr);
-
-	if (mxs_wait_mask_clr(reg, MXS_BLOCK_SFTRST, RESET_MAX_TIMEOUT))
-		return 1;
-
-	/* Clear CLKGATE */
-	writel(MXS_BLOCK_CLKGATE, &reg->reg_clr);
-
-	if (mxs_wait_mask_clr(reg, MXS_BLOCK_CLKGATE, RESET_MAX_TIMEOUT))
-		return 1;
-
-	return 0;
-}
-
+/*
+ * This function will craft a jumptable at 0x0 which will redirect interrupt
+ * vectoring to proper location of U-Boot in RAM.
+ *
+ * The structure of the jumptable will be as follows:
+ *  ldr pc, [pc, #0x18] ..... for each vector, thus repeated 8 times
+ *  <destination address> ... for each previous ldr, thus also repeated 8 times
+ *
+ * The "ldr pc, [pc, #0x18]" instruction above loads address from memory at
+ * offset 0x18 from current value of PC register. Note that PC is already
+ * incremented by 4 when computing the offset, so the effective offset is
+ * actually 0x20, this the associated <destination address>. Loading the PC
+ * register with an address performs a jump to that address.
+ */
 void mx28_fixup_vt(uint32_t start_addr)
 {
-	uint32_t *vt = (uint32_t *)0x20;
+	/* ldr pc, [pc, #0x18] */
+	const uint32_t ldr_pc = 0xe59ff018;
+	/* Jumptable location is 0x0 */
+	uint32_t *vt = (uint32_t *)0x0;
 	int i;
 
-	for (i = 0; i < 8; i++)
-		vt[i] = start_addr + (4 * i);
+	for (i = 0; i < 8; i++) {
+		/* cppcheck-suppress nullPointer */
+		vt[i] = ldr_pc;
+		/* cppcheck-suppress nullPointer */
+		vt[i + 8] = start_addr + (4 * i);
+	}
 }
 
 #ifdef	CONFIG_ARCH_MISC_INIT

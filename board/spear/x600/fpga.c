@@ -1,23 +1,7 @@
 /*
  * Copyright (C) 2012 Stefan Roese <sr@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -179,7 +163,7 @@ static int fpga_wr_fn(int assert_write, int flush, int cookie)
 	return assert_write;
 }
 
-static Xilinx_Spartan3_Slave_Serial_fns x600_fpga_fns = {
+static xilinx_spartan3_slave_serial_fns x600_fpga_fns = {
 	fpga_pre_config_fn,
 	fpga_pgm_fn,
 	fpga_clk_fn,
@@ -189,7 +173,7 @@ static Xilinx_Spartan3_Slave_Serial_fns x600_fpga_fns = {
 	fpga_post_config_fn,
 };
 
-static Xilinx_desc fpga[CONFIG_FPGA_COUNT] = {
+static xilinx_desc fpga[CONFIG_FPGA_COUNT] = {
 	XILINX_XC3S1200E_DESC(slave_serial, &x600_fpga_fns, 0)
 };
 

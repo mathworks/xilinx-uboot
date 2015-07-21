@@ -12,12 +12,7 @@
  *          Copyright 2006 Applied Micro Circuits Corporation
  *          COPYRIGHT (C) 2005  SYNOPSYS, INC.  ALL RIGHTS RESERVED
  *
- * This program is free software; you can redistribute
- * it and/or modify it under the terms of the GNU
- * General Public License as published by the
- * Free Software Foundation;  either version 2 of the  License,
- * or (at your option) any later version.
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * SATA support based on the chip canyonlands.
@@ -426,6 +421,11 @@ int init_sata(int dev)
 
 	rc = 0;
 	return rc;
+}
+
+int reset_sata(int dev)
+{
+	return 0;
 }
 
 static u8 ata_check_altstatus(struct ata_port *ap)

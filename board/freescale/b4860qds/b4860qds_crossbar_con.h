@@ -1,20 +1,7 @@
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CROSSBAR_CONNECTIONS_H__
@@ -26,42 +13,61 @@
 static const int8_t vsc16_tx_amc[8][2] = { {15, 3}, {0, 2}, {7, 4}, {9, 10},
 				{5, 11}, {4, 5}, {2, 6}, {12, 9} };
 
-static const int8_t vsc16_tx_sfp[8][2] = { {15, 8}, {0, 0}, {7, 7}, {9, 1},
-				{5, 15}, {4, 14}, {2, 12}, {12, 13} };
+static int8_t vsc16_tx_sfp[8][2] = { {15, 7}, {0, 1}, {7, 8}, {9, 0},
+				{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
 
-static const int8_t vsc16_tx_sgmii_lane_ab[8][2] = { {2, 14}, {12, 15},
-		{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
+static int8_t vsc16_tx_4sfp_sgmii_12_56[8][2] = { {15, 7}, {0, 1},
+				{7, 8}, {9, 0}, {2, 14}, {12, 15},
+				{-1, -1}, {-1, -1} };
+
+static const int8_t vsc16_tx_4sfp_sgmii_34[8][2] = { {15, 7}, {0, 1},
+				{7, 8}, {9, 0}, {5, 14}, {4, 15},
+				{-1, -1}, {-1, -1} };
+
+static int8_t vsc16_tx_sfp_sgmii_aurora[8][2] = { {15, 7}, {0, 1},
+				{7, 8}, {9, 0}, {5, 14},
+				{4, 15}, {2, 12}, {12, 13} };
 
 #ifdef CONFIG_PPC_B4420
-static const int8_t vsc16_tx_sgmii_lane_cd[8][2] = { {5, 14}, {4, 15},
+static int8_t vsc16_tx_sgmii_lane_cd[8][2] = { {5, 14}, {4, 15},
 		{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
 #endif
+
 static const int8_t vsc16_tx_aurora[8][2] = { {2, 13}, {12, 12}, {-1, -1},
 			{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
 
 static const int8_t vsc16_rx_amc[8][2] = { {3, 15}, {2, 1}, {4, 8}, {10, 9},
 				{11, 11}, {5, 10}, {6, 3}, {9, 12} };
 
-static const int8_t vsc16_rx_sfp[8][2] = { {0, 15}, {8, 1}, {1, 8}, {7, 9},
+static int8_t vsc16_rx_sfp[8][2] = { {8, 15}, {0, 1}, {7, 8}, {1, 9},
 				{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
 
-static const int8_t vsc16_rx_sgmii_lane_ab[8][2] = { {14, 3}, {15, 12},
-		{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
+static int8_t vsc16_rx_4sfp_sgmii_12_56[8][2] = { {8, 15}, {0, 1},
+				{7, 8}, {1, 9}, {14, 3}, {15, 12},
+				{-1, -1}, {-1, -1} };
+
+static const int8_t vsc16_rx_4sfp_sgmii_34[8][2] = { {8, 15}, {0, 1},
+				{7, 8}, {1, 9}, {14, 11}, {15, 10},
+				{-1, -1}, {-1, -1} };
+
+static int8_t vsc16_rx_sfp_sgmii_aurora[8][2] = { {8, 15}, {0, 1},
+				{7, 8}, {1, 9}, {14, 11},
+				{15, 10}, {13, 3}, {12, 12} };
 
 #ifdef CONFIG_PPC_B4420
-static const int8_t vsc16_rx_sgmii_lane_cd[8][2] = { {14, 11}, {15, 10},
+static int8_t vsc16_rx_sgmii_lane_cd[8][2] = { {14, 11}, {15, 10},
 		{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
 #endif
 
-static const int8_t vsc16_rx_aurora[8][2] = { {12, 3}, {13, 12}, {-1, -1},
+static const int8_t vsc16_rx_aurora[8][2] = { {13, 3}, {12, 12}, {-1, -1},
 			{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}, {-1, -1} };
 
 static const int8_t vsc08_tx_amc[4][2] = { {2, 2}, {3, 3}, {7, 4}, {1, 5} };
 
-static const int8_t vsc08_tx_sfp[4][2] = { {2, 6}, {3, 7}, {7, 1}, {1, 0} };
+static const int8_t vsc08_tx_sfp[4][2] = { {2, 1}, {3, 0}, {7, 6}, {1, 7} };
 
 static const int8_t vsc08_rx_amc[4][2] = { {2, 3}, {3, 4}, {4, 7}, {5, 1} };
 
-static const int8_t vsc08_rx_sfp[4][2] = { {6, 3}, {7, 4}, {1, 7}, {0, 1} };
+static const int8_t vsc08_rx_sfp[4][2] = { {1, 3}, {0, 4}, {6, 7}, {7, 1} };
 
 #endif

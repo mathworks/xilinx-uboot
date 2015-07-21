@@ -2,23 +2,7 @@
  * (C) Copyright 2000
  * Rob Taylor, Flying Pig Systems. robt@flyingpig.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -97,7 +81,8 @@ static NS16550_t serial_ports[6] = {
 	static int  eserial##port##_init(void) \
 	{ \
 		int clock_divisor; \
-		clock_divisor = calc_divisor(serial_ports[port-1]); \
+		clock_divisor = ns16550_calc_divisor(serial_ports[port-1], \
+				CONFIG_SYS_NS16550_CLK, gd->baudrate); \
 		NS16550_init(serial_ports[port-1], clock_divisor); \
 		return 0 ; \
 	} \
@@ -134,40 +119,7 @@ static NS16550_t serial_ports[6] = {
 	.puts	= eserial##port##_puts,		\
 }
 
-static int calc_divisor (NS16550_t port)
-{
-#ifdef CONFIG_OMAP1510
-	/* If can't cleanly clock 115200 set div to 1 */
-	if ((CONFIG_SYS_NS16550_CLK == 12000000) && (gd->baudrate == 115200)) {
-		port->osc_12m_sel = OSC_12M_SEL;	/* enable 6.5 * divisor */
-		return (1);				/* return 1 for base divisor */
-	}
-	port->osc_12m_sel = 0;			/* clear if previsouly set */
-#endif
-#ifdef CONFIG_OMAP1610
-	/* If can't cleanly clock 115200 set div to 1 */
-	if ((CONFIG_SYS_NS16550_CLK == 48000000) && (gd->baudrate == 115200)) {
-		return (26);		/* return 26 for base divisor */
-	}
-#endif
-
-#ifdef CONFIG_APTIX
-#define MODE_X_DIV 13
-#else
-#define MODE_X_DIV 16
-#endif
-
-	/* Compute divisor value. Normally, we should simply return:
-	 *   CONFIG_SYS_NS16550_CLK) / MODE_X_DIV / gd->baudrate
-	 * but we need to round that value by adding 0.5.
-	 * Rounding is especially important at high baud rates.
-	 */
-	return (CONFIG_SYS_NS16550_CLK + (gd->baudrate * (MODE_X_DIV / 2))) /
-		(MODE_X_DIV * gd->baudrate);
-}
-
-void
-_serial_putc(const char c,const int port)
+static void _serial_putc(const char c, const int port)
 {
 	if (c == '\n')
 		NS16550_putc(PORT, '\r');
@@ -175,39 +127,34 @@ _serial_putc(const char c,const int port)
 	NS16550_putc(PORT, c);
 }
 
-void
-_serial_putc_raw(const char c,const int port)
+static void _serial_putc_raw(const char c, const int port)
 {
 	NS16550_putc(PORT, c);
 }
 
-void
-_serial_puts (const char *s,const int port)
+static void _serial_puts(const char *s, const int port)
 {
 	while (*s) {
-		_serial_putc (*s++,port);
+		_serial_putc(*s++, port);
 	}
 }
 
-
-int
-_serial_getc(const int port)
+static int _serial_getc(const int port)
 {
 	return NS16550_getc(PORT);
 }
 
-int
-_serial_tstc(const int port)
+static int _serial_tstc(const int port)
 {
 	return NS16550_tstc(PORT);
 }
 
-void
-_serial_setbrg (const int port)
+static void _serial_setbrg(const int port)
 {
 	int clock_divisor;
 
-	clock_divisor = calc_divisor(PORT);
+	clock_divisor = ns16550_calc_divisor(PORT, CONFIG_SYS_NS16550_CLK,
+					     gd->baudrate);
 	NS16550_reinit(PORT, clock_divisor);
 }
 

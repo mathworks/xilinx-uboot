@@ -38,7 +38,7 @@ struct Bootp_t {
 	uchar		bp_hlen;	/* Hardware address length	*/
 # define HWL_ETHER	6
 	uchar		bp_hops;	/* Hop count (gateway thing)	*/
-	ulong		bp_id;		/* Transaction ID		*/
+	u32		bp_id;		/* Transaction ID		*/
 	ushort		bp_secs;	/* Seconds since boot		*/
 	ushort		bp_spare1;	/* Alignment			*/
 	IPaddr_t	bp_ciaddr;	/* Client IP address		*/
@@ -65,6 +65,7 @@ extern int	BootpTry;
 
 
 /* Send a BOOTP request */
+extern void BootpReset(void);
 extern void BootpRequest(void);
 
 /****************** DHCP Support *********************/
@@ -87,8 +88,6 @@ typedef enum { INIT,
 #define DHCP_ACK      5
 #define DHCP_NAK      6
 #define DHCP_RELEASE  7
-
-#define SELECT_TIMEOUT 3000UL	/* Milliseconds to wait for offers */
 
 /**********************************************************************/
 

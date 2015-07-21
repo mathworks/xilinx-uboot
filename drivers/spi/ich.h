@@ -1,23 +1,7 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but without any warranty; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file is derived from the flashrom project.
  */
@@ -53,18 +37,19 @@ struct ich9_spi_regs {
 	uint8_t opmenu[8];		/* 0x98 */
 	uint32_t bbar;
 	uint8_t _reserved3[12];
-	uint32_t fdoc;
+	uint32_t fdoc;			/* 0xb0 */
 	uint32_t fdod;
 	uint8_t _reserved4[8];
-	uint32_t afc;
+	uint32_t afc;			/* 0xc0 */
 	uint32_t lvscc;
 	uint32_t uvscc;
 	uint8_t _reserved5[4];
-	uint32_t fpb;
+	uint32_t fpb;			/* 0xd0 */
 	uint8_t _reserved6[28];
-	uint32_t srdl;
+	uint32_t srdl;			/* 0xf0 */
 	uint32_t srdc;
-	uint32_t srd;
+	uint32_t scs;
+	uint32_t bcr;
 } __packed;
 
 enum {

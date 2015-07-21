@@ -22,6 +22,7 @@
 #include <spi.h>
 
 #include <asm/blackfin.h>
+#include <asm/clock.h>
 #include <asm/gpio.h>
 #include <asm/portmux.h>
 #include <asm/mach-common/bits/spi6xx.h>
@@ -135,11 +136,11 @@ static const unsigned short cs_pins[][7] = {
 void spi_set_speed(struct spi_slave *slave, uint hz)
 {
 	struct bfin_spi_slave *bss = to_bfin_spi_slave(slave);
-	ulong sclk;
+	ulong clk;
 	u32 clock;
 
-	sclk = get_sclk1();
-	clock = sclk / hz;
+	clk = get_spi_clk();
+	clock = clk / hz;
 	if (clock)
 		clock--;
 	bss->clock = clock;
@@ -154,10 +155,6 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	if (!spi_cs_is_valid(bus, cs))
 		return NULL;
 
-	if (bus >= ARRAY_SIZE(pins) || pins[bus] == NULL) {
-		debug("%s: invalid bus %u\n", __func__, bus);
-		return NULL;
-	}
 	switch (bus) {
 #ifdef SPI0_REGBASE
 	case 0:
@@ -175,6 +172,7 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 		break;
 #endif
 	default:
+		debug("%s: invalid bus %u\n", __func__, bus);
 		return NULL;
 	}
 

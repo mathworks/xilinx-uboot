@@ -5,8 +5,6 @@
 #ifndef _PPC_MMU_H_
 #define _PPC_MMU_H_
 
-#include <linux/config.h>
-
 #ifndef __ASSEMBLY__
 /* Hardware Page Table Entry */
 typedef struct _PTE {
@@ -510,6 +508,14 @@ extern void print_tlbcam(void);
 
 extern unsigned int setup_ddr_tlbs(unsigned int memsize_in_meg);
 extern void clear_ddr_tlbs(unsigned int memsize_in_meg);
+
+enum tlb_map_type {
+	TLB_MAP_RAM,
+	TLB_MAP_IO,
+};
+
+extern uint64_t tlb_map_range(ulong v_addr, phys_addr_t p_addr, uint64_t size,
+			      enum tlb_map_type map_type);
 
 extern void write_tlb(u32 _mas0, u32 _mas1, u32 _mas2, u32 _mas3, u32 _mas7);
 

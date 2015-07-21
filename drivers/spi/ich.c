@@ -1,25 +1,13 @@
 /*
  * Copyright (c) 2011-12 The Chromium OS Authors.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but without any warranty; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file is derived from the flashrom project.
  */
 
 #include <common.h>
+#include <errno.h>
 #include <malloc.h>
 #include <spi.h>
 #include <pci.h>
@@ -34,6 +22,7 @@
 struct ich_ctlr {
 	pci_dev_t dev;		/* PCI device number */
 	int ich_version;	/* Controller version, 7 or 9 */
+	bool use_sbase;		/* Use SBASE instead of RCB */
 	int ichspi_lock;
 	int locked;
 	uint8_t *opmenu;
@@ -154,7 +143,23 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	ich->slave.max_write_size = ctlr.databytes;
 	ich->speed = max_hz;
 
+	/*
+	 * ICH 7 SPI controller only supports array read command
+	 * and byte program command for SST flash
+	 */
+	if (ctlr.ich_version == 7 || ctlr.use_sbase) {
+		ich->slave.op_mode_rx = SPI_OPM_RX_AS;
+		ich->slave.op_mode_tx = SPI_OPM_TX_BP;
+	}
+
 	return &ich->slave;
+}
+
+struct spi_slave *spi_setup_slave_fdt(const void *blob, int slave_node,
+				      int spi_node)
+{
+	/* We only support a single SPI at present */
+	return spi_setup_slave(0, 0, 20000000, 0);
 }
 
 void spi_free_slave(struct spi_slave *slave)
@@ -171,13 +176,16 @@ void spi_free_slave(struct spi_slave *slave)
  */
 static int get_ich_version(uint16_t device_id)
 {
-	if (device_id == PCI_DEVICE_ID_INTEL_TGP_LPC)
+	if (device_id == PCI_DEVICE_ID_INTEL_TGP_LPC ||
+	    device_id == PCI_DEVICE_ID_INTEL_ITC_LPC ||
+	    device_id == PCI_DEVICE_ID_INTEL_QRK_ILB)
 		return 7;
 
 	if ((device_id >= PCI_DEVICE_ID_INTEL_COUGARPOINT_LPC_MIN &&
 	     device_id <= PCI_DEVICE_ID_INTEL_COUGARPOINT_LPC_MAX) ||
 	    (device_id >= PCI_DEVICE_ID_INTEL_PANTHERPOINT_LPC_MIN &&
-	     device_id <= PCI_DEVICE_ID_INTEL_PANTHERPOINT_LPC_MAX))
+	     device_id <= PCI_DEVICE_ID_INTEL_PANTHERPOINT_LPC_MAX) ||
+	    device_id == PCI_DEVICE_ID_INTEL_VALLEYVIEW_LPC)
 		return 9;
 
 	return 0;
@@ -200,14 +208,14 @@ static int ich9_can_do_33mhz(pci_dev_t dev)
 	return speed == 1;
 }
 
-static int ich_find_spi_controller(pci_dev_t *devp, int *ich_versionp)
+static int ich_find_spi_controller(struct ich_ctlr *ich)
 {
 	int last_bus = pci_last_busno();
 	int bus;
 
 	if (last_bus == -1) {
 		debug("No PCI busses?\n");
-		return -1;
+		return -ENODEV;
 	}
 
 	for (bus = 0; bus <= last_bus; bus++) {
@@ -221,24 +229,33 @@ static int ich_find_spi_controller(pci_dev_t *devp, int *ich_versionp)
 		device_id = ids >> 16;
 
 		if (vendor_id == PCI_VENDOR_ID_INTEL) {
-			*devp = dev;
-			*ich_versionp = get_ich_version(device_id);
-			return 0;
+			ich->dev = dev;
+			ich->ich_version = get_ich_version(device_id);
+			if (device_id == PCI_DEVICE_ID_INTEL_VALLEYVIEW_LPC)
+				ich->use_sbase = true;
+			return ich->ich_version == 0 ? -ENODEV : 0;
 		}
 	}
 
 	debug("ICH SPI: No ICH found.\n");
-	return -1;
+	return -ENODEV;
 }
 
 static int ich_init_controller(struct ich_ctlr *ctlr)
 {
 	uint8_t *rcrb; /* Root Complex Register Block */
 	uint32_t rcba; /* Root Complex Base Address */
+	uint32_t sbase_addr;
+	uint8_t *sbase;
 
 	pci_read_config_dword(ctlr->dev, 0xf0, &rcba);
 	/* Bits 31-14 are the base address, 13-1 are reserved, 0 is enable. */
 	rcrb = (uint8_t *)(rcba & 0xffffc000);
+
+	/* SBASE is similar */
+	pci_read_config_dword(ctlr->dev, 0x54, &sbase_addr);
+	sbase = (uint8_t *)(sbase_addr & 0xfffffe00);
+
 	if (ctlr->ich_version == 7) {
 		struct ich7_spi_regs *ich7_spi;
 
@@ -258,7 +275,10 @@ static int ich_init_controller(struct ich_ctlr *ctlr)
 	} else if (ctlr->ich_version == 9) {
 		struct ich9_spi_regs *ich9_spi;
 
-		ich9_spi = (struct ich9_spi_regs *)(rcrb + 0x3800);
+		if (ctlr->use_sbase)
+			ich9_spi = (struct ich9_spi_regs *)sbase;
+		else
+			ich9_spi = (struct ich9_spi_regs *)(rcrb + 0x3800);
 		ctlr->ichspi_lock = ich_readw(&ich9_spi->hsfs) & HSFS_FLOCKDN;
 		ctlr->opmenu = ich9_spi->opmenu;
 		ctlr->menubytes = sizeof(ich9_spi->opmenu);
@@ -278,12 +298,13 @@ static int ich_init_controller(struct ich_ctlr *ctlr)
 		      ctlr->ich_version);
 		return -1;
 	}
-	debug("ICH SPI: Version %d detected\n", ctlr->ich_version);
 
 	/* Work out the maximum speed we can support */
 	ctlr->max_speed = 20000000;
 	if (ctlr->ich_version == 9 && ich9_can_do_33mhz(ctlr->dev))
 		ctlr->max_speed = 33000000;
+	debug("ICH SPI: Version %d detected at %p, speed %ld\n",
+	      ctlr->ich_version, ctlr->base, ctlr->max_speed);
 
 	ich_set_bbar(ctlr, 0);
 
@@ -294,7 +315,7 @@ void spi_init(void)
 {
 	uint8_t bios_cntl;
 
-	if (ich_find_spi_controller(&ctlr.dev, &ctlr.ich_version)) {
+	if (ich_find_spi_controller(&ctlr)) {
 		printf("ICH SPI: Cannot find device\n");
 		return;
 	}
@@ -308,10 +329,20 @@ void spi_init(void)
 	 * Disable the BIOS write protect so write commands are allowed.  On
 	 * v9, deassert SMM BIOS Write Protect Disable.
 	 */
-	pci_read_config_byte(ctlr.dev, 0xdc, &bios_cntl);
-	if (ctlr.ich_version == 9)
-		bios_cntl &= ~(1 << 5);
-	pci_write_config_byte(ctlr.dev, 0xdc, bios_cntl | 0x1);
+	if (ctlr.use_sbase) {
+		struct ich9_spi_regs *ich9_spi;
+
+		ich9_spi = (struct ich9_spi_regs *)ctlr.base;
+		bios_cntl = ich_readb(&ich9_spi->bcr);
+		bios_cntl &= ~(1 << 5);	/* clear Enable InSMM_STS (EISS) */
+		bios_cntl |= 1;		/* Write Protect Disable (WPD) */
+		ich_writeb(bios_cntl, &ich9_spi->bcr);
+	} else {
+		pci_read_config_byte(ctlr.dev, 0xdc, &bios_cntl);
+		if (ctlr.ich_version == 9)
+			bios_cntl &= ~(1 << 5);
+		pci_write_config_byte(ctlr.dev, 0xdc, bios_cntl | 0x1);
+	}
 }
 
 int spi_claim_bus(struct spi_slave *slave)
@@ -496,8 +527,6 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	struct spi_trans *trans = &ich->trans;
 	unsigned type = flags & (SPI_XFER_BEGIN | SPI_XFER_END);
 	int using_cmd = 0;
-	/* Align read transactions to 64-byte boundaries */
-	char buff[ctlr.databytes];
 
 	/* Ee don't support writing partial bytes. */
 	if (bitlen % 8) {
@@ -645,14 +674,9 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	 */
 	while (trans->bytesout || trans->bytesin) {
 		uint32_t data_length;
-		uint32_t aligned_offset;
-		uint32_t diff;
-
-		aligned_offset = trans->offset & ~(ctlr.databytes - 1);
-		diff = trans->offset - aligned_offset;
 
 		/* SPI addresses are 24 bit only */
-		ich_writel(aligned_offset & 0x00FFFFFF, ctlr.addr);
+		ich_writel(trans->offset & 0x00FFFFFF, ctlr.addr);
 
 		if (trans->bytesout)
 			data_length = min(trans->bytesout, ctlr.databytes);
@@ -686,13 +710,7 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 		}
 
 		if (trans->bytesin) {
-			if (diff) {
-				data_length -= diff;
-				read_reg(ctlr.data, buff, ctlr.databytes);
-				memcpy(trans->in, buff + diff, data_length);
-			} else {
-				read_reg(ctlr.data, trans->in, data_length);
-			}
+			read_reg(ctlr.data, trans->in, data_length);
 			spi_use_in(trans, data_length);
 			if (with_address)
 				trans->offset += data_length;

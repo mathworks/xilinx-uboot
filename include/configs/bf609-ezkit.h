@@ -72,16 +72,17 @@
 #define CONFIG_NET_MULTI
 #define CONFIG_HOSTNAME		"bf609-ezkit"
 #define CONFIG_DESIGNWARE_ETH
+#define CONFIG_PHY_ADDR		1
 #define CONFIG_DW_PORTS		1
-#define CONFIG_DW_AUTONEG
 #define CONFIG_DW_ALTDESCRIPTOR
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_MII
 #define CONFIG_MII
+#define CONFIG_PHYLIB
 
 /* i2c Settings */
-#define CONFIG_BFIN_TWI_I2C
-#define CONFIG_HARD_I2C
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_ADI
 
 /*
  * Flash Settings
@@ -144,9 +145,12 @@
 #define CONFIG_UART_CONSOLE	0
 
 #define CONFIG_CMD_MEMORY
+#define CONFIG_CMD_SOFTSWITCH
 
 #define CONFIG_SYS_MEMTEST_END (CONFIG_STACKBASE - 20*1024*1024 + 4)
 #define CONFIG_BFIN_SOFT_SWITCH
+
+#define CONFIG_ADI_GPIO2
 
 #if 0
 #define CONFIG_UART_MEM 1024
@@ -154,6 +158,13 @@
 #undef CONFIG_JTAG_CONSOLE
 #undef CONFIG_UART_CONSOLE_IS_JTAG
 #endif
+
+#define CONFIG_BOARD_SIZE_LIMIT $$((512 * 1024))
+
+/*
+ * Run core 1 from L1 SRAM start address when init uboot on core 0
+ */
+/* #define CONFIG_CORE1_RUN	1 */
 
 /*
  * Pull in common ADI header for remaining command/environment setup

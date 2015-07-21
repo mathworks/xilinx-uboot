@@ -9,9 +9,10 @@
 #include <common.h>
 #include <i2c.h>
 #include <hwconfig.h>
+#include <fsl_ddr.h>
 #include <asm/mmu.h>
-#include <asm/fsl_ddr_sdram.h>
-#include <asm/fsl_ddr_dimm_params.h>
+#include <fsl_ddr_sdram.h>
+#include <fsl_ddr_dimm_params.h>
 #include <asm/fsl_law.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -30,20 +31,20 @@ dimm_params_t ddr_raw_timing = {
 	.edc_config = 2,	/* ECC */
 	.burst_lengths_bitmask = 0x0c,
 
-	.tCKmin_X_ps = 1071,
-	.caslat_X = 0x2fe << 4,	/* 5,6,7,8,9,10,11,13 */
-	.tAA_ps = 13910,
-	.tWR_ps = 15000,
-	.tRCD_ps = 13910,
-	.tRRD_ps = 6000,
-	.tRP_ps = 13910,
-	.tRAS_ps = 34000,
-	.tRC_ps = 48910,
-	.tRFC_ps = 260000,
-	.tWTR_ps = 7500,
-	.tRTP_ps = 7500,
+	.tckmin_x_ps = 1071,
+	.caslat_x = 0x2fe << 4,	/* 5,6,7,8,9,10,11,13 */
+	.taa_ps = 13910,
+	.twr_ps = 15000,
+	.trcd_ps = 13910,
+	.trrd_ps = 6000,
+	.trp_ps = 13910,
+	.tras_ps = 34000,
+	.trc_ps = 48910,
+	.trfc_ps = 260000,
+	.twtr_ps = 7500,
+	.trtp_ps = 7500,
 	.refresh_rate_ps = 7800000,
-	.tFAW_ps = 35000,
+	.tfaw_ps = 35000,
 };
 
 int fsl_ddr_get_dimm_params(dimm_params_t *pdimm,
@@ -70,7 +71,7 @@ struct board_specific_parameters {
 	u32 wrlvl_ctl_3;
 	u32 cpo;
 	u32 write_data_delay;
-	u32 force_2T;
+	u32 force_2t;
 };
 
 /*
@@ -128,7 +129,7 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 				popts->wrlvl_start = pbsp->wrlvl_start;
 				popts->wrlvl_ctl_2 = pbsp->wrlvl_ctl_2;
 				popts->wrlvl_ctl_3 = pbsp->wrlvl_ctl_3;
-				popts->twoT_en = pbsp->force_2T;
+				popts->twot_en = pbsp->force_2t;
 				goto found;
 			}
 			pbsp_highest = pbsp;
@@ -145,7 +146,7 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 		popts->write_data_delay = pbsp_highest->write_data_delay;
 		popts->clk_adjust = pbsp_highest->clk_adjust;
 		popts->wrlvl_start = pbsp_highest->wrlvl_start;
-		popts->twoT_en = pbsp_highest->force_2T;
+		popts->twot_en = pbsp_highest->force_2t;
 	} else {
 		panic("DIMM is not supported by this board");
 	}
@@ -178,6 +179,7 @@ phys_size_t initdram(int board_type)
 {
 	phys_size_t dram_size;
 
+#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_RAMBOOT_PBL)
 	puts("Initializing....using SPD\n");
 
 	dram_size = fsl_ddr_sdram();
@@ -185,6 +187,79 @@ phys_size_t initdram(int board_type)
 	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
 	dram_size *= 0x100000;
 
-	puts("    DDR: ");
+#else
+	dram_size =  fsl_ddr_sdram_size();
+#endif
 	return dram_size;
+}
+
+unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
+			  unsigned int dbw_cap_adj[])
+{
+	int i, j;
+	unsigned long long total_mem, current_mem_base, total_ctlr_mem;
+	unsigned long long rank_density, ctlr_density = 0;
+
+	current_mem_base = 0ull;
+	total_mem = 0;
+	/*
+	 * This board has soldered DDR chips. DDRC1 has two rank.
+	 * DDRC2 has only one rank.
+	 * Assigning DDRC2 to lower address and DDRC1 to higher address.
+	 */
+	if (pinfo->memctl_opts[0].memctl_interleaving) {
+		rank_density = pinfo->dimm_params[0][0].rank_density >>
+					dbw_cap_adj[0];
+		ctlr_density = rank_density;
+
+		debug("rank density is 0x%llx, ctlr density is 0x%llx\n",
+		      rank_density, ctlr_density);
+		for (i = CONFIG_NUM_DDR_CONTROLLERS - 1; i >= 0; i--) {
+			switch (pinfo->memctl_opts[i].memctl_interleaving_mode) {
+			case FSL_DDR_CACHE_LINE_INTERLEAVING:
+			case FSL_DDR_PAGE_INTERLEAVING:
+			case FSL_DDR_BANK_INTERLEAVING:
+			case FSL_DDR_SUPERBANK_INTERLEAVING:
+				total_ctlr_mem = 2 * ctlr_density;
+				break;
+			default:
+				panic("Unknown interleaving mode");
+			}
+			pinfo->common_timing_params[i].base_address =
+						current_mem_base;
+			pinfo->common_timing_params[i].total_mem =
+						total_ctlr_mem;
+			total_mem = current_mem_base + total_ctlr_mem;
+			debug("ctrl %d base 0x%llx\n", i, current_mem_base);
+			debug("ctrl %d total 0x%llx\n", i, total_ctlr_mem);
+		}
+	} else {
+		/*
+		 * Simple linear assignment if memory
+		 * controllers are not interleaved.
+		 */
+		for (i = CONFIG_NUM_DDR_CONTROLLERS - 1; i >= 0; i--) {
+			total_ctlr_mem = 0;
+			pinfo->common_timing_params[i].base_address =
+						current_mem_base;
+			for (j = 0; j < CONFIG_DIMM_SLOTS_PER_CTLR; j++) {
+				/* Compute DIMM base addresses. */
+				unsigned long long cap =
+					pinfo->dimm_params[i][j].capacity;
+				pinfo->dimm_params[i][j].base_address =
+					current_mem_base;
+				debug("ctrl %d dimm %d base 0x%llx\n",
+				      i, j, current_mem_base);
+				current_mem_base += cap;
+				total_ctlr_mem += cap;
+			}
+			debug("ctrl %d total 0x%llx\n", i, total_ctlr_mem);
+			pinfo->common_timing_params[i].total_mem =
+							total_ctlr_mem;
+			total_mem += total_ctlr_mem;
+		}
+	}
+	debug("Total mem by %s is 0x%llx\n", __func__, total_mem);
+
+	return total_mem;
 }

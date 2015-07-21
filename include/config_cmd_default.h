@@ -21,6 +21,7 @@
 #define CONFIG_CMD_CONSOLE	/* coninfo			*/
 #define CONFIG_CMD_ECHO		/* echo arguments		*/
 #define CONFIG_CMD_EDITENV	/* editenv			*/
+#define CONFIG_CMD_ENV_EXISTS	/* query whether env variables exists */
 #define CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
 #define CONFIG_CMD_IMI		/* iminfo			*/
 #define CONFIG_CMD_ITEST	/* Integer (and string) test	*/
@@ -31,7 +32,6 @@
 #define CONFIG_CMD_LOADB	/* loadb			*/
 #define CONFIG_CMD_LOADS	/* loads			*/
 #define CONFIG_CMD_MEMORY	/* md mm nm mw cp cmp crc base loop */
-#define CONFIG_CMD_MEMTEST	/* mtest			*/
 #define CONFIG_CMD_MISC		/* Misc functions like sleep etc*/
 #define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot	*/
 #define CONFIG_CMD_NFS		/* NFS support			*/

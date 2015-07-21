@@ -2,23 +2,7 @@
  * (C) Copyright 2010,2011
  * NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA_H_
@@ -50,7 +34,12 @@
 #define NV_PA_PMC_BASE		(NV_PA_APB_MISC_BASE + 0xE400)
 #define NV_PA_EMC_BASE		(NV_PA_APB_MISC_BASE + 0xF400)
 #define NV_PA_FUSE_BASE		(NV_PA_APB_MISC_BASE + 0xF800)
+#if defined(CONFIG_TEGRA20) || defined(CONFIG_TEGRA30) || \
+	defined(CONFIG_TEGRA114)
 #define NV_PA_CSITE_BASE	0x70040000
+#else
+#define NV_PA_CSITE_BASE	0x70800000
+#endif
 #define TEGRA_USB_ADDR_MASK	0xFFFFC000
 
 #define NV_PA_SDRC_CS0		NV_PA_SDRAM_BASE
@@ -72,6 +61,7 @@ struct timerus {
 
 /* These are the available SKUs (product types) for Tegra */
 enum {
+	SKU_ID_T20_7		= 0x7,
 	SKU_ID_T20		= 0x8,
 	SKU_ID_T25SE		= 0x14,
 	SKU_ID_AP25		= 0x17,
@@ -80,7 +70,10 @@ enum {
 	SKU_ID_T25E		= 0x1c,
 	SKU_ID_T33		= 0x80,
 	SKU_ID_T30		= 0x81, /* Cardhu value */
+	SKU_ID_TM30MQS_P_A3	= 0xb1,
 	SKU_ID_T114_ENG		= 0x00, /* Dalmore value, unfused */
+	SKU_ID_T114_1		= 0x01,
+	SKU_ID_T124_ENG		= 0x00, /* Venice2 value, unfused */
 };
 
 /*
@@ -94,6 +87,7 @@ enum {
 	TEGRA_SOC_T25,
 	TEGRA_SOC_T30,
 	TEGRA_SOC_T114,
+	TEGRA_SOC_T124,
 
 	TEGRA_SOC_CNT,
 	TEGRA_SOC_UNKNOWN	= -1,

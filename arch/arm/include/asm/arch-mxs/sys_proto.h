@@ -4,24 +4,13 @@
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SYS_PROTO_H__
 #define __SYS_PROTO_H__
+
+#include <asm/imx-common/regs-common.h>
 
 int mxs_reset_block(struct mxs_register_32 *reg);
 int mxs_wait_mask_set(struct mxs_register_32 *reg,
@@ -41,8 +30,9 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
 #include <asm/arch/iomux-mx28.h>
 #endif
 
-void mxs_common_spl_init(const iomux_cfg_t *iomux_setup,
-			const unsigned int iomux_size);
+void mxs_common_spl_init(const uint32_t arg, const uint32_t *resptr,
+			 const iomux_cfg_t *iomux_setup,
+			 const unsigned int iomux_size);
 #endif
 
 struct mxs_pair {
@@ -58,6 +48,7 @@ static const struct mxs_pair mxs_boot_modes[] = {
 	{ 0x02, 0x1f, "SSP SPI #1, master, NOR" },
 	{ 0x03, 0x1f, "SSP SPI #2, master, NOR" },
 	{ 0x04, 0x1f, "NAND" },
+	{ 0x06, 0x1f, "JTAG" },
 	{ 0x08, 0x1f, "SSP SPI #3, master, EEPROM" },
 	{ 0x09, 0x1f, "SSP SD/MMC #0" },
 	{ 0x0a, 0x1f, "SSP SD/MMC #1" },
@@ -72,6 +63,7 @@ static const struct mxs_pair mxs_boot_modes[] = {
 	{ 0x13, 0x1f, "SSP SPI #3, master, 1V8 NOR" },
 	{ 0x04, 0x1f, "NAND, 3V3" },
 	{ 0x14, 0x1f, "NAND, 1V8" },
+	{ 0x06, 0x1f, "JTAG" },
 	{ 0x08, 0x1f, "SSP SPI #3, master, 3V3 EEPROM" },
 	{ 0x18, 0x1f, "SSP SPI #3, master, 1V8 EEPROM" },
 	{ 0x09, 0x1f, "SSP SD/MMC #0, 3V3" },
@@ -81,6 +73,23 @@ static const struct mxs_pair mxs_boot_modes[] = {
 	{ 0x00, 0x00, "Reserved/Unknown/Wrong" },
 #endif
 };
+
+#define MXS_BM_USB			0x00
+#define MXS_BM_I2C_MASTER_3V3		0x01
+#define MXS_BM_I2C_MASTER_1V8		0x11
+#define MXS_BM_SPI2_MASTER_3V3_NOR	0x02
+#define MXS_BM_SPI2_MASTER_1V8_NOR	0x12
+#define MXS_BM_SPI3_MASTER_3V3_NOR	0x03
+#define MXS_BM_SPI3_MASTER_1V8_NOR	0x13
+#define MXS_BM_NAND_3V3			0x04
+#define MXS_BM_NAND_1V8			0x14
+#define MXS_BM_JTAG			0x06
+#define MXS_BM_SPI3_MASTER_3V3_EEPROM	0x08
+#define MXS_BM_SPI3_MASTER_1V8_EEPROM	0x18
+#define MXS_BM_SDMMC0_3V3		0x09
+#define MXS_BM_SDMMC0_1V8		0x19
+#define MXS_BM_SDMMC1_3V3		0x0a
+#define MXS_BM_SDMMC1_1V8		0x1a
 
 struct mxs_spl_data {
 	uint8_t		boot_mode_idx;

@@ -1,22 +1,6 @@
 # Copyright (c) 2011 The Chromium OS Authors.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import ConfigParser
@@ -251,6 +235,31 @@ def _UpdateDefaults(parser, config):
         else:
             print "WARNING: Unknown setting %s" % name
 
+def _ReadAliasFile(fname):
+    """Read in the U-Boot git alias file if it exists.
+
+    Args:
+        fname: Filename to read.
+    """
+    if os.path.exists(fname):
+        bad_line = None
+        with open(fname) as fd:
+            linenum = 0
+            for line in fd:
+                linenum += 1
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                words = line.split(' ', 2)
+                if len(words) < 3 or words[0] != 'alias':
+                    if not bad_line:
+                        bad_line = "%s:%d:Invalid line '%s'" % (fname, linenum,
+                                                                line)
+                    continue
+                alias[words[1]] = [s.strip() for s in words[2].split(',')]
+        if bad_line:
+            print bad_line
+
 def Setup(parser, project_name, config_fname=''):
     """Set up the settings module by reading config files.
 
@@ -260,6 +269,8 @@ def Setup(parser, project_name, config_fname=''):
             for sections named "project_section" as well.
         config_fname:   Config filename to read ('' for default)
     """
+    # First read the git alias file if available
+    _ReadAliasFile('doc/git-mailrc')
     config = _ProjectConfigParser(project_name)
     if config_fname == '':
         config_fname = '%s/.patman' % os.getenv('HOME')

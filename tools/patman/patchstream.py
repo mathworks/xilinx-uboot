@@ -1,22 +1,6 @@
 # Copyright (c) 2011 The Chromium OS Authors.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import os
@@ -37,7 +21,7 @@ re_remove = re.compile('^BUG=|^TEST=|^BRANCH=|^Change-Id:|^Review URL:'
 re_allowed_after_test = re.compile('^Signed-off-by:')
 
 # Signoffs
-re_signoff = re.compile('^Signed-off-by:')
+re_signoff = re.compile('^Signed-off-by: *(.*)')
 
 # The start of the cover letter
 re_cover = re.compile('^Cover-letter:')
@@ -46,10 +30,13 @@ re_cover = re.compile('^Cover-letter:')
 re_cover_cc = re.compile('^Cover-letter-cc: *(.*)')
 
 # Patch series tag
-re_series = re.compile('^Series-([a-z-]*): *(.*)')
+re_series_tag = re.compile('^Series-([a-z-]*): *(.*)')
+
+# Commit series tag
+re_commit_tag = re.compile('^Commit-([a-z-]*): *(.*)')
 
 # Commit tags that we want to collect and keep
-re_tag = re.compile('^(Tested-by|Acked-by|Reviewed-by|Cc): (.*)')
+re_tag = re.compile('^(Tested-by|Acked-by|Reviewed-by|Patch-cc): (.*)')
 
 # The start of a new commit in the git log
 re_commit = re.compile('^commit ([0-9a-f]*)$')
@@ -85,7 +72,6 @@ class PatchStream:
         self.in_change = 0               # Non-zero if we are in a change list
         self.blank_count = 0             # Number of blank lines stored up
         self.state = STATE_MSG_HEADER    # What state are we in?
-        self.tags = []                   # Tags collected, like Tested-by...
         self.signoff = []                # Contents of signoff line
         self.commit = None               # Current commit
 
@@ -106,21 +92,25 @@ class PatchStream:
         if self.is_log:
             self.series.AddTag(self.commit, line, name, value)
 
+    def AddToCommit(self, line, name, value):
+        """Add a new Commit-xxx tag.
+
+        When a Commit-xxx tag is detected, we come here to record it.
+
+        Args:
+            line: Source line containing tag (useful for debug/error messages)
+            name: Tag name (part after 'Commit-')
+            value: Tag value (part after 'Commit-xxx: ')
+        """
+        if name == 'notes':
+            self.in_section = 'commit-' + name
+            self.skip_blank = False
+
     def CloseCommit(self):
         """Save the current commit into our commit list, and reset our state"""
         if self.commit and self.is_log:
             self.series.AddCommit(self.commit)
             self.commit = None
-
-    def FormatTags(self, tags):
-        out_list = []
-        for tag in sorted(tags):
-            if tag.startswith('Cc:'):
-                tag_list = tag[4:].split(',')
-                out_list += gitutil.BuildEmailList(tag_list, 'Cc:')
-            else:
-                out_list.append(tag)
-        return out_list
 
     def ProcessLine(self, line):
         """Process a single line of a patch file or commit log
@@ -149,14 +139,18 @@ class PatchStream:
         # Initially we have no output. Prepare the input line string
         out = []
         line = line.rstrip('\n')
+
+        commit_match = re_commit.match(line) if self.is_log else None
+
         if self.is_log:
             if line[:4] == '    ':
                 line = line[4:]
 
         # Handle state transition and skipping blank lines
-        series_match = re_series.match(line)
-        commit_match = re_commit.match(line) if self.is_log else None
+        series_tag_match = re_series_tag.match(line)
+        commit_tag_match = re_commit_tag.match(line)
         cover_cc_match = re_cover_cc.match(line)
+        signoff_match = re_signoff.match(line)
         tag_match = None
         if self.state == STATE_PATCH_HEADER:
             tag_match = re_tag.match(line)
@@ -181,6 +175,9 @@ class PatchStream:
                 elif self.in_section == 'notes':
                     if self.is_log:
                         self.series.notes += self.section
+                elif self.in_section == 'commit-notes':
+                    if self.is_log:
+                        self.commit.notes += self.section
                 else:
                     self.warn.append("Unknown section '%s'" % self.in_section)
                 self.in_section = None
@@ -194,7 +191,7 @@ class PatchStream:
             self.commit.subject = line
 
         # Detect the tags we want to remove, and skip blank lines
-        elif re_remove.match(line):
+        elif re_remove.match(line) and not commit_tag_match:
             self.skip_blank = True
 
             # TEST= should be the last thing in the commit, so remove
@@ -218,7 +215,7 @@ class PatchStream:
             if is_blank:
                 # Blank line ends this change list
                 self.in_change = 0
-            elif line == '---' or re_signoff.match(line):
+            elif line == '---':
                 self.in_change = 0
                 out = self.ProcessLine(line)
             else:
@@ -227,9 +224,9 @@ class PatchStream:
             self.skip_blank = False
 
         # Detect Series-xxx tags
-        elif series_match:
-            name = series_match.group(1)
-            value = series_match.group(2)
+        elif series_tag_match:
+            name = series_tag_match.group(1)
+            value = series_tag_match.group(2)
             if name == 'changes':
                 # value is the version number: e.g. 1, or 2
                 try:
@@ -242,11 +239,18 @@ class PatchStream:
                 self.AddToSeries(line, name, value)
                 self.skip_blank = True
 
+        # Detect Commit-xxx tags
+        elif commit_tag_match:
+            name = commit_tag_match.group(1)
+            value = commit_tag_match.group(2)
+            if name == 'notes':
+                self.AddToCommit(line, name, value)
+                self.skip_blank = True
+
         # Detect the start of a new commit
         elif commit_match:
             self.CloseCommit()
-            # TODO: We should store the whole hash, and just display a subset
-            self.commit = commit.Commit(commit_match.group(1)[:8])
+            self.commit = commit.Commit(commit_match.group(1))
 
         # Detect tags in the commit message
         elif tag_match:
@@ -254,10 +258,16 @@ class PatchStream:
             if (tag_match.group(1) == 'Tested-by' and
                     tag_match.group(2).find(os.getenv('USER') + '@') != -1):
                 self.warn.append("Ignoring %s" % line)
-            elif tag_match.group(1) == 'Cc':
+            elif tag_match.group(1) == 'Patch-cc':
                 self.commit.AddCc(tag_match.group(2).split(','))
             else:
-                self.tags.append(line);
+                out = [line]
+
+        # Suppress duplicate signoffs
+        elif signoff_match:
+            if (self.is_log or not self.commit or
+                self.commit.CheckDuplicateSignoff(signoff_match.group(1))):
+                out = [line]
 
         # Well that means this is an ordinary line
         else:
@@ -291,8 +301,10 @@ class PatchStream:
                 # Output the tags (signeoff first), then change list
                 out = []
                 log = self.series.MakeChangeLog(self.commit)
-                out += self.FormatTags(self.tags)
-                out += [line] + log
+                out += [line]
+                if self.commit:
+                    out += self.commit.notes
+                out += [''] + log
             elif self.found_test:
                 if not re_allowed_after_test.match(line):
                     self.lines_after_test += 1
@@ -344,7 +356,7 @@ class PatchStream:
 
 
 def GetMetaDataForList(commit_range, git_dir=None, count=None,
-                       series = Series()):
+                       series = None, allow_overwrite=False):
     """Reads out patch series metadata from the commits
 
     This does a 'git log' on the relevant commits and pulls out the tags we
@@ -356,17 +368,16 @@ def GetMetaDataForList(commit_range, git_dir=None, count=None,
         count: Number of commits to list, or None for no limit
         series: Series object to add information into. By default a new series
             is started.
+        allow_overwrite: Allow tags to overwrite an existing tag
     Returns:
         A Series object containing information about the commits.
     """
-    params = ['git', 'log', '--no-color', '--reverse', '--no-decorate',
-                    commit_range]
-    if count is not None:
-        params[2:2] = ['-n%d' % count]
-    if git_dir:
-        params[1:1] = ['--git-dir', git_dir]
-    pipe = [params]
-    stdout = command.RunPipe(pipe, capture=True).stdout
+    if not series:
+        series = Series()
+    series.allow_overwrite = allow_overwrite
+    params = gitutil.LogCmd(commit_range,reverse=True, count=count,
+                            git_dir=git_dir)
+    stdout = command.RunPipe([params], capture=True).stdout
     ps = PatchStream(series, is_log=True)
     for line in stdout.splitlines():
         ps.ProcessLine(line)

@@ -3,13 +3,7 @@
  * Kevin Lam <kevin.lam@freescale.com>
  * Joe D'Abbraccio <joe.d'abbraccio@freescale.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -172,8 +166,13 @@ int board_early_init_f(void)
 int board_mmc_init(bd_t *bd)
 {
 	struct immap __iomem *im = (struct immap __iomem *)CONFIG_SYS_IMMR;
+	char buffer[HWCONFIG_BUFFER_SIZE] = {0};
+	int esdhc_hwconfig_enabled = 0;
 
-	if (!hwconfig("esdhc"))
+	if (getenv_f("hwconfig", buffer, sizeof(buffer)) > 0)
+		esdhc_hwconfig_enabled = hwconfig_f("esdhc", buffer);
+
+	if (esdhc_hwconfig_enabled == 0)
 		return 0;
 
 	clrsetbits_be32(&im->sysconf.sicrl, SICRL_USB_B, SICRL_USB_B_SD);
@@ -205,7 +204,7 @@ int misc_init_r(void)
 
 #if defined(CONFIG_OF_BOARD_SETUP)
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
@@ -213,5 +212,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	ft_cpu_setup(blob, bd);
 	fdt_fixup_dr_usb(blob, bd);
 	fdt_fixup_esdhc(blob, bd);
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

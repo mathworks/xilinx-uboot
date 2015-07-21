@@ -1,20 +1,7 @@
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA  02110-1301, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LPC32XX_EMC_H
@@ -88,5 +75,26 @@ struct emc_regs {
 #define EMC_STAT_WAITPAGE(n)		(((n) - 1) & 0x1F)
 #define EMC_STAT_WAITWR(n)		(((n) - 2) & 0x1F)
 #define EMC_STAT_WAITTURN(n)		(((n) - 1) & 0x0F)
+
+/* EMC settings for DRAM */
+struct emc_dram_settings {
+	u32	cmddelay;
+	u32	config0;
+	u32	rascas0;
+	u32	rdconfig;
+	u32	trp;
+	u32	tras;
+	u32	tsrex;
+	u32	twr;
+	u32	trc;
+	u32	trfc;
+	u32	txsr;
+	u32	trrd;
+	u32	tmrd;
+	u32	tcdlr;
+	u32	refresh;
+	u32	mode;
+	u32	emode;
+};
 
 #endif /* _LPC32XX_EMC_H */

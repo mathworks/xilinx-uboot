@@ -14,10 +14,14 @@
 #define _EMIF_H_
 #include <asm/types.h>
 #include <common.h>
+#include <asm/io.h>
 
 /* Base address */
 #define EMIF1_BASE				0x4c000000
 #define EMIF2_BASE				0x4d000000
+
+#define EMIF_4D					0x4
+#define EMIF_4D5				0x5
 
 /* Registers shifts, masks and values */
 
@@ -581,7 +585,6 @@
 	(0xFF << EMIF_SYS_ADDR_SHIFT))
 
 #define EMIF_EXT_PHY_CTRL_TIMING_REG	0x5
-#define EMIF_EXT_PHY_CTRL_CONST_REG	0x13
 
 /* Reg mapping structure */
 struct emif_reg_struct {
@@ -639,9 +642,16 @@ struct emif_reg_struct {
 	u32 emif_ddr_phy_ctrl_1;
 	u32 emif_ddr_phy_ctrl_1_shdw;
 	u32 emif_ddr_phy_ctrl_2;
-	u32 padding7[12];
+	u32 padding7[4];
+	u32 emif_prio_class_serv_map;
+	u32 emif_connect_id_serv_1_map;
+	u32 emif_connect_id_serv_2_map;
+	u32 padding8[5];
 	u32 emif_rd_wr_exec_thresh;
-	u32 padding8[55];
+	u32 emif_cos_config;
+	u32 padding9[6];
+	u32 emif_ddr_phy_status[28];
+	u32 padding10[20];
 	u32 emif_ddr_ext_phy_ctrl_1;
 	u32 emif_ddr_ext_phy_ctrl_1_shdw;
 	u32 emif_ddr_ext_phy_ctrl_2;
@@ -690,6 +700,36 @@ struct emif_reg_struct {
 	u32 emif_ddr_ext_phy_ctrl_23_shdw;
 	u32 emif_ddr_ext_phy_ctrl_24;
 	u32 emif_ddr_ext_phy_ctrl_24_shdw;
+	u32 emif_ddr_ext_phy_ctrl_25;
+	u32 emif_ddr_ext_phy_ctrl_25_shdw;
+	u32 emif_ddr_ext_phy_ctrl_26;
+	u32 emif_ddr_ext_phy_ctrl_26_shdw;
+	u32 emif_ddr_ext_phy_ctrl_27;
+	u32 emif_ddr_ext_phy_ctrl_27_shdw;
+	u32 emif_ddr_ext_phy_ctrl_28;
+	u32 emif_ddr_ext_phy_ctrl_28_shdw;
+	u32 emif_ddr_ext_phy_ctrl_29;
+	u32 emif_ddr_ext_phy_ctrl_29_shdw;
+	u32 emif_ddr_ext_phy_ctrl_30;
+	u32 emif_ddr_ext_phy_ctrl_30_shdw;
+	u32 emif_ddr_ext_phy_ctrl_31;
+	u32 emif_ddr_ext_phy_ctrl_31_shdw;
+	u32 emif_ddr_ext_phy_ctrl_32;
+	u32 emif_ddr_ext_phy_ctrl_32_shdw;
+	u32 emif_ddr_ext_phy_ctrl_33;
+	u32 emif_ddr_ext_phy_ctrl_33_shdw;
+	u32 emif_ddr_ext_phy_ctrl_34;
+	u32 emif_ddr_ext_phy_ctrl_34_shdw;
+	u32 emif_ddr_ext_phy_ctrl_35;
+	u32 emif_ddr_ext_phy_ctrl_35_shdw;
+	union {
+		u32 emif_ddr_ext_phy_ctrl_36;
+		u32 emif_ddr_fifo_misaligned_clear_1;
+	};
+	union {
+		u32 emif_ddr_ext_phy_ctrl_36_shdw;
+		u32 emif_ddr_fifo_misaligned_clear_2;
+	};
 };
 
 struct dmm_lisa_map_regs {
@@ -855,19 +895,15 @@ struct dmm_lisa_map_regs {
 #define DPD_ENABLE	1
 
 /* Maximum delay before Low Power Modes */
-#ifndef CONFIG_OMAP54XX
-#define REG_CS_TIM		0xF
-#else
 #define REG_CS_TIM		0x0
-#endif
-#define REG_SR_TIM		0xF
-#define REG_PD_TIM		0xF
+#define REG_SR_TIM		0x0
+#define REG_PD_TIM		0x0
+
 
 /* EMIF_PWR_MGMT_CTRL register */
 #define EMIF_PWR_MGMT_CTRL (\
 	((REG_CS_TIM << EMIF_REG_CS_TIM_SHIFT) & EMIF_REG_CS_TIM_MASK)|\
 	((REG_SR_TIM << EMIF_REG_SR_TIM_SHIFT) & EMIF_REG_SR_TIM_MASK)|\
-	((REG_PD_TIM << EMIF_REG_PD_TIM_SHIFT) & EMIF_REG_PD_TIM_MASK)|\
 	((REG_PD_TIM << EMIF_REG_PD_TIM_SHIFT) & EMIF_REG_PD_TIM_MASK)|\
 	((LP_MODE_DISABLE << EMIF_REG_LP_MODE_SHIFT)\
 			& EMIF_REG_LP_MODE_MASK) |\
@@ -879,8 +915,6 @@ struct dmm_lisa_map_regs {
 			& EMIF_REG_CS_TIM_SHDW_MASK) |\
 	((REG_SR_TIM << EMIF_REG_SR_TIM_SHDW_SHIFT)\
 			& EMIF_REG_SR_TIM_SHDW_MASK) |\
-	((REG_PD_TIM << EMIF_REG_PD_TIM_SHDW_SHIFT)\
-			& EMIF_REG_PD_TIM_SHDW_MASK) |\
 	((REG_PD_TIM << EMIF_REG_PD_TIM_SHDW_SHIFT)\
 			& EMIF_REG_PD_TIM_SHDW_MASK))
 
@@ -1113,7 +1147,9 @@ struct emif_regs {
 	u32 freq;
 	u32 sdram_config_init;
 	u32 sdram_config;
+	u32 sdram_config2;
 	u32 ref_ctrl;
+	u32 ref_ctrl_final;
 	u32 sdram_tim1;
 	u32 sdram_tim2;
 	u32 sdram_tim3;
@@ -1131,6 +1167,10 @@ struct emif_regs {
 	u32 emif_rd_wr_lvl_rmp_ctl;
 	u32 emif_rd_wr_lvl_ctl;
 	u32 emif_rd_wr_exec_thresh;
+	u32 emif_prio_class_serv_map;
+	u32 emif_connect_id_serv_1_map;
+	u32 emif_connect_id_serv_2_map;
+	u32 emif_cos_config;
 };
 
 struct lpddr2_mr_regs {
@@ -1140,6 +1180,33 @@ struct lpddr2_mr_regs {
 	s8 mr10;
 	s8 mr16;
 };
+
+struct read_write_regs {
+	u32 read_reg;
+	u32 write_reg;
+};
+
+static inline u32 get_emif_rev(u32 base)
+{
+	struct emif_reg_struct *emif = (struct emif_reg_struct *)base;
+
+	return (readl(&emif->emif_mod_id_rev) & EMIF_REG_MAJOR_REVISION_MASK)
+		>> EMIF_REG_MAJOR_REVISION_SHIFT;
+}
+
+/*
+ * Get SDRAM type connected to EMIF.
+ * Assuming similar SDRAM parts are connected to both EMIF's
+ * which is typically the case. So it is sufficient to get
+ * SDRAM type from EMIF1.
+ */
+static inline u32 emif_sdram_type(void)
+{
+	struct emif_reg_struct *emif = (struct emif_reg_struct *)EMIF1_BASE;
+
+	return (readl(&emif->emif_sdram_config) &
+		EMIF_REG_SDRAM_TYPE_MASK) >> EMIF_REG_SDRAM_TYPE_SHIFT;
+}
 
 /* assert macros */
 #if defined(DEBUG)
@@ -1169,4 +1236,5 @@ extern u32 *const T_den;
 
 void config_data_eye_leveling_samples(u32 emif_base);
 u32 emif_sdram_type(void);
+const struct read_write_regs *get_bug_regs(u32 *iterations);
 #endif

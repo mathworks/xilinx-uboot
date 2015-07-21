@@ -4,20 +4,14 @@
  *
  * Copyright (C) 2009 - 2013 Xilinx, Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <malloc.h>
 #include <asm/io.h>
 #include <asm/errno.h>
+#include <nand.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
@@ -80,6 +74,9 @@
 #define ZYNQ_NAND_ECC_BUSY	(1 << 6)	/* ECC block is busy */
 #define ZYNQ_NAND_ECC_MASK	0x00FFFFFF	/* ECC value mask */
 
+#define ZYNQ_NAND_ROW_ADDR_CYCL_MASK	0x0F
+#define ZYNQ_NAND_COL_ADDR_CYCL_MASK	0xF0
+
 /* NAND MIO buswidth count*/
 #define ZYNQ_NAND_MIO_NUM_NAND_8BIT	13
 #define ZYNQ_NAND_MIO_NUM_NAND_16BIT	8
@@ -140,8 +137,6 @@ struct zynq_nand_info {
 	unsigned long		end_cmd;
 };
 
-#define NAND_CMD_GET_FEATURES	0xEE
-#define NAND_CMD_SET_FEATURES	0xEF
 #define ONDIE_ECC_FEATURE_ADDR	0x90
 
 /*  The NAND flash operations command format */
@@ -404,16 +399,13 @@ static int zynq_nand_correct_data(struct mtd_info *mtd, unsigned char *buf,
  * @sndcmd:	flag whether to issue read command or not
  */
 static int zynq_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
-			int page, int sndcmd)
+			int page)
 {
 	unsigned long data_width = 4;
 	unsigned long data_phase_addr = 0;
 	u8 *p;
 
-	if (sndcmd) {
-		chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
-		sndcmd = 0;
-	}
+	chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
 
 	p = chip->oob_poi;
 	chip->read_buf(mtd, p, (mtd->oobsize - data_width));
@@ -424,7 +416,7 @@ static int zynq_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
 	chip->IO_ADDR_R = (void __iomem *)data_phase_addr;
 	chip->read_buf(mtd, p, data_width);
 
-	return sndcmd;
+	return 0;
 }
 
 /*
@@ -464,10 +456,11 @@ static int zynq_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,
  * @mtd:        mtd info structure
  * @chip:       nand chip info structure
  * @buf:        buffer to store read data
+ * @oob_required: must write chip->oob_poi to OOB
  * @page:       page number to read
  */
 static int zynq_nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
-				 u8 *buf, int page)
+				   u8 *buf,  int oob_required, int page)
 {
 	unsigned long data_width = 4;
 	unsigned long data_phase_addr = 0;
@@ -488,22 +481,22 @@ static int zynq_nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 }
 
 static int zynq_nand_read_page_raw_nooob(struct mtd_info *mtd,
-		struct nand_chip *chip, u8 *buf, int page)
+		struct nand_chip *chip, u8 *buf, int oob_required, int page)
 {
 	chip->read_buf(mtd, buf, mtd->writesize);
 	return 0;
 }
 
 static int zynq_nand_read_subpage_raw(struct mtd_info *mtd,
-				    struct nand_chip *chip, u32 data_offs,
-				    u32 readlen, u8 *buf)
+				    struct nand_chip *chip, uint32_t offs,
+				    uint32_t len, uint8_t *buf, int page)
 {
-	if (data_offs != 0) {
-		chip->cmdfunc(mtd, NAND_CMD_RNDOUT, data_offs, -1);
-		buf += data_offs;
+	if (offs != 0) {
+		chip->cmdfunc(mtd, NAND_CMD_RNDOUT, offs, -1);
+		buf += offs;
 	}
 
-	chip->read_buf(mtd, buf, readlen);
+	chip->read_buf(mtd, buf, len);
 	return 0;
 }
 
@@ -512,9 +505,10 @@ static int zynq_nand_read_subpage_raw(struct mtd_info *mtd,
  * @mtd:        mtd info structure
  * @chip:       nand chip info structure
  * @buf:        data buffer
+ * @oob_required: must write chip->oob_poi to OOB
  */
-static void zynq_nand_write_page_raw(struct mtd_info *mtd,
-				   struct nand_chip *chip, const u8 *buf)
+static int zynq_nand_write_page_raw(struct mtd_info *mtd,
+	struct nand_chip *chip, const u8 *buf, int oob_required)
 {
 	unsigned long data_width = 4;
 	unsigned long data_phase_addr = 0;
@@ -532,6 +526,8 @@ static void zynq_nand_write_page_raw(struct mtd_info *mtd,
 	chip->IO_ADDR_W = (void __iomem *)data_phase_addr;
 
 	chip->write_buf(mtd, p, data_width);
+
+	return 0;
 }
 
 /*
@@ -539,11 +535,12 @@ static void zynq_nand_write_page_raw(struct mtd_info *mtd,
  * @mtd:	Pointer to the mtd info structure
  * @chip:	Pointer to the NAND chip info structure
  * @buf:	Pointer to the data buffer
+ * @oob_required: must write chip->oob_poi to OOB
  *
  * This functions writes data and hardware generated ECC values in to the page.
  */
-static void zynq_nand_write_page_hwecc(struct mtd_info *mtd,
-				     struct nand_chip *chip, const u8 *buf)
+static int zynq_nand_write_page_hwecc(struct mtd_info *mtd,
+	struct nand_chip *chip, const u8 *buf, int oob_required)
 {
 	int i, eccsize = chip->ecc.size;
 	int eccsteps = chip->ecc.steps;
@@ -589,6 +586,8 @@ static void zynq_nand_write_page_hwecc(struct mtd_info *mtd,
 	chip->IO_ADDR_W = (void __iomem *)data_phase_addr;
 	oob_ptr += (mtd->oobsize - data_width);
 	chip->write_buf(mtd, oob_ptr, data_width);
+
+	return 0;
 }
 
 /*
@@ -597,9 +596,10 @@ static void zynq_nand_write_page_hwecc(struct mtd_info *mtd,
  * @mtd:	mtd info structure
  * @chip:	nand chip info structure
  * @buf:	data buffer
+ * @oob_required: must write chip->oob_poi to OOB
  */
-static void zynq_nand_write_page_swecc(struct mtd_info *mtd,
-				     struct nand_chip *chip, const u8 *buf)
+static int zynq_nand_write_page_swecc(struct mtd_info *mtd,
+	struct nand_chip *chip, const u8 *buf, int oob_required)
 {
 	int i, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
@@ -615,7 +615,7 @@ static void zynq_nand_write_page_swecc(struct mtd_info *mtd,
 	for (i = 0; i < chip->ecc.total; i++)
 		chip->oob_poi[eccpos[i]] = ecc_calc[i];
 
-	chip->ecc.write_page_raw(mtd, chip, buf);
+	return chip->ecc.write_page_raw(mtd, chip, buf, 1);
 }
 
 /*
@@ -623,6 +623,7 @@ static void zynq_nand_write_page_swecc(struct mtd_info *mtd,
  * @mtd:	Pointer to the mtd info structure
  * @chip:	Pointer to the NAND chip info structure
  * @buf:	Pointer to the buffer to store read data
+ * @oob_required: must write chip->oob_poi to OOB
  * @page:	page number to read
  *
  * This functions reads data and checks the data integrity by comparing hardware
@@ -631,7 +632,7 @@ static void zynq_nand_write_page_swecc(struct mtd_info *mtd,
  * returns:	0 always and updates ECC operation status in to MTD structure
  */
 static int zynq_nand_read_page_hwecc(struct mtd_info *mtd,
-				   struct nand_chip *chip, u8 *buf, int page)
+	struct nand_chip *chip, u8 *buf, int oob_required, int page)
 {
 	int i, stat, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
@@ -704,7 +705,7 @@ static int zynq_nand_read_page_hwecc(struct mtd_info *mtd,
  * @page:	page number to read
  */
 static int zynq_nand_read_page_swecc(struct mtd_info *mtd,
-				   struct nand_chip *chip, u8 *buf, int page)
+	struct nand_chip *chip, u8 *buf, int oob_required,  int page)
 {
 	int i, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
@@ -714,7 +715,7 @@ static int zynq_nand_read_page_swecc(struct mtd_info *mtd,
 	u8 *ecc_code = chip->buffers->ecccode;
 	u32 *eccpos = chip->ecc.layout->eccpos;
 
-	chip->ecc.read_page_raw(mtd, chip, buf, page);
+	chip->ecc.read_page_raw(mtd, chip, buf, 1, page);
 
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize)
 		chip->ecc.calculate(mtd, p, &ecc_calc[i]);
@@ -762,6 +763,7 @@ static void zynq_nand_cmd_function(struct mtd_info *mtd, unsigned int command,
 {
 	struct nand_chip *chip = mtd->priv;
 	const struct zynq_nand_command_format *curr_cmd = NULL;
+	u8 addr_cycles = 0;
 	struct zynq_nand_info *xnand;
 	void *cmd_addr;
 	unsigned long cmd_data = 0;
@@ -811,8 +813,18 @@ static void zynq_nand_cmd_function(struct mtd_info *mtd, unsigned int command,
 	else
 		end_cmd = curr_cmd->end_cmd;
 
+	if ((command == NAND_CMD_READ0) ||
+            (command == NAND_CMD_SEQIN)) {
+		addr_cycles = chip->onfi_params.addr_cycles &
+				ZYNQ_NAND_ROW_ADDR_CYCL_MASK;
+		addr_cycles += ((chip->onfi_params.addr_cycles &
+				ZYNQ_NAND_COL_ADDR_CYCL_MASK) >> 4);
+	} else {
+		addr_cycles = curr_cmd->addr_cycles;
+	}
+
 	cmd_phase_addr = (unsigned long)xnand->nand_base	|
-			(curr_cmd->addr_cycles << ADDR_CYCLES_SHIFT)	|
+			(addr_cycles << ADDR_CYCLES_SHIFT)	|
 			(end_cmd_valid << END_CMD_VALID_SHIFT)		|
 			(COMMAND_PHASE)					|
 			(end_cmd << END_CMD_SHIFT)			|
@@ -1073,16 +1085,16 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 	nand_chip->write_buf = zynq_nand_write_buf;
 
 	/* Check the NAND buswidth */
+	/* FIXME this will be changed by using NAND_BUSWIDTH_AUTO */
 	is_16bit_bw = zynq_nand_check_is_16bit_bw_flash();
 	if (is_16bit_bw == NAND_BW_UNKNOWN) {
 		printf("%s: Unable detect NAND based on MIO settings\n",
 		       __func__);
 		goto free;
-	} else if (is_16bit_bw == NAND_BW_8BIT) {
-		nand_chip->options = NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT;
 	} else if (is_16bit_bw == NAND_BW_16BIT) {
-		nand_chip->options = NAND_BUSWIDTH_16 | NAND_USE_FLASH_BBT;
+		nand_chip->options = NAND_BUSWIDTH_16;
 	}
+	nand_chip->bbt_options = NAND_BBT_USE_FLASH;
 
 	/* Initialize the NAND flash interface on NAND controller */
 	if (zynq_nand_init_nand_flash(nand_chip->options) < 0) {
@@ -1143,6 +1155,7 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 		 * with the SMC controller
 		 */
 		nand_chip->ecc.mode = NAND_ECC_HW;
+		nand_chip->ecc.strength = 1;
 		nand_chip->ecc.read_page = zynq_nand_read_page_raw_nooob;
 		nand_chip->ecc.read_subpage = zynq_nand_read_subpage_raw;
 		nand_chip->ecc.write_page = zynq_nand_write_page_raw;
@@ -1166,6 +1179,7 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 	} else {
 		/* Hardware ECC generates 3 bytes ECC code for each 512 bytes */
 		nand_chip->ecc.mode = NAND_ECC_HW;
+		nand_chip->ecc.strength = 1;
 		nand_chip->ecc.size = ZYNQ_NAND_ECC_SIZE;
 		nand_chip->ecc.bytes = 3;
 		nand_chip->ecc.calculate = zynq_nand_calculate_hwecc;
@@ -1236,7 +1250,6 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 
 	return 0;
 fail:
-	nand_release(mtd);
 free:
 	kfree(xnand);
 	return err;

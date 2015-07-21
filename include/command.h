@@ -2,23 +2,7 @@
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -27,7 +11,6 @@
 #ifndef __COMMAND_H
 #define __COMMAND_H
 
-#include <config.h>
 #include <linker_lists.h>
 
 #ifndef NULL
@@ -80,6 +63,15 @@ extern int var_complete(int argc, char * const argv[], char last_char, int maxv,
 extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp);
 #endif
 
+/**
+ * cmd_process_error() - report and process a possible error
+ *
+ * @cmdtp: Command which caused the error
+ * @err: Error code (0 if none, -ve for error, like -EIO)
+ * @return 0 if there is not error, 1 (CMD_RET_FAILURE) if an error is found
+ */
+int cmd_process_error(cmd_tbl_t *cmdtp, int err);
+
 /*
  * Monitor Command
  *
@@ -109,6 +101,8 @@ static inline int bootm_maybe_autostart(cmd_tbl_t *cmdtp, const char *cmd)
 	return 0;
 }
 #endif
+
+extern int do_bootz(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
 extern int common_diskboot(cmd_tbl_t *cmdtp, const char *intf, int argc,
 			   char *const argv[]);
@@ -153,6 +147,7 @@ int cmd_process(int flag, int argc, char * const argv[],
  */
 #define CMD_FLAG_REPEAT		0x0001	/* repeat last command		*/
 #define CMD_FLAG_BOOTD		0x0002	/* command is from bootd	*/
+#define CMD_FLAG_ENV		0x0004	/* command is from the environment */
 
 #ifdef CONFIG_AUTO_COMPLETE
 # define _CMD_COMPLETE(x) x,

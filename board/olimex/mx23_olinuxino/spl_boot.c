@@ -3,23 +3,7 @@
  *
  * Copyright (C) 2013 Marek Vasut <marex@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -29,8 +13,8 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 
-#define	MUX_CONFIG_EMI	(MXS_PAD_3V3 | MXS_PAD_16MA | MXS_PAD_PULLUP)
-#define	MUX_CONFIG_SSP	(MXS_PAD_3V3 | MXS_PAD_8MA | MXS_PAD_PULLUP)
+#define	MUX_CONFIG_EMI	(MXS_PAD_3V3 | MXS_PAD_12MA | MXS_PAD_PULLUP)
+#define	MUX_CONFIG_SSP	(MXS_PAD_8MA | MXS_PAD_PULLUP)
 
 const iomux_cfg_t iomux_setup[] = {
 	/* DUART */
@@ -101,7 +85,37 @@ const iomux_cfg_t iomux_setup[] = {
 		(MXS_PAD_3V3 | MXS_PAD_12MA | MXS_PAD_NOPULL),
 };
 
-void board_init_ll(void)
+void board_init_ll(const uint32_t arg, const uint32_t *resptr)
 {
-	mxs_common_spl_init(iomux_setup, ARRAY_SIZE(iomux_setup));
+	mxs_common_spl_init(arg, resptr, iomux_setup, ARRAY_SIZE(iomux_setup));
+}
+
+/* Fine-tune the DRAM configuration. */
+void mxs_adjust_memory_params(uint32_t *dram_vals)
+{
+	/* Enable Auto Precharge. */
+	dram_vals[3] |= 1 << 8;
+	/* Enable Fast Writes. */
+	dram_vals[5] |= 1 << 8;
+	/* tEMRS = 3*tCK */
+	dram_vals[10] &= ~(0x3 << 8);
+	dram_vals[10] |= (0x3 << 8);
+	/* CASLAT = 3*tCK */
+	dram_vals[11] &= ~(0x3 << 0);
+	dram_vals[11] |= (0x3 << 0);
+	/* tCKE = 1*tCK */
+	dram_vals[12] &= ~(0x7 << 0);
+	dram_vals[12] |= (0x1 << 0);
+	/* CASLAT_LIN_GATE = 3*tCK , CASLAT_LIN = 3*tCK, tWTR=2*tCK */
+	dram_vals[13] &= ~((0xf << 16) | (0xf << 24) | (0xf << 0));
+	dram_vals[13] |= (0x6 << 16) | (0x6 << 24) | (0x2 << 0);
+	/* tDAL = 6*tCK */
+	dram_vals[15] &= ~(0xf << 16);
+	dram_vals[15] |= (0x6 << 16);
+	/* tREF = 1040*tCK */
+	dram_vals[26] &= ~0xffff;
+	dram_vals[26] |= 0x0410;
+	/* tRAS_MAX = 9334*tCK */
+	dram_vals[32] &= ~0xffff;
+	dram_vals[32] |= 0x2475;
 }

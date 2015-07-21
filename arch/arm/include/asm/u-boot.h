@@ -7,23 +7,7 @@
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Alex Zuepke <azu@sysgo.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  ********************************************************************
  * NOTE: This header file defines an interface to U-Boot. Including
@@ -43,7 +27,6 @@
 
 #ifndef __ASSEMBLY__
 typedef struct bd_info {
-	unsigned int	bi_baudrate;	/* serial console baudrate */
     ulong	        bi_arch_number;	/* unique id for this board */
     ulong	        bi_boot_params;	/* where this board expects params */
 	unsigned long	bi_arm_freq; /* arm frequency */
@@ -60,6 +43,14 @@ typedef struct bd_info {
 #endif /* !CONFIG_SYS_GENERIC_BOARD */
 
 /* For image.h:image_check_target_arch() */
+#ifndef CONFIG_ARM64
 #define IH_ARCH_DEFAULT IH_ARCH_ARM
+#else
+#define IH_ARCH_DEFAULT IH_ARCH_ARM64
+#endif
+
+#if defined(CONFIG_USE_PRIVATE_LIBGCC) && defined(CONFIG_SYS_THUMB_BUILD)
+#error Thumb build does not work with private libgcc.
+#endif
 
 #endif	/* _U_BOOT_H_ */

@@ -11,10 +11,7 @@
  * (C) Copyright 2008 - 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -30,6 +27,8 @@
 #include <post.h>
 
 #include "../common/common.h"
+
+static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* port pin dir open_drain assign */
@@ -94,19 +93,6 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* END of table */
 	{0,  0, 0, 0, QE_IOP_TAB_END},
 };
-
-static int board_init_i2c_busses(void)
-{
-	I2C_MUX_DEVICE *dev = NULL;
-	uchar *dtt_bus = (uchar *)"pca9547:70:a";
-
-	/* Set up the Bus for the DTTs */
-	dev = i2c_mux_ident_muxstring(dtt_bus);
-	if (dev == NULL)
-		printf("Error couldn't add Bus for DTT\n");
-
-	return 0;
-}
 
 #if defined(CONFIG_SUVD3)
 const uint upma_table[] = {
@@ -206,8 +192,7 @@ int board_early_init_r(void)
 
 int misc_init_r(void)
 {
-	/* add board specific i2c busses */
-	board_init_i2c_busses();
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 
@@ -243,6 +228,11 @@ static struct mv88e_sw_reg extsw_conf[] = {
 	{ PORT(5), 0x1A, 0xADB1 },
 	/* port 6, unused, this port has no phy */
 	{ PORT(6), PORT_CTRL, PORT_DIS },
+	/*
+	 * Errata Fix: 1.9V Output from Internal 1.8V Regulator,
+	 * acc . MV-S300889-00D.pdf , clause 4.5
+	 */
+	{ PORT(5), 0x1A, 0xADB1 },
 };
 #endif
 
@@ -295,7 +285,7 @@ int last_stage_init(void)
 	return 0;
 }
 
-int fixed_sdram(void)
+static int fixed_sdram(void)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
@@ -372,16 +362,18 @@ int checkboard(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
 #endif
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_read_eeprom();
+	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 #endif

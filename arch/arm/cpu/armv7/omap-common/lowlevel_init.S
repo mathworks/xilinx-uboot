@@ -7,88 +7,32 @@
  * Author :
  *	Aneesh V	<aneesh@ti.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <asm/arch/omap.h>
+#include <asm/omap_common.h>
 #include <asm/arch/spl.h>
 #include <linux/linkage.h>
 
+#ifndef CONFIG_OMAP34XX
 ENTRY(save_boot_params)
-	/*
-	 * See if the rom code passed pointer is valid:
-	 * It is not valid if it is not in non-secure SRAM
-	 * This may happen if you are booting with the help of
-	 * debugger
-	 */
-	ldr     r2, =NON_SECURE_SRAM_START
-	cmp	r2, r0
-	bgt	1f
-	ldr	r2, =NON_SECURE_SRAM_END
-	cmp	r2, r0
-	blt	1f
-
-	/*
-	 * store the boot params passed from rom code or saved
-	 * and passed by SPL
-	 */
-	cmp	r0, #0
-	beq	1f
-	ldr	r1, =boot_params
+	ldr	r1, =OMAP_SRAM_SCRATCH_BOOT_PARAMS
 	str	r0, [r1]
-#ifdef CONFIG_SPL_BUILD
-	/* Store the boot device in spl_boot_device */
-	ldrb	r2, [r0, #BOOT_DEVICE_OFFSET]	@ r1 <- value of boot device
-	and	r2, #BOOT_DEVICE_MASK
-	ldr	r3, =boot_params
-	strb	r2, [r3, #BOOT_DEVICE_OFFSET]	@ spl_boot_device <- r1
-
-	/*
-	 * boot mode is only valid for device that can be raw or FAT booted.
-	 * in other cases it may be fatal to look.  While platforms differ
-	 * in the values used for each MMC slot, they are contiguous.
-	 */
-	cmp	r2, #MMC_BOOT_DEVICES_START
-	blt	2f
-	cmp	r2, #MMC_BOOT_DEVICES_END
-	bgt	2f
-	/* Store the boot mode (raw/FAT) in omap_bootmode */
-	ldr	r2, [r0, #DEV_DESC_PTR_OFFSET]	@ get the device descriptor ptr
-	ldr	r2, [r2, #DEV_DATA_PTR_OFFSET]	@ get the pDeviceData ptr
-	ldr	r2, [r2, #BOOT_MODE_OFFSET]	@ get the boot mode
-	ldr	r3, =omap_bootmode
-	str	r2, [r3]
-#endif
-2:
-	ldrb	r2, [r0, #CH_FLAGS_OFFSET]
-	ldr	r3, =boot_params
-	strb	r2, [r3, #CH_FLAGS_OFFSET]
-1:
-	bx	lr
+	b	save_boot_params_ret
 ENDPROC(save_boot_params)
+#endif
 
-ENTRY(set_pl310_ctrl_reg)
-	PUSH	{r4-r11, lr}	@ save registers - ROM code may pollute
+ENTRY(omap_smc1)
+	PUSH	{r4-r12, lr}	@ save registers - ROM code may pollute
 				@ our registers
-	LDR	r12, =0x102	@ Set PL310 control register - value in R0
-	.word	0xe1600070	@ SMC #0 - hand assembled because -march=armv5
-				@ call ROM Code API to set control register
-	POP	{r4-r11, pc}
-ENDPROC(set_pl310_ctrl_reg)
+	MOV	r12, r0		@ Service
+	MOV	r0, r1		@ Argument
+	DSB
+	DMB
+	.word	0xe1600070	@ SMC #0 - hand assembled for GCC versions
+				@ call ROM Code API for the service requested
+
+	POP	{r4-r12, pc}
+ENDPROC(omap_smc1)

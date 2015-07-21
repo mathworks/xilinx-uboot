@@ -2,23 +2,7 @@
  * (C) Copyright 2003
  * Wolfgang Denk Engineering, <wd@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #if defined(CONFIG_64BIT)
@@ -69,6 +53,7 @@ SECTIONS
 
 	. = ALIGN(4);
 	__image_copy_end = .;
+	__init_end = .;
 
 	.rel.dyn : {
 		__rel_dyn_start = .;
@@ -76,7 +61,7 @@ SECTIONS
 		__rel_dyn_end = .;
 	}
 
-	.deadcode : {
+	.padding : {
 		/*
 		 * Workaround for a binutils feature (or bug?).
 		 *
@@ -91,12 +76,10 @@ SECTIONS
 		 *
 		 * Create a small section here to avoid that.
 		 */
-		LONG(0xffffffff);
+		LONG(0xFFFFFFFF)
 	}
 
-	.dynsym : {
-		*(.dynsym)
-	}
+	_end = .;
 
 	.bss __rel_dyn_start (OVERLAY) : {
 		__bss_start = .;
@@ -107,15 +90,39 @@ SECTIONS
 		__bss_end = .;
 	}
 
-	/DISCARD/ : {
+	.dynsym _end : {
+		*(.dynsym)
+	}
+
+	.dynbss : {
 		*(.dynbss)
+	}
+
+	.dynstr : {
 		*(.dynstr)
+	}
+
+	.dynamic : {
 		*(.dynamic)
-		*(.interp)
-		*(.hash)
-		*(.gnu.*)
+	}
+
+	.plt : {
 		*(.plt)
-		*(.got.plt)
-		*(.rel.plt)
+	}
+
+	.interp : {
+		*(.interp)
+	}
+
+	.gnu : {
+		*(.gnu*)
+	}
+
+	.MIPS.stubs : {
+		*(.MIPS.stubs)
+	}
+
+	.hash : {
+		*(.hash)
 	}
 }

@@ -34,43 +34,14 @@ static struct pci_device_id ehci_pci_ids[] = {
 	{0, 0}
 };
 #else
-static pci_dev_t ehci_find_class(int index)
-{
-	int bus;
-	int devnum;
-	pci_dev_t bdf;
-	uint32_t class;
-
-	for (bus = 0; bus <= pci_last_busno(); bus++) {
-		for (devnum = 0; devnum < PCI_MAX_PCI_DEVICES-1; devnum++) {
-			pci_read_config_dword(PCI_BDF(bus, devnum, 0),
-					      PCI_CLASS_REVISION, &class);
-			if (class >> 16 == 0xffff)
-				continue;
-
-			for (bdf = PCI_BDF(bus, devnum, 0);
-					bdf <= PCI_BDF(bus, devnum,
-						PCI_MAX_PCI_FUNCTIONS - 1);
-					bdf += PCI_BDF(0, 0, 1)) {
-				pci_read_config_dword(bdf, PCI_CLASS_REVISION,
-						      &class);
-				if ((class >> 8 == PCI_CLASS_SERIAL_USB_EHCI)
-						&& !index--)
-					return bdf;
-			}
-		}
-	}
-
-	return -ENODEV;
-}
 #endif
 
 /*
  * Create the appropriate control structures to manage
  * a new EHCI host controller.
  */
-int ehci_hcd_init(int index, struct ehci_hccr **ret_hccr,
-		struct ehci_hcor **ret_hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **ret_hccr, struct ehci_hcor **ret_hcor)
 {
 	pci_dev_t pdev;
 	uint32_t cmd;
@@ -80,7 +51,7 @@ int ehci_hcd_init(int index, struct ehci_hccr **ret_hccr,
 #ifdef CONFIG_PCI_EHCI_DEVICE
 	pdev = pci_find_devices(ehci_pci_ids, CONFIG_PCI_EHCI_DEVICE);
 #else
-	pdev = ehci_find_class(index);
+	pdev = pci_find_class(PCI_CLASS_SERIAL_USB_EHCI, index);
 #endif
 	if (pdev < 0) {
 		printf("EHCI host controller not found\n");

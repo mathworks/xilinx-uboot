@@ -2,30 +2,18 @@
  *  (C) Copyright 2010-2013
  *  NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <dm.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/gp_padctrl.h>
+#include <asm/arch/gpio.h>
+#include <asm/gpio.h>
 #include "pinmux-config-cardhu.h"
 #include <i2c.h>
+#include <netdev.h>
 
 #define PMU_I2C_ADDRESS		0x2D
 #define MAX_I2C_RETRY		3
@@ -36,14 +24,14 @@
  */
 void pinmux_init(void)
 {
-	pinmux_config_table(tegra3_pinmux_common,
+	pinmux_config_pingrp_table(tegra3_pinmux_common,
 		ARRAY_SIZE(tegra3_pinmux_common));
 
-	pinmux_config_table(unused_pins_lowpower,
+	pinmux_config_pingrp_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
 
 	/* Initialize any non-default pad configs (APB_MISC_GP regs) */
-	padgrp_config_table(cardhu_padctrl, ARRAY_SIZE(cardhu_padctrl));
+	pinmux_config_drvgrp_table(cardhu_padctrl, ARRAY_SIZE(cardhu_padctrl));
 }
 
 #if defined(CONFIG_TEGRA_MMC)
@@ -53,17 +41,23 @@ void pinmux_init(void)
  */
 void board_sdmmc_voltage_init(void)
 {
+	struct udevice *dev;
 	uchar reg, data_buffer[1];
+	int ret;
 	int i;
 
-	i2c_set_bus_num(0);	/* PMU is on bus 0 */
+	ret = i2c_get_chip_for_busnum(0, PMU_I2C_ADDRESS, 1, &dev);
+	if (ret) {
+		debug("%s: Cannot find PMIC I2C chip\n", __func__);
+		return;
+	}
 
 	/* TPS659110: LDO5_REG = 3.3v, ACTIVE to SDMMC1 */
 	data_buffer[0] = 0x65;
 	reg = 0x32;
 
 	for (i = 0; i < MAX_I2C_RETRY; ++i) {
-		if (i2c_write(PMU_I2C_ADDRESS, reg, 1, data_buffer, 1))
+		if (dm_i2c_write(dev, reg, data_buffer, 1))
 			udelay(100);
 	}
 
@@ -72,7 +66,7 @@ void board_sdmmc_voltage_init(void)
 	reg = 0x67;
 
 	for (i = 0; i < MAX_I2C_RETRY; ++i) {
-		if (i2c_write(PMU_I2C_ADDRESS, reg, 1, data_buffer, 1))
+		if (dm_i2c_write(dev, reg, data_buffer, 1))
 			udelay(100);
 	}
 }
@@ -92,3 +86,52 @@ void pin_mux_mmc(void)
 	board_sdmmc_voltage_init();
 }
 #endif	/* MMC */
+
+#ifdef CONFIG_PCI_TEGRA
+int tegra_pcie_board_init(void)
+{
+	struct udevice *dev;
+	u8 addr, data[1];
+	int err;
+
+	err = i2c_get_chip_for_busnum(0, PMU_I2C_ADDRESS, 1, &dev);
+	if (err) {
+		debug("failed to find PMU bus\n");
+		return err;
+	}
+
+	/* TPS659110: LDO1_REG = 1.05V, ACTIVE */
+	data[0] = 0x15;
+	addr = 0x30;
+
+	err = dm_i2c_write(dev, addr, data, 1);
+	if (err) {
+		debug("failed to set VDD supply\n");
+		return err;
+	}
+
+	/* GPIO: PEX = 3.3V */
+	err = gpio_request(GPIO_PL7, "PEX");
+	if (err < 0)
+		return err;
+
+	gpio_direction_output(GPIO_PL7, 1);
+
+	/* TPS659110: LDO2_REG = 1.05V, ACTIVE */
+	data[0] = 0x15;
+	addr = 0x31;
+
+	err = dm_i2c_write(dev, addr, data, 1);
+	if (err) {
+		debug("failed to set AVDD supply\n");
+		return err;
+	}
+
+	return 0;
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
+}
+#endif /* PCI */

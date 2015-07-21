@@ -4,23 +4,7 @@
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
@@ -34,6 +18,7 @@ SECTIONS
 	.text :
 	{
 		__image_copy_start = .;
+		*(.vectors)
 		CPUDIR/start.o (.text*)
 		*(.text*)
 	}
@@ -47,8 +32,18 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list*_i2c_*)));
+	}
 
 	. = .;
+#ifdef CONFIG_SPL_DM
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list_*_driver_*)));
+		KEEP(*(SORT(.u_boot_list_*_uclass_*)));
+	}
+#endif
+	. = ALIGN(4);
 
 	__image_copy_end = .;
 
@@ -58,12 +53,12 @@ SECTIONS
 		__rel_dyn_end = .;
 	}
 
-	.dynsym : {
-		__dynsym_start = .;
-		*(.dynsym)
+	.end :
+	{
+		*(.__end)
 	}
 
-	_end = .;
+	_image_binary_end = .;
 
 	.bss __rel_dyn_start (OVERLAY) : {
 		__bss_start = .;
@@ -72,11 +67,15 @@ SECTIONS
 		__bss_end = .;
 	}
 
-	/DISCARD/ : { *(.dynstr*) }
-	/DISCARD/ : { *(.dynamic*) }
-	/DISCARD/ : { *(.plt*) }
-	/DISCARD/ : { *(.interp*) }
-	/DISCARD/ : { *(.gnu*) }
+	.dynsym _image_binary_end : { *(.dynsym) }
+	.dynbss : { *(.dynbss) }
+	.dynstr : { *(.dynstr*) }
+	.dynamic : { *(.dynamic*) }
+	.hash : { *(.hash*) }
+	.plt : { *(.plt*) }
+	.interp : { *(.interp*) }
+	.gnu : { *(.gnu*) }
+	.ARM.exidx : { *(.ARM.exidx*) }
 }
 
 #if defined(CONFIG_SPL_MAX_SIZE)

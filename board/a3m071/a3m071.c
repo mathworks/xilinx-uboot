@@ -8,15 +8,9 @@
  * (C) Copyright 2006
  * MicroSys GmbH
  *
- * Copyright 2012 Stefan Roese <sr@denx.de>
+ * Copyright 2012-2013 Stefan Roese <sr@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -241,12 +235,26 @@ void spl_board_init(void)
 
 	/* And write new value back to register */
 	out_be32(&mm->ipbi_ws_ctrl, val);
-#endif
 
-	/*
-	 * No need to change the pin multiplexing (MPC5XXX_GPS_PORT_CONFIG)
-	 * as all 3 config versions (failsave level) have the same setup.
-	 */
+
+	/* Setup pin multiplexing */
+	if (failsavelevel == 2) {
+		/* fpga-version ok */
+#if defined(CONFIG_SYS_GPS_PORT_CONFIG_2)
+		out_be32(&gpio->port_config, CONFIG_SYS_GPS_PORT_CONFIG_2);
+#endif
+	} else if (failsavelevel == 1) {
+		/* digiboard-version ok - fpga not */
+#if defined(CONFIG_SYS_GPS_PORT_CONFIG_1)
+		out_be32(&gpio->port_config, CONFIG_SYS_GPS_PORT_CONFIG_1);
+#endif
+	} else {
+		/* full failsave-mode */
+#if defined(CONFIG_SYS_GPS_PORT_CONFIG)
+		out_be32(&gpio->port_config, CONFIG_SYS_GPS_PORT_CONFIG);
+#endif
+	}
+#endif
 
 	/*
 	 * Setup gpio_wkup_7 as watchdog AS INPUT to disable it - see
@@ -384,9 +392,11 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t * bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
 #endif /* defined(CONFIG_OF_FLAT_TREE) && defined(CONFIG_OF_BOARD_SETUP) */
 
@@ -404,7 +414,8 @@ int spl_start_uboot(void)
 
 	env_init();
 	getenv_f("boot_os", s, sizeof(s));
-	if ((s != NULL) && (strcmp(s, "yes") == 0))
+	if ((s != NULL) && (*s == '1' || *s == 'y' || *s == 'Y' ||
+			    *s == 't' || *s == 'T'))
 		return 0;
 
 	return 1;

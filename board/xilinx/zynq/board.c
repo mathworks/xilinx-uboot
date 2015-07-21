@@ -1,27 +1,13 @@
 /*
  * (C) Copyright 2012 Michal Simek <monstr@monstr.eu>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/io.h>
+#include <fdtdec.h>
+#include <fpga.h>
+#include <mmc.h>
 #include <netdev.h>
 #include <zynqpl.h>
 #include <asm/arch/hardware.h>
@@ -29,28 +15,27 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* Bootmode setting values */
-#define BOOT_MODES_MASK		0x0000000F
-#define QSPI_MODE		0x00000001
-#define NOR_FLASH_MODE		0x00000002
-#define NAND_FLASH_MODE		0x00000004
-#define SD_MODE			0x00000005
-#define JTAG_MODE		0x00000000
-
-#ifdef CONFIG_FPGA
-Xilinx_desc fpga;
+#if (defined(CONFIG_FPGA) && !defined(CONFIG_SPL_BUILD)) || \
+    (defined(CONFIG_SPL_FPGA_SUPPORT) && defined(CONFIG_SPL_BUILD))
+static xilinx_desc fpga;
 
 /* It can be done differently */
-Xilinx_desc fpga010 = XILINX_XC7Z010_DESC(0x10);
-Xilinx_desc fpga020 = XILINX_XC7Z020_DESC(0x20);
-Xilinx_desc fpga030 = XILINX_XC7Z030_DESC(0x30);
-Xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
-Xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
+static xilinx_desc fpga010 = XILINX_XC7Z010_DESC(0x10);
+static xilinx_desc fpga015 = XILINX_XC7Z015_DESC(0x15);
+static xilinx_desc fpga020 = XILINX_XC7Z020_DESC(0x20);
+static xilinx_desc fpga030 = XILINX_XC7Z030_DESC(0x30);
+static xilinx_desc fpga035 = XILINX_XC7Z035_DESC(0x35);
+static xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
+static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
 #endif
 
 int board_init(void)
 {
-#ifdef CONFIG_FPGA
+#if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
+	unsigned char eepromsel = CONFIG_SYS_I2C_MUX_EEPROM_SEL;
+#endif
+#if (defined(CONFIG_FPGA) && !defined(CONFIG_SPL_BUILD)) || \
+    (defined(CONFIG_SPL_FPGA_SUPPORT) && defined(CONFIG_SPL_BUILD))
 	u32 idcode;
 
 	idcode = zynq_slcr_get_idcode();
@@ -59,11 +44,17 @@ int board_init(void)
 	case XILINX_ZYNQ_7010:
 		fpga = fpga010;
 		break;
+	case XILINX_ZYNQ_7015:
+		fpga = fpga015;
+		break;
 	case XILINX_ZYNQ_7020:
 		fpga = fpga020;
 		break;
 	case XILINX_ZYNQ_7030:
 		fpga = fpga030;
+		break;
+	case XILINX_ZYNQ_7035:
+		fpga = fpga035;
 		break;
 	case XILINX_ZYNQ_7045:
 		fpga = fpga045;
@@ -74,44 +65,34 @@ int board_init(void)
 	}
 #endif
 
-	/* temporary hack to clear pending irqs before Linux as it
-	 * will hang Linux
-	 */
-	writel(0x26d, 0xe0001014);
-
-	/* temporary hack to take USB out of reset til the is fixed
-	 * in Linux
-	 */
-	writel(0x80, 0xe000a204);
-	writel(0x80, 0xe000a208);
-	writel(0x80, 0xe000a040);
-	writel(0x00, 0xe000a040);
-	writel(0x80, 0xe000a040);
-
-#ifdef CONFIG_FPGA
+#if (defined(CONFIG_FPGA) && !defined(CONFIG_SPL_BUILD)) || \
+    (defined(CONFIG_SPL_FPGA_SUPPORT) && defined(CONFIG_SPL_BUILD))
 	fpga_init();
 	fpga_add(fpga_xilinx, &fpga);
 #endif
-
+#if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
+	if (eeprom_write(CONFIG_SYS_I2C_MUX_ADDR, 0, &eepromsel, 1))
+		puts("I2C:EEPROM selection failed\n");
+#endif
 	return 0;
 }
 
 int board_late_init(void)
 {
-	switch ((zynq_slcr_get_boot_mode()) & BOOT_MODES_MASK) {
-	case QSPI_MODE:
+	switch ((zynq_slcr_get_boot_mode()) & ZYNQ_BM_MASK) {
+	case ZYNQ_BM_QSPI:
 		setenv("modeboot", "qspiboot");
 		break;
-	case NAND_FLASH_MODE:
+	case ZYNQ_BM_NAND:
 		setenv("modeboot", "nandboot");
 		break;
-	case NOR_FLASH_MODE:
+	case ZYNQ_BM_NOR:
 		setenv("modeboot", "norboot");
 		break;
-	case SD_MODE:
+	case ZYNQ_BM_SD:
 		setenv("modeboot", "sdboot");
 		break;
-	case JTAG_MODE:
+	case ZYNQ_BM_JTAG:
 		setenv("modeboot", "jtagboot");
 		break;
 	default:
@@ -122,7 +103,14 @@ int board_late_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_CMD_NET
+#ifdef CONFIG_DISPLAY_BOARDINFO
+int checkboard(void)
+{
+	puts("Board:\tXilinx Zynq\n");
+	return 0;
+}
+#endif
+
 int board_eth_init(bd_t *bis)
 {
 	u32 ret = 0;
@@ -147,17 +135,17 @@ int board_eth_init(bd_t *bis)
 #if defined(CONFIG_ZYNQ_GEM)
 # if defined(CONFIG_ZYNQ_GEM0)
 	ret |= zynq_gem_initialize(bis, ZYNQ_GEM_BASEADDR0,
-						CONFIG_ZYNQ_GEM_PHY_ADDR0, 0);
+				   CONFIG_ZYNQ_GEM_PHY_ADDR0,
+				   CONFIG_ZYNQ_GEM_EMIO0);
 # endif
 # if defined(CONFIG_ZYNQ_GEM1)
 	ret |= zynq_gem_initialize(bis, ZYNQ_GEM_BASEADDR1,
-						CONFIG_ZYNQ_GEM_PHY_ADDR1, 0);
+				   CONFIG_ZYNQ_GEM_PHY_ADDR1,
+				   CONFIG_ZYNQ_GEM_EMIO1);
 # endif
 #endif
-
 	return ret;
 }
-#endif
 
 #ifdef CONFIG_CMD_MMC
 int board_mmc_init(bd_t *bd)
@@ -178,8 +166,27 @@ int board_mmc_init(bd_t *bd)
 
 int dram_init(void)
 {
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+#ifdef CONFIG_OF_CONTROL
+	int node;
+	fdt_addr_t addr;
+	fdt_size_t size;
+	const void *blob = gd->fdt_blob;
 
+	node = fdt_node_offset_by_prop_value(blob, -1, "device_type",
+					     "memory", 7);
+	if (node == -FDT_ERR_NOTFOUND) {
+		debug("ZYNQ DRAM: Can't get memory node\n");
+		return -1;
+	}
+	addr = fdtdec_get_addr_size(blob, node, "reg", &size);
+	if (addr == FDT_ADDR_T_NONE || size == 0) {
+		debug("ZYNQ DRAM: Can't get base address or size\n");
+		return -1;
+	}
+	gd->ram_size = size;
+#else
+	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+#endif
 	zynq_ddrc_init();
 
 	return 0;

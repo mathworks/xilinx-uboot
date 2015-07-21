@@ -3,23 +3,7 @@
  *
  * Copyright (C) 2012 Atmel Corporation
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -28,6 +12,10 @@
 #include <asm/arch/clk.h>
 #include <lcd.h>
 #include <atmel_hlcdc.h>
+
+#if defined(CONFIG_LCD_LOGO)
+#include <bmp_logo.h>
+#endif
 
 /* configurable parameters */
 #define ATMEL_LCDC_CVAL_DEFAULT		0xc8
@@ -51,6 +39,15 @@ void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
 		| ((green << LCDC_BASECLUT_GCLUT_Pos) & LCDC_BASECLUT_GCLUT_Msk)
 		| ((blue << LCDC_BASECLUT_BCLUT_Pos) & LCDC_BASECLUT_BCLUT_Msk),
 		panel_info.mmio + ATMEL_LCDC_LUT(regno));
+}
+
+ushort *configuration_get_cmap(void)
+{
+#if defined(CONFIG_LCD_LOGO)
+	return bmp_logo_palette;
+#else
+	return NULL;
+#endif
 }
 
 void lcd_ctrl_init(void *lcdbase)
@@ -144,12 +141,12 @@ void lcd_ctrl_init(void *lcdbase)
 	value |= LCDC_LCDCFG1_HSPW(panel_info.vl_hsync_len - 1);
 	lcdc_writel(&regs->lcdc_lcdcfg1, value);
 
-	value = LCDC_LCDCFG2_VBPW(panel_info.vl_lower_margin);
-	value |= LCDC_LCDCFG2_VFPW(panel_info.vl_upper_margin - 1);
+	value = LCDC_LCDCFG2_VBPW(panel_info.vl_upper_margin);
+	value |= LCDC_LCDCFG2_VFPW(panel_info.vl_lower_margin - 1);
 	lcdc_writel(&regs->lcdc_lcdcfg2, value);
 
-	value = LCDC_LCDCFG3_HBPW(panel_info.vl_right_margin - 1);
-	value |= LCDC_LCDCFG3_HFPW(panel_info.vl_left_margin - 1);
+	value = LCDC_LCDCFG3_HBPW(panel_info.vl_left_margin - 1);
+	value |= LCDC_LCDCFG3_HFPW(panel_info.vl_right_margin - 1);
 	lcdc_writel(&regs->lcdc_lcdcfg3, value);
 
 	/* Display size */
@@ -187,6 +184,9 @@ void lcd_ctrl_init(void *lcdbase)
 			| LCDC_BASECTRL_DMAIEN | LCDC_BASECTRL_DFETCH;
 	desc->next = (u32)desc;
 
+	/* Flush the DMA descriptor if we enabled dcache */
+	flush_dcache_range((u32)desc, (u32)desc + sizeof(*desc));
+
 	lcdc_writel(&regs->lcdc_baseaddr, desc->address);
 	lcdc_writel(&regs->lcdc_basectrl, desc->control);
 	lcdc_writel(&regs->lcdc_basenext, desc->next);
@@ -210,4 +210,7 @@ void lcd_ctrl_init(void *lcdbase)
 	lcdc_writel(&regs->lcdc_lcden, value | LCDC_LCDEN_PWMEN);
 	while (!(lcdc_readl(&regs->lcdc_lcdsr) & LCDC_LCDSR_PWMSTS))
 		udelay(1);
+
+	/* Enable flushing if we enabled dcache */
+	lcd_set_flush_dcache(1);
 }

@@ -2,23 +2,7 @@
  * (C) Copyright 2001
  * Erik Theisen,  Wave 7 Optics, etheisen@mindspring.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -37,7 +21,8 @@
 int init_func_watchdog_reset(void);
 #endif
 
-#ifdef CONFIG_WATCHDOG
+#if defined(CONFIG_SYS_GENERIC_BOARD) && \
+	(defined(CONFIG_WATCHDOG) || defined(CONFIG_HW_WATCHDOG))
 #define INIT_FUNC_WATCHDOG_INIT	init_func_watchdog_init,
 #define INIT_FUNC_WATCHDOG_RESET	init_func_watchdog_reset,
 #else
@@ -108,8 +93,11 @@ int init_func_watchdog_reset(void);
 	void reset_4xx_watchdog(void);
 #endif
 
-/* Freescale i.MX */
-#if defined(CONFIG_IMX_WATCHDOG) && !defined(__ASSEMBLY__)
+#if defined(CONFIG_HW_WATCHDOG) && !defined(__ASSEMBLY__)
 	void hw_watchdog_init(void);
+#endif
+
+#if defined(CONFIG_MPC85xx) && !defined(__ASSEMBLY__)
+	void init_85xx_watchdog(void);
 #endif
 #endif /* _WATCHDOG_H_ */

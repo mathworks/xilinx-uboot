@@ -8,23 +8,7 @@
  * (C) Copyright 2004-2006
  * Martin Krause, TQ-Systems GmbH, martin.krause@tqs.de
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -274,11 +258,6 @@ phys_size_t initdram (int board_type)
 
 int checkboard (void)
 {
-#if defined(CONFIG_AEVFIFO)
-	puts ("Board: AEVFIFO\n");
-	return 0;
-#endif
-
 #if defined(CONFIG_TQM5200S)
 # define MODULE_NAME	"TQM5200S"
 #else
@@ -287,8 +266,6 @@ int checkboard (void)
 
 #if defined(CONFIG_STK52XX)
 # define CARRIER_NAME	"STK52xx"
-#elif defined(CONFIG_TB5200)
-# define CARRIER_NAME	"TB5200"
 #elif defined(CONFIG_CAM5200)
 # define CARRIER_NAME	"CAM5200"
 #elif defined(CONFIG_FO300)
@@ -778,16 +755,13 @@ void video_get_info_str (int line_number, char *info)
 	if (line_number == 1) {
 	strcpy (info, " Board: TQM5200 (TQ-Components GmbH)");
 #if defined (CONFIG_CHARON) || defined (CONFIG_FO300) || \
-	defined(CONFIG_STK52XX) || defined(CONFIG_TB5200)
+	defined(CONFIG_STK52XX)
 	} else if (line_number == 2) {
 #if defined (CONFIG_CHARON)
 		strcpy (info, "        on a CHARON carrier board");
 #endif
 #if defined (CONFIG_STK52XX)
 		strcpy (info, "        on a STK52xx carrier board");
-#endif
-#if defined (CONFIG_TB5200)
-		strcpy (info, "        on a TB5200 carrier board");
 #endif
 #if defined (CONFIG_FO300)
 		strcpy (info, "        on a FO300 carrier board");
@@ -879,12 +853,14 @@ int board_get_height (void)
 #endif /* CONFIG_VIDEO_SM501 */
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #if defined(CONFIG_VIDEO)
 	fdt_add_edid(blob, "smi,sm501", edid_buf);
 #endif
+
+	return 0;
 }
 #endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */
 

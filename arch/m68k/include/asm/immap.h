@@ -4,23 +4,7 @@
  * Copyright 2004-2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __IMMAP_H
@@ -255,6 +239,30 @@
 #define CONFIG_SYS_TIMER_PRESCALER	(((gd->bus_clk / 1000000) - 1) << 8)
 #endif
 #endif				/* CONFIG_M5282 */
+
+#ifdef CONFIG_M5307
+#include <asm/immap_5307.h>
+#include <asm/m5307.h>
+
+#define CONFIG_SYS_UART_BASE            (MMAP_UART0 + \
+					(CONFIG_SYS_UART_PORT * 0x40))
+#define CONFIG_SYS_INTR_BASE            (MMAP_INTC)
+#define CONFIG_SYS_NUM_IRQS             (64)
+
+/* Timer */
+#ifdef CONFIG_MCFTMR
+#define CONFIG_SYS_UDELAY_BASE          (MMAP_DTMR0)
+#define CONFIG_SYS_TMR_BASE             (MMAP_DTMR1)
+#define CONFIG_SYS_TMRPND_REG		(((volatile intctrl_t *) \
+					(CONFIG_SYS_INTR_BASE))->ipr)
+#define CONFIG_SYS_TMRINTR_NO           (31)
+#define CONFIG_SYS_TMRINTR_MASK		(0x00000400)
+#define CONFIG_SYS_TMRINTR_PEND		(CONFIG_SYS_TMRINTR_MASK)
+#define CONFIG_SYS_TMRINTR_PRI          (MCFSIM_ICR_AUTOVEC | \
+					MCFSIM_ICR_LEVEL7 | MCFSIM_ICR_PRI3)
+#define CONFIG_SYS_TIMER_PRESCALER      (((gd->bus_clk / 1000000) - 1) << 8)
+#endif
+#endif                          /* CONFIG_M5307 */
 
 #if defined(CONFIG_MCF5301x)
 #include <asm/immap_5301x.h>

@@ -9,35 +9,20 @@
  *	Aneesh V	<aneesh@ti.com>
  *	Steve Sakoman	<steve@sakoman.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <asm/armv7.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/emif.h>
 #include <asm/arch/gpio.h>
+#include <asm/omap_common.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-u32 *const omap_si_rev = (u32 *)OMAP4_SRAM_SCRATCH_OMAP4_REV;
+u32 *const omap_si_rev = (u32 *)OMAP_SRAM_SCRATCH_OMAP_REV;
 
 static const struct gpio_bank gpio_bank_44xx[6] = {
 	{ (void *)OMAP44XX_GPIO1_BASE, METHOD_GPIO_24XX },
@@ -153,6 +138,9 @@ void init_omap_revision(void)
 		break;
 	case MIDR_CORTEX_A9_R2P10:
 		switch (readl(CONTROL_ID_CODE)) {
+		case OMAP4470_CONTROL_ID_CODE_ES1_0:
+			*omap_si_rev = OMAP4470_ES1_0;
+			break;
 		case OMAP4460_CONTROL_ID_CODE_ES1_1:
 			*omap_si_rev = OMAP4460_ES1_1;
 			break;
@@ -171,11 +159,11 @@ void init_omap_revision(void)
 #ifndef CONFIG_SYS_L2CACHE_OFF
 void v7_outer_cache_enable(void)
 {
-	set_pl310_ctrl_reg(1);
+	omap_smc1(OMAP4_SERVICE_PL310_CONTROL_REG_SET, 1);
 }
 
 void v7_outer_cache_disable(void)
 {
-	set_pl310_ctrl_reg(0);
+	omap_smc1(OMAP4_SERVICE_PL310_CONTROL_REG_SET, 0);
 }
 #endif /* !CONFIG_SYS_L2CACHE_OFF */
