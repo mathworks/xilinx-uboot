@@ -27,4 +27,8 @@ config BOOT_INIT_FILE
 	  Add register writes to boot.bin format (max 256 pairs).
 	  Expect a table of register-value pairs, e.g. "0x12345678 0x4321"
 
+config ZYNQ_ENV_FAT
+	bool "Store environment on FAT partition"
+	default n
+
 endif
