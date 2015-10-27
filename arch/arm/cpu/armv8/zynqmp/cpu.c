@@ -24,9 +24,11 @@ unsigned int zynqmp_get_silicon_version(void)
 		return ZYNQMP_CSU_VERSION_VELOCE;
 	case 50000000:
 		return ZYNQMP_CSU_VERSION_QEMU;
+	case 4000000:
+		return ZYNQMP_CSU_VERSION_EP108;
 	}
 
-	return ZYNQMP_CSU_VERSION_EP108;
+	return ZYNQMP_CSU_VERSION_SILICON;
 }
 
 #ifndef CONFIG_SYS_DCACHE_OFF
@@ -190,5 +192,10 @@ void enable_caches(void)
 	puts("Enabling Caches...\n");
 
 	set_sctlr(get_sctlr() | CR_C);
+}
+
+u64 *arch_get_page_table(void)
+{
+	return (u64 *)(gd->arch.tlb_addr + 0x3000);
 }
 #endif

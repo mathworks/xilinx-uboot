@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fdtdec.h>
 #include <malloc.h>
+#include <mapmem.h>
 #include <spi.h>
 #include <spi_flash.h>
 #include <asm/io.h>
@@ -168,6 +169,9 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 	flash->name = params->name;
 	flash->memory_map = spi->memory_map;
 	flash->dual_flash = flash->spi->option;
+#ifdef CONFIG_DM_SPI_FLASH
+	flash->flags = params->flags;
+#endif
 
 	/* Assign spi_flash ops */
 #ifndef CONFIG_DM_SPI_FLASH
@@ -203,6 +207,24 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 	flash->page_size <<= flash->shift;
 	flash->sector_size = params->sector_size << flash->shift;
 	flash->size = flash->sector_size * params->nr_sectors;
+
+	/*
+	 * So far, the 4-byte address mode haven't been supported in U-Boot,
+	 * and make sure the chip (> 16MiB) in default 3-byte address mode,
+	 * in case of warm bootup, the chip was set to 4-byte mode in kernel.
+	 */
+	if (flash->size > SPI_FLASH_16MB_BOUN) {
+		if (flash->spi->bytemode == SPI_4BYTE_MODE) {
+			if (spi_flash_cmd_4B_addr_switch(flash, true,
+			    idcode[0]) < 0)
+				debug("SF: enter 4B address mode failed\n");
+		} else {
+			if (spi_flash_cmd_4B_addr_switch(flash, false,
+			    idcode[0]) < 0)
+				debug("SF: enter 3B address mode failed\n");
+		}
+	}
+
 #ifdef CONFIG_SF_DUAL_FLASH
 	if (flash->dual_flash & SF_DUAL_STACKED_FLASH)
 		flash->size <<= 1;
@@ -219,6 +241,9 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 		flash->erase_cmd = CMD_ERASE_64K;
 		flash->erase_size = flash->sector_size;
 	}
+
+	/* Now erase size becomes valid sector size */
+	flash->sector_size = flash->erase_size;
 
 	/* Look for the fastest read cmd */
 	cmd = fls(params->e_rd_cmd & flash->spi->op_mode_rx);
@@ -371,6 +396,17 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 		spi_flash_cmd_write_status(flash, 0);
 #endif
 
+#if defined(CONFIG_SPI_FLASH_SST)
+	if(params->flags == SST_LOCKBP) {
+		int ret;
+		ret = spi_flash_cmd_bp_unlock();
+		if (ret) {
+			debug("SF: fail to unlock block protection\n");
+			return ret;
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -402,34 +438,6 @@ int spi_flash_decode_fdt(const void *blob, struct spi_flash *flash)
 }
 #endif /* CONFIG_OF_CONTROL */
 
-#ifdef CONFIG_SYS_SPI_ST_ENABLE_WP_PIN
-/* enable the W#/Vpp signal to disable writing to the status register */
-static int spi_enable_wp_pin(struct spi_flash *flash)
-{
-	u8 status;
-	int ret;
-
-	ret = spi_flash_cmd_read_status(flash, &status);
-	if (ret < 0)
-		return ret;
-
-	ret = spi_flash_cmd_write_status(flash, STATUS_SRWD);
-	if (ret < 0)
-		return ret;
-
-	ret = spi_flash_cmd_write_disable(flash);
-	if (ret < 0)
-		return ret;
-
-	return 0;
-}
-#else
-static int spi_enable_wp_pin(struct spi_flash *flash)
-{
-	return 0;
-}
-#endif
-
 /**
  * spi_flash_probe_slave() - Probe for a SPI flash device on a bus
  *
@@ -441,7 +449,7 @@ int spi_flash_probe_slave(struct spi_slave *spi, struct spi_flash *flash)
 {
 	u8 idcode[6];
 #ifdef CONFIG_SPI_GENERIC
-	u8 idcode_up[5];
+	u8 idcode_up[6];
 	u8 i;
 #endif
 	int ret;
@@ -531,13 +539,9 @@ int spi_flash_probe_slave(struct spi_slave *spi, struct spi_flash *flash)
 		puts(" Full access #define CONFIG_SPI_FLASH_BAR\n");
 	}
 #endif
-	if (spi_enable_wp_pin(flash))
-		puts("Enable WP pin failed\n");
-
-	/* Release spi bus */
-	spi_release_bus(spi);
-
-	return 0;
+#ifdef CONFIG_SPI_FLASH_MTD
+	ret = spi_flash_mtd_register(flash);
+#endif
 
 err_read_id:
 	spi_release_bus(spi);
@@ -571,6 +575,8 @@ struct spi_flash *spi_flash_probe(unsigned int busnum, unsigned int cs,
 	struct spi_slave *bus;
 
 	bus = spi_setup_slave(busnum, cs, max_hz, spi_mode);
+	if (!bus)
+		return NULL;
 	return spi_flash_probe_tail(bus);
 }
 
@@ -581,12 +587,17 @@ struct spi_flash *spi_flash_probe_fdt(const void *blob, int slave_node,
 	struct spi_slave *bus;
 
 	bus = spi_setup_slave_fdt(blob, slave_node, spi_node);
+	if (!bus)
+		return NULL;
 	return spi_flash_probe_tail(bus);
 }
 #endif
 
 void spi_flash_free(struct spi_flash *flash)
 {
+#ifdef CONFIG_SPI_FLASH_MTD
+	spi_flash_mtd_unregister();
+#endif
 	spi_free_slave(flash->spi);
 	free(flash);
 }
@@ -596,7 +607,7 @@ void spi_flash_free(struct spi_flash *flash)
 static int spi_flash_std_read(struct udevice *dev, u32 offset, size_t len,
 			      void *buf)
 {
-	struct spi_flash *flash = dev->uclass_priv;
+	struct spi_flash *flash = dev_get_uclass_priv(dev);
 
 	return spi_flash_cmd_read_ops(flash, offset, len, buf);
 }
@@ -604,14 +615,23 @@ static int spi_flash_std_read(struct udevice *dev, u32 offset, size_t len,
 int spi_flash_std_write(struct udevice *dev, u32 offset, size_t len,
 			const void *buf)
 {
-	struct spi_flash *flash = dev->uclass_priv;
+	struct spi_flash *flash = dev_get_uclass_priv(dev);
+
+#if defined(CONFIG_SPI_FLASH_SST)
+	if (flash->flags & SST_WR) {
+		if (flash->spi->op_mode_tx & SPI_OPM_TX_BP)
+			return sst_write_bp(flash, offset, len, buf);
+		else
+			return sst_write_wp(flash, offset, len, buf);
+	}
+#endif
 
 	return spi_flash_cmd_write_ops(flash, offset, len, buf);
 }
 
 int spi_flash_std_erase(struct udevice *dev, u32 offset, size_t len)
 {
-	struct spi_flash *flash = dev->uclass_priv;
+	struct spi_flash *flash = dev_get_uclass_priv(dev);
 
 	return spi_flash_cmd_erase_ops(flash, offset, len);
 }
@@ -622,7 +642,7 @@ int spi_flash_std_probe(struct udevice *dev)
 	struct dm_spi_slave_platdata *plat = dev_get_parent_platdata(dev);
 	struct spi_flash *flash;
 
-	flash = dev->uclass_priv;
+	flash = dev_get_uclass_priv(dev);
 	flash->dev = dev;
 	debug("%s: slave=%p, cs=%d\n", __func__, slave, plat->cs);
 	return spi_flash_probe_slave(slave, flash);

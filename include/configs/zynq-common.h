@@ -42,16 +42,17 @@
 /* DCC driver */
 #if defined(CONFIG_ZYNQ_DCC)
 # define CONFIG_ARM_DCC
-# define CONFIG_CPU_V6 /* Required by CONFIG_ARM_DCC */
 #else
 # if defined(CONFIG_ZYNQ_SERIAL_UART0) || defined(CONFIG_ZYNQ_SERIAL_UART1)
 #  define CONFIG_ZYNQ_SERIAL
 # endif
 #endif
 
+#define CONFIG_ZYNQ_GPIO
+#define CONFIG_CMD_GPIO
+
 /* Ethernet driver */
 #if defined(CONFIG_ZYNQ_GEM0) || defined(CONFIG_ZYNQ_GEM1)
-# define CONFIG_NET_MULTI
 # define CONFIG_ZYNQ_GEM
 # define CONFIG_MII
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
@@ -73,8 +74,10 @@
 
 /* SPI */
 #ifdef CONFIG_ZYNQ_SPI
-# define CONFIG_SPI_FLASH
 # define CONFIG_SPI_FLASH_SST
+#endif
+
+#if defined(CONFIG_ZYNQ_SPI) || defined(CONFIG_ZYNQ_QSPI)
 # define CONFIG_CMD_SPI
 # define CONFIG_CMD_SF
 #endif
@@ -103,6 +106,7 @@
 # define CONFIG_SDHCI
 # define CONFIG_ZYNQ_SDHCI
 # define CONFIG_CMD_MMC
+# define CONFIG_ZYNQ_SDHCI_MAX_FREQ	52000000
 #endif
 
 #ifdef CONFIG_ZYNQ_USB
@@ -180,14 +184,11 @@
 /* QSPI */
 #ifdef CONFIG_ZYNQ_QSPI
 # define CONFIG_SF_DEFAULT_SPEED	30000000
-# define CONFIG_SPI_FLASH
-# define CONFIG_SPI_FLASH_BAR
 # define CONFIG_SPI_FLASH_SPANSION
 # define CONFIG_SPI_FLASH_STMICRO
 # define CONFIG_SPI_FLASH_WINBOND
 # define CONFIG_SPI_FLASH_ISSI
-# define CONFIG_CMD_SPI
-# define CONFIG_CMD_SF
+# define CONFIG_SPI_FLASH_MACRONIX
 # define CONFIG_SF_DUAL_FLASH
 #endif
 
@@ -247,11 +248,9 @@
 # ifndef CONFIG_ENV_OFFSET
 #  define CONFIG_ENV_OFFSET		0xE0000
 # endif
-# define CONFIG_CMD_SAVEENV
 #endif
 
 /* Default environment */
-#define CONFIG_PREBOOT
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 	"ethaddr=00:0a:35:00:01:22\0"	\
 	"kernel_image=uImage\0"	\
@@ -414,7 +413,6 @@
 #define CONFIG_FPGA
 #define CONFIG_FPGA_XILINX
 #define CONFIG_FPGA_ZYNQPL
-#define CONFIG_CMD_FPGA
 #define CONFIG_CMD_FPGA_LOADMK
 #define CONFIG_CMD_FPGA_LOADP
 #define CONFIG_CMD_FPGA_LOADBP
@@ -439,11 +437,9 @@
 # define CONFIG_SYS_MMC_MAX_DEVICE	1
 #endif
 
-#define CONFIG_SYS_LDSCRIPT  "arch/arm/cpu/armv7/zynq/u-boot.lds"
+#define CONFIG_SYS_LDSCRIPT  "arch/arm/mach-zynq/u-boot.lds"
 
 /* Commands */
-#include <config_cmd_default.h>
-
 #ifdef CONFIG_SYS_ENET
 # define CONFIG_CMD_PING
 # define CONFIG_CMD_DHCP
@@ -481,7 +477,7 @@
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_BOARD_INIT
 
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/armv7/zynq/u-boot-spl.lds"
+#define CONFIG_SPL_LDSCRIPT	"arch/arm/mach-zynq/u-boot-spl.lds"
 
 /* FPGA support */
 #define CONFIG_SPL_FPGA_SUPPORT
@@ -501,7 +497,7 @@
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
 #define CONFIG_SPL_LIBDISK_SUPPORT
 #define CONFIG_SPL_FAT_SUPPORT
-#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot-dtb.img"
+#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
 #endif
 
 /* Disable dcache for SPL just for sure */
@@ -524,11 +520,13 @@
 #define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	0
 
 /* qspi mode is working fine */
+#if 0
 #ifdef CONFIG_ZYNQ_QSPI
 #define CONFIG_SPL_SPI_SUPPORT
 #define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x100000
+#endif
 #endif
 
 #ifdef DEBUG

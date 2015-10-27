@@ -11,6 +11,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <dm.h>
 #include <malloc.h>
 #include <net.h>
 #include <command.h>
@@ -19,6 +20,8 @@
 #include <errno.h>
 #include <linux/err.h>
 #include <linux/compiler.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* Generic PHY support and helper functions */
 
@@ -481,6 +484,9 @@ int phy_init(void)
 #ifdef CONFIG_PHY_TERANETICS
 	phy_teranetics_init();
 #endif
+#ifdef CONFIG_PHY_TI
+	phy_ti_init();
+#endif
 #ifdef CONFIG_PHY_VITESSE
 	phy_vitesse_init();
 #endif
@@ -493,6 +499,20 @@ int phy_register(struct phy_driver *drv)
 	INIT_LIST_HEAD(&drv->list);
 	list_add_tail(&drv->list, &phy_drivers);
 
+#ifdef CONFIG_NEEDS_MANUAL_RELOC
+	if (drv->probe)
+		drv->probe += gd->reloc_off;
+	if (drv->config)
+		drv->config += gd->reloc_off;
+	if (drv->startup)
+		drv->startup += gd->reloc_off;
+	if (drv->shutdown)
+		drv->shutdown += gd->reloc_off;
+	if (drv->readext)
+		drv->readext += gd->reloc_off;
+	if (drv->writeext)
+		drv->writeext += gd->reloc_off;
+#endif
 	return 0;
 }
 
@@ -581,7 +601,7 @@ static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
  * Description: Reads the ID registers of the PHY at @addr on the
  *   @bus, stores it in @phy_id and returns zero on success.
  */
-static int get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id)
+int __weak get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id)
 {
 	int phy_reg;
 
@@ -754,7 +774,11 @@ struct phy_device *phy_find_by_mask(struct mii_dev *bus, unsigned phy_mask,
 	return get_phy_device_by_mask(bus, phy_mask, interface);
 }
 
+#ifdef CONFIG_DM_ETH
+void phy_connect_dev(struct phy_device *phydev, struct udevice *dev)
+#else
 void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev)
+#endif
 {
 	/* Soft Reset the PHY */
 	phy_reset(phydev);
@@ -767,8 +791,13 @@ void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev)
 	debug("%s connected to %s\n", dev->name, phydev->drv->name);
 }
 
+#ifdef CONFIG_DM_ETH
+struct phy_device *phy_connect(struct mii_dev *bus, int addr,
+		struct udevice *dev, phy_interface_t interface)
+#else
 struct phy_device *phy_connect(struct mii_dev *bus, int addr,
 		struct eth_device *dev, phy_interface_t interface)
+#endif
 {
 	struct phy_device *phydev;
 
@@ -812,4 +841,16 @@ int phy_shutdown(struct phy_device *phydev)
 		phydev->drv->shutdown(phydev);
 
 	return 0;
+}
+
+int phy_get_interface_by_name(const char *str)
+{
+	int i;
+
+	for (i = 0; i < PHY_INTERFACE_MODE_COUNT; i++) {
+		if (!strcmp(str, phy_interface_strings[i]))
+			return i;
+	}
+
+	return -1;
 }
