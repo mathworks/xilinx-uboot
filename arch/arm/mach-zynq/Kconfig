@@ -21,6 +21,9 @@ config TARGET_ZYNQ_MICROZED
 config TARGET_ZYNQ_PICOZED
 	bool "Zynq PicoZed"
 
+config TARGET_ZYNQ_PICOZED_SDR2
+	bool "Zynq PicoZed SDR2"
+
 config TARGET_ZYNQ_ZC70X
 	bool "Zynq ZC702/ZC706 Board (deprecated)"
 	select ZYNQ_CUSTOM_INIT
@@ -76,5 +79,5 @@ config SYS_CONFIG_NAME
 	default "zynq_cse" if TARGET_ZYNQ_CSE
 	default "zynq_afx" if TARGET_ZYNQ_AFX
 	default "zynq_cc108" if TARGET_ZYNQ_CC108
-
+	default "zynq_picozed_sdr2" if TARGET_ZYNQ_PICOZED_SDR2
 endif
