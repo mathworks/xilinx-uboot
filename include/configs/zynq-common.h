@@ -265,7 +265,7 @@
 	"ramdisk_load_address=0x4000000\0"	\
 	"devicetree_image=devicetree.dtb\0"	\
 	"devicetree_load_address=0x2000000\0"	\
-	"bitstream_image=system.bit.bin\0"	\
+	"bitstream_image=system.bit\0"	\
 	"boot_image=BOOT.bin\0"	\
 	"loadbit_addr=0x100000\0"	\
 	"loadbootenv_addr=0x2000000\0" \
@@ -288,7 +288,12 @@
 	"mmc_loadbit=echo Loading bitstream from SD/MMC/eMMC to RAM.. && " \
 		"mmcinfo && " \
 		"load mmc 0 ${loadbit_addr} ${bitstream_image} && " \
-		"fpga load 0 ${loadbit_addr} ${filesize}\0" \
+		"fpga loadb 0 ${loadbit_addr} ${filesize}\0" \
+	"sd_bitstream_existence_test=test -e mmc 0 /${bitstream_image}\0" \
+	"sd_boot_loadbit=" \
+		"if run sd_bitstream_existence_test; then " \
+			"run mmc_loadbit;" \
+		"fi; \0" \
 	"norboot=echo Copying Linux from NOR flash to RAM... && " \
 		"cp.b 0xE2100000 ${kernel_load_address} ${kernel_size} && " \
 		"cp.b 0xE2600000 ${devicetree_load_address} ${devicetree_size} && " \
@@ -313,6 +318,7 @@
 		"fi\0" \
 	"sdboot=if mmcinfo; then " \
 			"run uenvboot; " \
+			"run sd_boot_loadbit; " \
 			"echo Copying Linux from SD to RAM... && " \
 			"load mmc 0 ${kernel_load_address} ${kernel_image} && " \
 			"load mmc 0 ${devicetree_load_address} ${devicetree_image} && " \
