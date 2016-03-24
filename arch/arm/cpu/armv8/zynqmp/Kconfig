@@ -1,0 +1,60 @@
+if ARCH_ZYNQMP
+
+choice
+	prompt "Xilinx ZynqMP board select"
+
+config TARGET_ZYNQMP_EP
+	bool "ZynqMP EP Board"
+
+config TARGET_ZYNQMP_MINI
+	bool "ZynqMP MINI"
+
+config TARGET_ZYNQMP_ZCU102
+	bool "ZynqMP ZCU102"
+
+config TARGET_ZYNQMP_ZC1751_XM015_DC1
+	bool "ZynqMP ZC1751 XM015 DC1"
+
+config TARGET_ZYNQMP_ZC1751_XM016_DC2
+	bool "ZynqMP ZC1751 XM016 DC2"
+
+endchoice
+
+config SYS_BOARD
+	default "zynqmp"
+
+config SYS_VENDOR
+	default "xilinx"
+
+config SYS_SOC
+	default "zynqmp"
+
+config SYS_CONFIG_NAME
+	default "xilinx_zynqmp_ep" if TARGET_ZYNQMP_EP
+	default "xilinx_zynqmp_mini" if TARGET_ZYNQMP_MINI
+	default "xilinx_zynqmp_zcu102" if TARGET_ZYNQMP_ZCU102
+	default "xilinx_zynqmp_zc1751_xm015_dc1" if TARGET_ZYNQMP_ZC1751_XM015_DC1
+	default "xilinx_zynqmp_zc1751_xm016_dc2" if TARGET_ZYNQMP_ZC1751_XM016_DC2
+
+config SECURE_IOU
+	bool "Configure ZynqMP secure IOU"
+	default n
+
+config ZYNQMP_QSPI
+	bool "Configure ZynqMP QSPI"
+
+config NAND_ARASAN
+	bool "Configure Arasan Nand"
+
+config ZYNQMP_USB
+	bool "Configure ZynqMP USB"
+
+config SYS_DCACHE_OFF
+	bool "Do not use Data Cache"
+	default n
+
+config SYS_ICACHE_OFF
+	bool "Do not use Instruction Cache"
+	default n
+
+endif

@@ -29,9 +29,9 @@
 #include <common.h>
 #include <serial.h>
 
-#if defined(CONFIG_CPU_V6)
+#if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V7)
 /*
- * ARMV6
+ * ARMV6 & ARMV7
  */
 #define DCC_RBIT	(1 << 30)
 #define DCC_WBIT	(1 << 29)
@@ -60,6 +60,22 @@
 
 #define status_dcc(x)	\
 		__asm__ volatile ("mrc p14, 0, %0, c14, c0, 0\n" : "=r" (x))
+
+#elif defined(CONFIG_CPU_ARMV8)
+/*
+ * ARMV8
+ */
+#define DCC_RBIT	(1 << 30)
+#define DCC_WBIT	(1 << 29)
+
+#define write_dcc(x)   \
+		__asm__ volatile ("msr dbgdtrtx_el0, %0\n" : : "r" (x))
+
+#define read_dcc(x)    \
+		__asm__ volatile ("mrs %0, dbgdtrrx_el0\n" : "=r" (x))
+
+#define status_dcc(x)  \
+		__asm__ volatile ("mrs %0, mdccsr_el0\n" : "=r" (x))
 
 #else
 #define DCC_RBIT	(1 << 0)

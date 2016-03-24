@@ -87,7 +87,7 @@ const struct spi_flash_params spi_flash_params_table[] = {
 	{"N25Q256",	   0x20ba19, 0x0,       64 * 1024,   512, RD_FULL,	   WR_QPP | SECT_4K},
 	{"N25Q256A",	   0x20bb19, 0x0,       64 * 1024,   512, RD_FULL,	   WR_QPP | SECT_4K},
 	{"N25Q512",	   0x20ba20, 0x0,       64 * 1024,  1024, RD_FULL, WR_QPP | E_FSR | SECT_4K},
-#ifdef CONFIG_TARGET_XILINX_ZYNQMP
+#ifdef CONFIG_ARCH_ZYNQMP
 	{"N25Q512A",	   0x20bb20, 0x0,       64 * 1024,  1024, RD_FULL,	     WR_QPP | E_FSR},
 #else
 	{"N25Q512A",	   0x20bb20, 0x0,       64 * 1024,  1024, RD_FULL, WR_QPP | E_FSR | SECT_4K},
@@ -105,7 +105,8 @@ const struct spi_flash_params spi_flash_params_table[] = {
 	{"SST25WF010",	   0xbf2502, 0x0,	64 * 1024,     2, RD_NORM,          SECT_4K | SST_WR},
 	{"SST25WF020",	   0xbf2503, 0x0,	64 * 1024,     4, RD_NORM,	    SECT_4K | SST_WR},
 	{"SST25WF040",	   0xbf2504, 0x0,	64 * 1024,     8, RD_NORM,	    SECT_4K | SST_WR},
-	{"SST25WF040B",	   0x621613, 0x0,	64 * 1024,     8, RD_NORM,	    SECT_4K | SST_WR},
+	{"SST25WF016B",	   0xbf2651, 0x0,	 4 * 1024,   512, RD_NORM,	    SST_LOCKBP | SECT_4K},
+	{"SST25WF040B",	   0x621613, 0x0,	64 * 1024,     8, RD_NORM,		     SECT_4K},
 	{"SST25WF080",	   0xbf2505, 0x0,	64 * 1024,    16, RD_NORM,	    SECT_4K | SST_WR},
 #endif
 #ifdef CONFIG_SPI_FLASH_WINBOND		/* WINBOND */

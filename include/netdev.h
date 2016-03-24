@@ -80,8 +80,6 @@ int sh_eth_initialize(bd_t *bis);
 int skge_initialize(bd_t *bis);
 int smc91111_initialize(u8 dev_num, int base_addr);
 int smc911x_initialize(u8 dev_num, int base_addr);
-int sunxi_emac_initialize(bd_t *bis);
-int sunxi_gmac_initialize(bd_t *bis);
 int tsi108_eth_initialize(bd_t *bis);
 int uec_standard_init(bd_t *bis);
 int uli526x_initialize(bd_t *bis);
@@ -91,8 +89,8 @@ int xilinx_axiemac_initialize(bd_t *bis, unsigned long base_addr,
 int xilinx_emaclite_of_init(const void *blob);
 int xilinx_emaclite_initialize(bd_t *bis, unsigned long base_addr,
 							int txpp, int rxpp);
-int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
-						int mode, unsigned long ctrl);
+int xilinx_ll_temac_eth_init(bd_t *bis, unsigned long base_addr, int flags,
+						unsigned long ctrl_addr);
 int zynq_gem_of_init(const void *blob);
 int zynq_gem_initialize(bd_t *bis, phys_addr_t base_addr,
 			int phy_addr, u32 emio);
