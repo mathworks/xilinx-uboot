@@ -75,6 +75,9 @@ int device_unbind(struct udevice *dev)
 	if (dev->flags & DM_FLAG_ACTIVATED)
 		return -EINVAL;
 
+	if (!(dev->flags & DM_FLAG_BOUND))
+		return -EINVAL;
+
 	drv = dev->driver;
 	assert(drv);
 
@@ -106,6 +109,9 @@ int device_unbind(struct udevice *dev)
 
 	if (dev->parent)
 		list_del(&dev->sibling_node);
+
+	devres_release_all(dev);
+
 	free(dev);
 
 	return 0;
@@ -139,6 +145,8 @@ void device_free(struct udevice *dev)
 			dev->parent_priv = NULL;
 		}
 	}
+
+	devres_release_probe(dev);
 }
 
 int device_remove(struct udevice *dev)

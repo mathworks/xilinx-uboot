@@ -143,8 +143,9 @@ static void setup_iomux_enet(void)
 	SETUP_IOMUX_PADS(enet_pads);
 
 	gpio_direction_output(ETH_PHY_RESET, 0);
-	mdelay(2);
+	mdelay(10);
 	gpio_set_value(ETH_PHY_RESET, 1);
+	udelay(100);
 }
 
 int board_phy_config(struct phy_device *phydev)
@@ -164,7 +165,7 @@ int board_eth_init(bd_t *bis)
 	struct mii_dev *bus;
 	struct phy_device *phydev;
 
-	int ret = enable_fec_anatop_clock(ENET_25MHZ);
+	int ret = enable_fec_anatop_clock(0, ENET_25MHZ);
 	if (ret)
 		return ret;
 
@@ -594,10 +595,6 @@ static void gpr_init(void)
 	writel(0x007F007F, &iomux->gpr[7]);
 }
 
-/*
- * This section requires the differentiation between Solidrun mx6 boards, but
- * for now, it will configure only for the mx6dual hummingboard version.
- */
 static void spl_dram_init(int width)
 {
 	struct mx6_ddr_sysinfo sysinfo = {
@@ -615,6 +612,7 @@ static void spl_dram_init(int width)
 		.bi_on = 1,	/* Bank interleaving enabled */
 		.sde_to_rst = 0x10,	/* 14 cycles, 200us (JEDEC default) */
 		.rst_to_cke = 0x23,	/* 33 cycles, 500us (JEDEC default) */
+		.ddr_type = DDR_TYPE_DDR3,
 	};
 
 	if (is_cpu_type(MXC_CPU_MX6D) || is_cpu_type(MXC_CPU_MX6Q))

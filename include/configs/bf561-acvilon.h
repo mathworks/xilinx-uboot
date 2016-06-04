@@ -114,7 +114,6 @@
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ		10000000
 #define CONFIG_SF_DEFAULT_SPEED		10000000
-#define CONFIG_SPI_FLASH_ATMEL
 
 
 /*
@@ -153,7 +152,6 @@
  */
 #define CONFIG_UART_CONSOLE			0
 #define CONFIG_BAUDRATE				57600
-#define CONFIG_SYS_PROMPT "Acvilon> "
 
 /*
  * Pull in common ADI header for remaining command/environment setup

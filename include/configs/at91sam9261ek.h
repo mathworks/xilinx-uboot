@@ -33,7 +33,6 @@
 
 #define CONFIG_OF_LIBFDT
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_ATMEL_LEGACY
 #define CONFIG_SYS_TEXT_BASE		0x21f00000
@@ -201,10 +200,8 @@
 	"root=/dev/mtdblock7 rw rootfstype=jffs2"
 #endif
 
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE

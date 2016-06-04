@@ -22,17 +22,17 @@
 #include <asm/arch/omap.h>
 
 /* NS16550 Configuration */
-#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_CLK		48000000
+#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_DM_SERIAL)
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_CLK		48000000
+#endif
 
 /* I2C Configuration */
 #define CONFIG_CMD_EEPROM
 #define CONFIG_ENV_EEPROM_IS_ON_I2C
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50	/* Main EEPROM */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 
 /* Power */
 #define CONFIG_POWER
@@ -80,7 +80,7 @@
 #endif
 
 /* Now bring in the rest of the common code. */
-#include <configs/ti_armv7_common.h>
+#include <configs/ti_armv7_omap.h>
 
 /* Always 64 KiB env size */
 #define CONFIG_ENV_SIZE			(64 << 10)
@@ -110,6 +110,7 @@
 #define CONFIG_CMD_USB
 #define CONFIG_USB_HOST
 #define CONFIG_USB_XHCI
+#define CONFIG_USB_XHCI_DWC3
 #define CONFIG_USB_XHCI_OMAP
 #define CONFIG_USB_STORAGE
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS 2
@@ -127,7 +128,7 @@
 #define CONFIG_USB_DWC3_GADGET
 
 #define CONFIG_USB_GADGET
-#define CONFIG_USBDOWNLOAD_GADGET
+#define CONFIG_USB_GADGET_DOWNLOAD
 #define CONFIG_USB_GADGET_VBUS_DRAW 2
 #define CONFIG_G_DNL_MANUFACTURER "Texas Instruments"
 #define CONFIG_G_DNL_VENDOR_NUM 0x0403
@@ -135,9 +136,17 @@
 #define CONFIG_USB_GADGET_DUALSPEED
 #endif
 
+/*
+ * Disable MMC DM for SPL build and can be re-enabled after adding
+ * DM support in SPL
+ */
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_DM_MMC
+#endif
+
 #ifndef CONFIG_SPL_BUILD
 /* USB Device Firmware Update support */
-#define CONFIG_DFU_FUNCTION
+#define CONFIG_USB_FUNCTION_DFU
 #define CONFIG_DFU_RAM
 #define CONFIG_CMD_DFU
 
@@ -164,11 +173,22 @@
 	"fdt ram 0x80f80000 0x80000;" \
 	"ramdisk ram 0x81000000 0x4000000\0"
 
+#define CONFIG_DFU_SF
+#define DFU_ALT_INFO_QSPI \
+	"dfu_alt_info_qspi=" \
+	"u-boot.bin raw 0x0 0x080000;" \
+	"u-boot.backup raw 0x080000 0x080000;" \
+	"u-boot-spl-os raw 0x100000 0x010000;" \
+	"u-boot-env raw 0x110000 0x010000;" \
+	"u-boot-env.backup raw 0x120000 0x010000;" \
+	"kernel raw 0x130000 0x800000\0"
+
 #define DFUARGS \
 	"dfu_bufsiz=0x10000\0" \
 	DFU_ALT_INFO_MMC \
 	DFU_ALT_INFO_EMMC \
-	DFU_ALT_INFO_RAM
+	DFU_ALT_INFO_RAM \
+	DFU_ALT_INFO_QSPI
 #else
 #define DFUARGS
 #endif
@@ -199,14 +219,14 @@
 
 /* SPI */
 #undef CONFIG_OMAP3_SPI
-#define CONFIG_TI_QSPI
-#define CONFIG_SPI_FLASH_MACRONIX
 #define CONFIG_CMD_SF
 #define CONFIG_CMD_SPI
 #define CONFIG_TI_SPI_MMAP
 #define CONFIG_QSPI_SEL_GPIO                   48
 #define CONFIG_SF_DEFAULT_SPEED                48000000
 #define CONFIG_DEFAULT_SPI_MODE                SPI_MODE_3
+#define CONFIG_QSPI_QUAD_SUPPORT
+#define CONFIG_TI_EDMA3
 
 /* Enhance our eMMC support / experience. */
 #define CONFIG_CMD_GPT
@@ -215,6 +235,7 @@
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
+	DEFAULT_MMC_TI_ARGS \
 	"fdtfile=undefined\0" \
 	"bootpart=0:2\0" \
 	"bootdir=/boot\0" \
@@ -224,18 +245,11 @@
 		"uuid_disk=${uuid_gpt_disk};" \
 		"name=rootfs,start=2MiB,size=-,uuid=${uuid_gpt_rootfs}\0" \
 	"optargs=\0" \
-	"mmcdev=0\0" \
-	"mmcroot=/dev/mmcblk0p2 rw\0" \
-	"mmcrootfstype=ext4 rootwait\0" \
 	"usbroot=/dev/sda2 rw\0" \
 	"usbrootfstype=ext4 rootwait\0" \
 	"usbdev=0\0" \
 	"ramroot=/dev/ram0 rw\0" \
 	"ramrootfstype=ext2\0" \
-	"mmcargs=setenv bootargs console=${console} " \
-		"${optargs} " \
-		"root=${mmcroot} " \
-		"rootfstype=${mmcrootfstype}\0" \
 	"usbargs=setenv bootargs console=${console} " \
 		"${optargs} " \
 		"root=${usbroot} " \
@@ -267,7 +281,7 @@
 			"if run loadimage; then " \
 				"run loadfdt; " \
 				"echo Booting from mmc${mmcdev} ...; " \
-				"run mmcargs; " \
+				"run args_mmc; " \
 				"bootz ${loadaddr} - ${fdtaddr}; " \
 			"fi;" \
 		"fi;\0" \
@@ -291,6 +305,8 @@
 				"bootz ${loadaddr} - ${fdtaddr}; " \
 			"fi;" \
 		"fi\0" \
+		"fi;" \
+		"usb stop ${usbdev};\0" \
 	"findfdt="\
 		"if test $board_name = AM43EPOS; then " \
 			"setenv fdtfile am43x-epos-evm.dtb; fi; " \
@@ -332,6 +348,7 @@
 
 #define CONFIG_DRIVER_TI_CPSW
 #define CONFIG_PHYLIB
+#define PHY_ANEG_TIMEOUT	8000 /* PHY needs longer aneg time at 1G */
 
 #define CONFIG_SPL_ENV_SUPPORT
 #define CONFIG_SPL_NET_VCI_STRING	"AM43xx U-Boot SPL"

@@ -38,15 +38,42 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#if !CONFIG_IS_ENABLED(OF_CONTROL)
+static const struct ns16550_platdata am33xx_serial[] = {
+	{ CONFIG_SYS_NS16550_COM1, 2, CONFIG_SYS_NS16550_CLK },
+# ifdef CONFIG_SYS_NS16550_COM2
+	{ CONFIG_SYS_NS16550_COM2, 2, CONFIG_SYS_NS16550_CLK },
+#  ifdef CONFIG_SYS_NS16550_COM3
+	{ CONFIG_SYS_NS16550_COM3, 2, CONFIG_SYS_NS16550_CLK },
+	{ CONFIG_SYS_NS16550_COM4, 2, CONFIG_SYS_NS16550_CLK },
+	{ CONFIG_SYS_NS16550_COM5, 2, CONFIG_SYS_NS16550_CLK },
+	{ CONFIG_SYS_NS16550_COM6, 2, CONFIG_SYS_NS16550_CLK },
+#  endif
+# endif
+};
+
+U_BOOT_DEVICES(am33xx_uarts) = {
+	{ "ns16550_serial", &am33xx_serial[0] },
+#  ifdef CONFIG_SYS_NS16550_COM2
+	{ "ns16550_serial", &am33xx_serial[1] },
+#   ifdef CONFIG_SYS_NS16550_COM3
+	{ "ns16550_serial", &am33xx_serial[2] },
+	{ "ns16550_serial", &am33xx_serial[3] },
+	{ "ns16550_serial", &am33xx_serial[4] },
+	{ "ns16550_serial", &am33xx_serial[5] },
+#   endif
+#  endif
+};
+
 #ifdef CONFIG_DM_GPIO
 static const struct omap_gpio_platdata am33xx_gpio[] = {
-	{ 0, AM33XX_GPIO0_BASE, METHOD_GPIO_24XX },
-	{ 1, AM33XX_GPIO1_BASE, METHOD_GPIO_24XX },
-	{ 2, AM33XX_GPIO2_BASE, METHOD_GPIO_24XX },
-	{ 3, AM33XX_GPIO3_BASE, METHOD_GPIO_24XX },
+	{ 0, AM33XX_GPIO0_BASE },
+	{ 1, AM33XX_GPIO1_BASE },
+	{ 2, AM33XX_GPIO2_BASE },
+	{ 3, AM33XX_GPIO3_BASE },
 #ifdef CONFIG_AM43XX
-	{ 4, AM33XX_GPIO4_BASE, METHOD_GPIO_24XX },
-	{ 5, AM33XX_GPIO5_BASE, METHOD_GPIO_24XX },
+	{ 4, AM33XX_GPIO4_BASE },
+	{ 5, AM33XX_GPIO5_BASE },
 #endif
 };
 
@@ -60,54 +87,22 @@ U_BOOT_DEVICES(am33xx_gpios) = {
 	{ "gpio_omap", &am33xx_gpio[5] },
 #endif
 };
+#endif
+#endif
 
-# ifndef CONFIG_OF_CONTROL
-/*
- * TODO(sjg@chromium.org): When we can move SPL serial to DM, we can remove
- * the CONFIGs. At the same time, we should move this to the board files.
- */
-static const struct ns16550_platdata am33xx_serial[] = {
-	{ CONFIG_SYS_NS16550_COM1, 2, CONFIG_SYS_NS16550_CLK },
-#  ifdef CONFIG_SYS_NS16550_COM2
-	{ CONFIG_SYS_NS16550_COM2, 2, CONFIG_SYS_NS16550_CLK },
-#   ifdef CONFIG_SYS_NS16550_COM3
-	{ CONFIG_SYS_NS16550_COM3, 2, CONFIG_SYS_NS16550_CLK },
-	{ CONFIG_SYS_NS16550_COM4, 2, CONFIG_SYS_NS16550_CLK },
-	{ CONFIG_SYS_NS16550_COM5, 2, CONFIG_SYS_NS16550_CLK },
-	{ CONFIG_SYS_NS16550_COM6, 2, CONFIG_SYS_NS16550_CLK },
-#   endif
-#  endif
-};
-
-U_BOOT_DEVICES(am33xx_uarts) = {
-	{ "serial_omap", &am33xx_serial[0] },
-#  ifdef CONFIG_SYS_NS16550_COM2
-	{ "serial_omap", &am33xx_serial[1] },
-#   ifdef CONFIG_SYS_NS16550_COM3
-	{ "serial_omap", &am33xx_serial[2] },
-	{ "serial_omap", &am33xx_serial[3] },
-	{ "serial_omap", &am33xx_serial[4] },
-	{ "serial_omap", &am33xx_serial[5] },
-#   endif
-#  endif
-};
-# endif
-
-#else
-
+#ifndef CONFIG_DM_GPIO
 static const struct gpio_bank gpio_bank_am33xx[] = {
-	{ (void *)AM33XX_GPIO0_BASE, METHOD_GPIO_24XX },
-	{ (void *)AM33XX_GPIO1_BASE, METHOD_GPIO_24XX },
-	{ (void *)AM33XX_GPIO2_BASE, METHOD_GPIO_24XX },
-	{ (void *)AM33XX_GPIO3_BASE, METHOD_GPIO_24XX },
+	{ (void *)AM33XX_GPIO0_BASE },
+	{ (void *)AM33XX_GPIO1_BASE },
+	{ (void *)AM33XX_GPIO2_BASE },
+	{ (void *)AM33XX_GPIO3_BASE },
 #ifdef CONFIG_AM43XX
-	{ (void *)AM33XX_GPIO4_BASE, METHOD_GPIO_24XX },
-	{ (void *)AM33XX_GPIO5_BASE, METHOD_GPIO_24XX },
+	{ (void *)AM33XX_GPIO4_BASE },
+	{ (void *)AM33XX_GPIO5_BASE },
 #endif
 };
 
 const struct gpio_bank *const omap_gpio_bank = gpio_bank_am33xx;
-
 #endif
 
 #if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
@@ -124,7 +119,7 @@ int cpu_mmc_init(bd_t *bis)
 #endif
 
 /* AM33XX has two MUSB controllers which can be host or gadget */
-#if (defined(CONFIG_MUSB_GADGET) || defined(CONFIG_MUSB_HOST)) && \
+#if (defined(CONFIG_USB_MUSB_GADGET) || defined(CONFIG_USB_MUSB_HOST)) && \
 	(defined(CONFIG_AM335X_USB0) || defined(CONFIG_AM335X_USB1))
 static struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 
@@ -297,12 +292,6 @@ void s_init(void)
 	set_uart_mux_conf();
 	setup_clocks_for_console();
 	uart_soft_reset();
-#if defined(CONFIG_NOR_BOOT) || defined(CONFIG_QSPI_BOOT)
-	/* TODO: This does not work, gd is not available yet */
-	gd->baudrate = CONFIG_BAUDRATE;
-	serial_init();
-	gd->have_console = 1;
-#endif
 #if defined(CONFIG_SPL_AM33XX_ENABLE_RTC32K_OSC)
 	/* Enable RTC32K clock */
 	rtc32k_enable();

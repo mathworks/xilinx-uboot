@@ -12,17 +12,16 @@
 
 #define MII_DP83867_PHYCTRL	0x10
 #define MII_DP83867_MICR	0x12
+#define MII_DP83867_CFG2	0x14
+#define MII_DP83867_BISCR	0x16
 #define DP83867_CTRL		0x1f
 
 /* Extended Registers */
-#define DP83867_RGMIICTL        0x0032
-#define DP83867_RGMIIDCTL       0x0086
+#define DP83867_RGMIICTL	0x0032
+#define DP83867_RGMIIDCTL	0x0086
 
-/* FIXME this is consolidated in the latest U-Boot version */
-#define BIT(x)	(1UL << (x))
-
-#define DP83867_SW_RESET	(1 << 15)
-#define DP83867_SW_RESTART	(1 << 14)
+#define DP83867_SW_RESET	BIT(15)
+#define DP83867_SW_RESTART	BIT(14)
 
 /* MICR Interrupt bits */
 #define MII_DP83867_MICR_AN_ERR_INT_EN		BIT(15)
@@ -39,14 +38,28 @@
 #define MII_DP83867_MICR_JABBER_INT_EN		BIT(0)
 
 /* RGMIICTL bits */
-#define DP83867_RGMII_TX_CLK_DELAY_EN	BIT(1)
-#define DP83867_RGMII_RX_CLK_DELAY_EN	BIT(0)
+#define DP83867_RGMII_TX_CLK_DELAY_EN		BIT(1)
+#define DP83867_RGMII_RX_CLK_DELAY_EN		BIT(0)
 
 /* PHY CTRL bits */
-#define DP83867_PHYCR_FIFO_DEPTH_SHIFT	14
+#define DP83867_PHYCR_FIFO_DEPTH_SHIFT		14
+#define DP83867_MDI_CROSSOVER		5
+#define DP83867_MDI_CROSSOVER_AUTO	2
+#define DP83867_MDI_CROSSOVER_MDIX	2
+#define DP83867_PHYCTRL_SGMIIEN			0x0800
+#define DP83867_PHYCTRL_RXFIFO_SHIFT	12
+#define DP83867_PHYCTRL_TXFIFO_SHIFT	14
 
 /* RGMIIDCTL bits */
 #define DP83867_RGMII_TX_CLK_DELAY_SHIFT	4
+
+/* CFG2 bits */
+#define MII_DP83867_CFG2_SPEEDOPT_10EN		0x0040
+#define MII_DP83867_CFG2_SGMII_AUTONEGEN	0x0080
+#define MII_DP83867_CFG2_SPEEDOPT_ENH		0x0100
+#define MII_DP83867_CFG2_SPEEDOPT_CNT		0x0800
+#define MII_DP83867_CFG2_SPEEDOPT_INTLOW	0x2000
+#define MII_DP83867_CFG2_MASK			0x003F
 
 #define MII_MMD_CTRL	0x0d /* MMD Access Control Register */
 #define MII_MMD_DATA	0x0e /* MMD Access Data Register */
@@ -58,8 +71,6 @@
 #define MII_MMD_CTRL_INCR_RDWT	0x8000 /* post increment on reads & writes */
 #define MII_MMD_CTRL_INCR_ON_WT	0xC000 /* post increment on writes only */
 
-/* FIXME: These indirect PHY writes should go into common code.  */
-
 /**
  * phy_read_mmd_indirect - reads data from the MMD registers
  * @phydev: The PHY device bus
@@ -69,7 +80,7 @@
  *
  * Description: it reads data from the MMD registers (clause 22 to access to
  * clause 45) of the specified phy address.
- * To read these register we have:
+ * To read these registers we have:
  * 1) Write reg 13 // DEVAD
  * 2) Write reg 14 // MMD Address
  * 3) Write reg 13 // MMD Data Command for MMD DEVAD
@@ -104,7 +115,7 @@ int phy_read_mmd_indirect(struct phy_device *phydev, int prtad,
  *
  * Description: Write data from the MMD registers of the specified
  * phy address.
- * To write these register we have:
+ * To write these registers we have:
  * 1) Write reg 13 // DEVAD
  * 2) Write reg 14 // MMD Address
  * 3) Write reg 13 // MMD Data Command for MMD DEVAD
@@ -144,7 +155,7 @@ static inline bool phy_interface_is_rgmii(struct phy_device *phydev)
 
 static int dp83867_config(struct phy_device *phydev)
 {
-	unsigned int val, delay;
+	unsigned int val, delay, cfg2;
 	int ret;
 
 	/* Restart the PHY.  */
@@ -154,9 +165,33 @@ static int dp83867_config(struct phy_device *phydev)
 
 	if (phy_interface_is_rgmii(phydev)) {
 		ret = phy_write(phydev, MDIO_DEVAD_NONE, MII_DP83867_PHYCTRL,
+			(DP83867_MDI_CROSSOVER_AUTO << DP83867_MDI_CROSSOVER) |
 			(FIFO_DEPTH << DP83867_PHYCR_FIFO_DEPTH_SHIFT));
 		if (ret)
 			return ret;
+	} else {
+		phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR,
+			  (BMCR_ANENABLE | BMCR_FULLDPLX | BMCR_SPEED1000));
+
+		cfg2 = phy_read(phydev, phydev->addr, MII_DP83867_CFG2);
+		cfg2 &= MII_DP83867_CFG2_MASK;
+		cfg2 |= (MII_DP83867_CFG2_SPEEDOPT_10EN |
+			 MII_DP83867_CFG2_SGMII_AUTONEGEN |
+			 MII_DP83867_CFG2_SPEEDOPT_ENH |
+			 MII_DP83867_CFG2_SPEEDOPT_CNT |
+			 MII_DP83867_CFG2_SPEEDOPT_INTLOW);
+		phy_write(phydev, MDIO_DEVAD_NONE, MII_DP83867_CFG2, cfg2);
+
+		phy_write_mmd_indirect(phydev, DP83867_RGMIICTL,
+				       DP83867_DEVADDR, phydev->addr, 0x0);
+
+		phy_write(phydev, MDIO_DEVAD_NONE, MII_DP83867_PHYCTRL,
+			  DP83867_PHYCTRL_SGMIIEN |
+			  (DP83867_MDI_CROSSOVER_MDIX <<
+			  DP83867_MDI_CROSSOVER) |
+			  (FIFO_DEPTH << DP83867_PHYCTRL_RXFIFO_SHIFT) |
+			  (FIFO_DEPTH  << DP83867_PHYCTRL_TXFIFO_SHIFT));
+		phy_write(phydev, MDIO_DEVAD_NONE, MII_DP83867_BISCR, 0x0);
 	}
 
 	if ((phydev->interface >= PHY_INTERFACE_MODE_RGMII_ID) &&

@@ -33,40 +33,45 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* COMMAND */
-#define SLINK_CMD_ENB			(1 << 31)
-#define SLINK_CMD_GO			(1 << 30)
-#define SLINK_CMD_M_S			(1 << 28)
-#define SLINK_CMD_CK_SDA		(1 << 21)
-#define SLINK_CMD_CS_POL		(1 << 13)
-#define SLINK_CMD_CS_VAL		(1 << 12)
-#define SLINK_CMD_CS_SOFT		(1 << 11)
-#define SLINK_CMD_BIT_LENGTH		(1 << 4)
-#define SLINK_CMD_BIT_LENGTH_MASK	0x0000001F
+#define SLINK_CMD_ENB			BIT(31)
+#define SLINK_CMD_GO			BIT(30)
+#define SLINK_CMD_M_S			BIT(28)
+#define SLINK_CMD_IDLE_SCLK_DRIVE_LOW	(0 << 24)
+#define SLINK_CMD_IDLE_SCLK_DRIVE_HIGH	BIT(24)
+#define SLINK_CMD_IDLE_SCLK_PULL_LOW	(2 << 24)
+#define SLINK_CMD_IDLE_SCLK_PULL_HIGH	(3 << 24)
+#define SLINK_CMD_IDLE_SCLK_MASK	(3 << 24)
+#define SLINK_CMD_CK_SDA		BIT(21)
+#define SLINK_CMD_CS_POL		BIT(13)
+#define SLINK_CMD_CS_VAL		BIT(12)
+#define SLINK_CMD_CS_SOFT		BIT(11)
+#define SLINK_CMD_BIT_LENGTH		BIT(4)
+#define SLINK_CMD_BIT_LENGTH_MASK	GENMASK(4, 0)
 /* COMMAND2 */
-#define SLINK_CMD2_TXEN			(1 << 30)
-#define SLINK_CMD2_RXEN			(1 << 31)
-#define SLINK_CMD2_SS_EN		(1 << 18)
+#define SLINK_CMD2_TXEN			BIT(30)
+#define SLINK_CMD2_RXEN			BIT(31)
+#define SLINK_CMD2_SS_EN		BIT(18)
 #define SLINK_CMD2_SS_EN_SHIFT		18
-#define SLINK_CMD2_SS_EN_MASK		0x000C0000
-#define SLINK_CMD2_CS_ACTIVE_BETWEEN	(1 << 17)
+#define SLINK_CMD2_SS_EN_MASK		GENMASK(19, 18)
+#define SLINK_CMD2_CS_ACTIVE_BETWEEN	BIT(17)
 /* STATUS */
-#define SLINK_STAT_BSY			(1 << 31)
-#define SLINK_STAT_RDY			(1 << 30)
-#define SLINK_STAT_ERR			(1 << 29)
-#define SLINK_STAT_RXF_FLUSH		(1 << 27)
-#define SLINK_STAT_TXF_FLUSH		(1 << 26)
-#define SLINK_STAT_RXF_OVF		(1 << 25)
-#define SLINK_STAT_TXF_UNR		(1 << 24)
-#define SLINK_STAT_RXF_EMPTY		(1 << 23)
-#define SLINK_STAT_RXF_FULL		(1 << 22)
-#define SLINK_STAT_TXF_EMPTY		(1 << 21)
-#define SLINK_STAT_TXF_FULL		(1 << 20)
-#define SLINK_STAT_TXF_OVF		(1 << 19)
-#define SLINK_STAT_RXF_UNR		(1 << 18)
-#define SLINK_STAT_CUR_BLKCNT		(1 << 15)
+#define SLINK_STAT_BSY			BIT(31)
+#define SLINK_STAT_RDY			BIT(30)
+#define SLINK_STAT_ERR			BIT(29)
+#define SLINK_STAT_RXF_FLUSH		BIT(27)
+#define SLINK_STAT_TXF_FLUSH		BIT(26)
+#define SLINK_STAT_RXF_OVF		BIT(25)
+#define SLINK_STAT_TXF_UNR		BIT(24)
+#define SLINK_STAT_RXF_EMPTY		BIT(23)
+#define SLINK_STAT_RXF_FULL		BIT(22)
+#define SLINK_STAT_TXF_EMPTY		BIT(21)
+#define SLINK_STAT_TXF_FULL		BIT(20)
+#define SLINK_STAT_TXF_OVF		BIT(19)
+#define SLINK_STAT_RXF_UNR		BIT(18)
+#define SLINK_STAT_CUR_BLKCNT		BIT(15)
 /* STATUS2 */
-#define SLINK_STAT2_RXF_FULL_CNT	(1 << 16)
-#define SLINK_STAT2_TXF_FULL_CNT	(1 << 0)
+#define SLINK_STAT2_RXF_FULL_CNT	BIT(16)
+#define SLINK_STAT2_TXF_FULL_CNT	BIT(0)
 
 #define SPI_TIMEOUT		1000
 #define TEGRA_SPI_MAX_FREQ	52000000
@@ -106,7 +111,7 @@ static int tegra30_spi_ofdata_to_platdata(struct udevice *bus)
 	const void *blob = gd->fdt_blob;
 	int node = bus->of_offset;
 
-	plat->base = fdtdec_get_addr(blob, node, "reg");
+	plat->base = dev_get_addr(bus);
 	plat->periph_id = clock_decode_periph_id(blob, node);
 
 	if (plat->periph_id == PERIPH_ID_NONE) {
@@ -331,6 +336,22 @@ static int tegra30_spi_set_speed(struct udevice *bus, uint speed)
 static int tegra30_spi_set_mode(struct udevice *bus, uint mode)
 {
 	struct tegra30_spi_priv *priv = dev_get_priv(bus);
+	struct spi_regs *regs = priv->regs;
+	u32 reg;
+
+	reg = readl(&regs->command);
+
+	/* Set CPOL and CPHA */
+	reg &= ~(SLINK_CMD_IDLE_SCLK_MASK | SLINK_CMD_CK_SDA);
+	if (mode & SPI_CPHA)
+		reg |= SLINK_CMD_CK_SDA;
+
+	if (mode & SPI_CPOL)
+		reg |= SLINK_CMD_IDLE_SCLK_DRIVE_HIGH;
+	else
+		reg |= SLINK_CMD_IDLE_SCLK_DRIVE_LOW;
+
+	writel(reg, &regs->command);
 
 	priv->mode = mode;
 	debug("%s: regs=%p, mode=%d\n", __func__, priv->regs, priv->mode);

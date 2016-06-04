@@ -67,7 +67,6 @@ static int ehci_usb_remove(struct udevice *dev)
 	if (ret)
 		return ret;
 
-	sunxi_usb_phy_power_off(priv->phy_index);
 	sunxi_usb_phy_exit(priv->phy_index);
 
 #ifdef CONFIG_SUNXI_GEN_SUN6I
@@ -88,7 +87,7 @@ static const struct udevice_id ehci_usb_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(usb_ehci) = {
+U_BOOT_DRIVER(ehci_sunxi) = {
 	.name	= "ehci_sunxi",
 	.id	= UCLASS_USB,
 	.of_match = ehci_usb_ids,

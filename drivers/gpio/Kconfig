@@ -1,3 +1,9 @@
+#
+# GPIO infrastructure and drivers
+#
+
+menu "GPIO Support"
+
 config DM_GPIO
 	bool "Enable Driver Model for GPIO drivers"
 	depends on DM
@@ -8,12 +14,46 @@ config DM_GPIO
 	  particular GPIOs that they provide. The uclass interface
 	  is defined in include/asm-generic/gpio.h.
 
+config ALTERA_PIO
+	bool "Altera PIO driver"
+	depends on DM_GPIO
+	help
+	  Select this to enable PIO for Altera devices. Please find
+	  details on the "Embedded Peripherals IP User Guide" of Altera.
+
+config DWAPB_GPIO
+	bool "DWAPB GPIO driver"
+	depends on DM && DM_GPIO
+	default n
+	help
+	  Support for the Designware APB GPIO driver.
+
+config ATMEL_PIO4
+	bool "ATMEL PIO4 driver"
+	depends on DM
+	default n
+	help
+	  Say yes here to support the Atmel PIO4 driver.
+	  The PIO4 is new version of Atmel PIO controller, which manages
+	  up to 128 fully programmable input/output lines. Each I/O line
+	  may be dedicated as a general purpose I/O or be assigned to
+	  a function of an embedded peripheral.
+
 config LPC32XX_GPIO
 	bool "LPC32XX GPIO driver"
 	depends on DM
 	default n
 	help
 	  Support for the LPC32XX GPIO driver.
+
+config ROCKCHIP_GPIO
+	bool "Rockchip GPIO driver"
+	depends on DM_GPIO
+	help
+	  Support GPIO access on Rockchip SoCs. The GPIOs are arranged into
+	  a number of banks (different for each SoC type) each with 32 GPIOs.
+	  The GPIOs for a device are defined in the device tree with one node
+	  for each bank.
 
 config SANDBOX_GPIO
 	bool "Enable sandbox GPIO driver"
@@ -42,3 +82,12 @@ config VYBRID_GPIO
 	default n
 	help
 	  Say yes here to support Vybrid vf610 GPIOs.
+
+config ZYNQ_GPIO
+	bool "Zynq GPIO driver"
+	depends on DM_GPIO && (ARCH_ZYNQ || ARCH_ZYNQMP)
+	default y
+	help
+	  Supports GPIO access on Zynq SoC.
+
+endmenu

@@ -12,7 +12,6 @@
 #define MACH_TYPE_H2200			341
 #define CONFIG_MACH_TYPE		MACH_TYPE_H2200
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_CPU_PXA25X		1
 #define CONFIG_BOARD_H2200
 
@@ -123,7 +122,6 @@
 #define CONFIG_INITRD_TAG
 
 /* Monitor Command Prompt */
-#define CONFIG_SYS_PROMPT		"> "
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_SYS_PROMPT_HUSH_PS2	"$ "
 

@@ -8,7 +8,6 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
-#include <mapmem.h>
 #include <ns16550.h>
 #include <serial.h>
 #include <watchdog.h>
@@ -57,6 +56,10 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_DM_SERIAL
 
+#ifndef CONFIG_SYS_NS16550_CLK
+#define CONFIG_SYS_NS16550_CLK  0
+#endif
+
 static inline void serial_out_shift(void *addr, int shift, int value)
 {
 #ifdef CONFIG_SYS_NS16550_PORT_MAPPED
@@ -97,12 +100,12 @@ static void ns16550_writeb(NS16550_t port, int offset, int value)
 	unsigned char *addr;
 
 	offset *= 1 << plat->reg_shift;
-	addr = map_sysmem(plat->base, 0) + offset;
+	addr = map_physmem(plat->base, 0, MAP_NOCACHE) + offset;
 	/*
 	 * As far as we know it doesn't make sense to support selection of
 	 * these options at run-time, so use the existing CONFIG options.
 	 */
-	serial_out_shift(addr, plat->reg_shift, value);
+	serial_out_shift(addr + plat->reg_offset, plat->reg_shift, value);
 }
 
 static int ns16550_readb(NS16550_t port, int offset)
@@ -111,9 +114,9 @@ static int ns16550_readb(NS16550_t port, int offset)
 	unsigned char *addr;
 
 	offset *= 1 << plat->reg_shift;
-	addr = map_sysmem(plat->base, 0) + offset;
+	addr = map_physmem(plat->base, 0, MAP_NOCACHE) + offset;
 
-	return serial_in_shift(addr, plat->reg_shift);
+	return serial_in_shift(addr + plat->reg_offset, plat->reg_shift);
 }
 
 /* We can clean these up once everything is moved to driver model */
@@ -246,7 +249,18 @@ int NS16550_tstc(NS16550_t com_port)
 
 #include <debug_uart.h>
 
-void debug_uart_init(void)
+#define serial_dout(reg, value)	\
+	serial_out_shift((char *)com_port + \
+		((char *)reg - (char *)com_port) * \
+			(1 << CONFIG_DEBUG_UART_SHIFT), \
+		CONFIG_DEBUG_UART_SHIFT, value)
+#define serial_din(reg) \
+	serial_in_shift((char *)com_port + \
+		((char *)reg - (char *)com_port) * \
+			(1 << CONFIG_DEBUG_UART_SHIFT), \
+		CONFIG_DEBUG_UART_SHIFT)
+
+static inline void _debug_uart_init(void)
 {
 	struct NS16550 *com_port = (struct NS16550 *)CONFIG_DEBUG_UART_BASE;
 	int baud_divisor;
@@ -259,28 +273,23 @@ void debug_uart_init(void)
 	 */
 	baud_divisor = calc_divisor(com_port, CONFIG_DEBUG_UART_CLOCK,
 				    CONFIG_BAUDRATE);
-	serial_out_shift(&com_port->ier, CONFIG_DEBUG_UART_SHIFT,
-			 CONFIG_SYS_NS16550_IER);
-	serial_out_shift(&com_port->mcr, CONFIG_DEBUG_UART_SHIFT, UART_MCRVAL);
-	serial_out_shift(&com_port->fcr, CONFIG_DEBUG_UART_SHIFT, UART_FCRVAL);
+	serial_dout(&com_port->ier, CONFIG_SYS_NS16550_IER);
+	serial_dout(&com_port->mcr, UART_MCRVAL);
+	serial_dout(&com_port->fcr, UART_FCRVAL);
 
-	serial_out_shift(&com_port->lcr, CONFIG_DEBUG_UART_SHIFT,
-			 UART_LCR_BKSE | UART_LCRVAL);
-	serial_out_shift(&com_port->dll, CONFIG_DEBUG_UART_SHIFT,
-			 baud_divisor & 0xff);
-	serial_out_shift(&com_port->dlm, CONFIG_DEBUG_UART_SHIFT,
-			 (baud_divisor >> 8) & 0xff);
-	serial_out_shift(&com_port->lcr, CONFIG_DEBUG_UART_SHIFT,
-			 UART_LCRVAL);
+	serial_dout(&com_port->lcr, UART_LCR_BKSE | UART_LCRVAL);
+	serial_dout(&com_port->dll, baud_divisor & 0xff);
+	serial_dout(&com_port->dlm, (baud_divisor >> 8) & 0xff);
+	serial_dout(&com_port->lcr, UART_LCRVAL);
 }
 
 static inline void _debug_uart_putc(int ch)
 {
 	struct NS16550 *com_port = (struct NS16550 *)CONFIG_DEBUG_UART_BASE;
 
-	while (!(serial_in_shift(&com_port->lsr, 0) & UART_LSR_THRE))
+	while (!(serial_din(&com_port->lsr) & UART_LSR_THRE))
 		;
-	serial_out_shift(&com_port->thr, CONFIG_DEBUG_UART_SHIFT, ch);
+	serial_dout(&com_port->thr, ch);
 }
 
 DEBUG_UART_FUNCS
@@ -351,14 +360,14 @@ int ns16550_serial_probe(struct udevice *dev)
 	return 0;
 }
 
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 int ns16550_serial_ofdata_to_platdata(struct udevice *dev)
 {
 	struct ns16550_platdata *plat = dev->platdata;
 	fdt_addr_t addr;
 
 	/* try Processor Local Bus device first */
-	addr = fdtdec_get_addr(gd->fdt_blob, dev->of_offset, "reg");
+	addr = dev_get_addr(dev);
 #ifdef CONFIG_PCI
 	if (addr == FDT_ADDR_T_NONE) {
 		/* then try pci device */
@@ -393,8 +402,17 @@ int ns16550_serial_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 
 	plat->base = addr;
+	plat->reg_offset = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
+				     "reg-offset", 0);
 	plat->reg_shift = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
-					 "reg-shift", 1);
+					 "reg-shift", 0);
+	plat->clock = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
+				     "clock-frequency",
+				     CONFIG_SYS_NS16550_CLK);
+	if (!plat->clock) {
+		debug("ns16550 clock not defined\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -405,5 +423,36 @@ const struct dm_serial_ops ns16550_serial_ops = {
 	.pending = ns16550_serial_pending,
 	.getc = ns16550_serial_getc,
 	.setbrg = ns16550_serial_setbrg,
+};
+
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+static const struct udevice_id ns16550_serial_ids[] = {
+	{ .compatible = "ns16550" },
+	{ .compatible = "ns16550a" },
+	{ .compatible = "nvidia,tegra20-uart" },
+	{ .compatible = "rockchip,rk3036-uart" },
+	{ .compatible = "snps,dw-apb-uart" },
+	{ .compatible = "ti,omap2-uart" },
+	{ .compatible = "ti,omap3-uart" },
+	{ .compatible = "ti,omap4-uart" },
+	{ .compatible = "ti,am3352-uart" },
+	{ .compatible = "ti,am4372-uart" },
+	{ .compatible = "ti,dra742-uart" },
+	{}
+};
+#endif
+
+U_BOOT_DRIVER(ns16550_serial) = {
+	.name	= "ns16550_serial",
+	.id	= UCLASS_SERIAL,
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+	.of_match = ns16550_serial_ids,
+	.ofdata_to_platdata = ns16550_serial_ofdata_to_platdata,
+	.platdata_auto_alloc_size = sizeof(struct ns16550_platdata),
+#endif
+	.priv_auto_alloc_size = sizeof(struct NS16550),
+	.probe = ns16550_serial_probe,
+	.ops	= &ns16550_serial_ops,
+	.flags	= DM_FLAG_PRE_RELOC,
 };
 #endif /* CONFIG_DM_SERIAL */

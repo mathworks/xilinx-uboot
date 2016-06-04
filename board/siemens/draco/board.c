@@ -196,11 +196,6 @@ struct ctrl_ioregs draco_ddr3_ioregs = {
 
 	config_ddr(DDR_PLL_FREQ, &draco_ddr3_ioregs, &draco_ddr3_data,
 		   &draco_ddr3_cmd_ctrl_data, &draco_ddr3_emif_reg_data, 0);
-
-	/* For Samsung 2Gbit RAM we need this delay otherwise config fails after
-	 * soft reset.
-	 */
-	udelay(2000);
 }
 
 static void spl_siemens_board_init(void)
@@ -267,7 +262,7 @@ static struct cpsw_platform_data cpsw_data = {
 };
 
 #if defined(CONFIG_DRIVER_TI_CPSW) || \
-	(defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET))
+	(defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET))
 int board_eth_init(bd_t *bis)
 {
 	struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;

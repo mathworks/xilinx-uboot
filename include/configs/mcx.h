@@ -25,7 +25,6 @@
 #define CONFIG_MACH_TYPE	MACH_TYPE_MCX
 #define CONFIG_BOARD_LATE_INIT
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_CACHELINE_SIZE	64
 
@@ -79,7 +78,6 @@
  */
 #define V_NS16550_CLK			48000000	/* 48MHz (APLL96/2) */
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
@@ -111,6 +109,9 @@
 #define CONFIG_USB_ULPI_VIEWPORT_OMAP
 #define CONFIG_OMAP_EHCI_PHY1_RESET_GPIO	57
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS 3
+#define	CONFIG_USB_HOST_ETHER
+#define	CONFIG_USB_ETHER_ASIX
+#define CONFIG_USB_ETHER_MCS7830
 
 /* commands to include */
 #define CONFIG_CMD_EXT2		/* EXT2 Support			*/
@@ -133,7 +134,6 @@
 #define CONFIG_MTD_PARTITIONS
 #define CONFIG_MTD_DEVICE
 #define CONFIG_CMD_MTDPARTS
-#define CONFIG_CMD_GPIO
 
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_SYS_I2C
@@ -267,11 +267,8 @@
 /*
  * Miscellaneous configurable options
  */
-#define V_PROMPT			"mcx # "
-
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT		V_PROMPT
 #define CONFIG_SYS_CBSIZE		1024/* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
@@ -309,7 +306,10 @@
  */
 
 /* **** PISMO SUPPORT *** */
+#define CONFIG_NAND
+#define CONFIG_SYS_NAND_BUSWIDTH_16BIT
 #define CONFIG_NAND_OMAP_GPMC
+#define CONFIG_NAND_OMAP_GPMC_PREFETCH
 #define CONFIG_ENV_IS_IN_NAND
 #define SMNAND_ENV_OFFSET		0x180000 /* environment starts here */
 

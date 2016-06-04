@@ -5,20 +5,7 @@
  *
  * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2 of
- * the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0
  */
 #include <common.h>
 #include <dm.h>
@@ -28,6 +15,7 @@
 #include <usb.h>
 #include <asm/io.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <watchdog.h>
 #include <linux/compiler.h>
 
@@ -291,56 +279,16 @@ static inline u8 ehci_encode_speed(enum usb_device_speed speed)
 static void ehci_update_endpt2_dev_n_port(struct usb_device *udev,
 					  struct QH *qh)
 {
-	struct usb_device *ttdev;
-	int parent_devnum;
+	uint8_t portnr = 0;
+	uint8_t hubaddr = 0;
 
 	if (udev->speed != USB_SPEED_LOW && udev->speed != USB_SPEED_FULL)
 		return;
 
-	/*
-	 * For full / low speed devices we need to get the devnum and portnr of
-	 * the tt, so of the first upstream usb-2 hub, there may be usb-1 hubs
-	 * in the tree before that one!
-	 */
-#ifdef CONFIG_DM_USB
-	/*
-	 * When called from usb-uclass.c: usb_scan_device() udev->dev points
-	 * to the parent udevice, not the actual udevice belonging to the
-	 * udev as the device is not instantiated yet. So when searching
-	 * for the first usb-2 parent start with udev->dev not
-	 * udev->dev->parent .
-	 */
-	struct udevice *parent;
-	struct usb_device *uparent;
+	usb_find_usb2_hub_address_port(udev, &hubaddr, &portnr);
 
-	ttdev = udev;
-	parent = udev->dev;
-	uparent = dev_get_parentdata(parent);
-
-	while (uparent->speed != USB_SPEED_HIGH) {
-		struct udevice *dev = parent;
-
-		if (device_get_uclass_id(dev->parent) != UCLASS_USB_HUB) {
-			printf("ehci: Error cannot find high speed parent of usb-1 device\n");
-			return;
-		}
-
-		ttdev = dev_get_parentdata(dev);
-		parent = dev->parent;
-		uparent = dev_get_parentdata(parent);
-	}
-	parent_devnum = uparent->devnum;
-#else
-	ttdev = udev;
-	while (ttdev->parent && ttdev->parent->speed != USB_SPEED_HIGH)
-		ttdev = ttdev->parent;
-	if (!ttdev->parent)
-		return;
-	parent_devnum = ttdev->parent->devnum;
-#endif
-
-	qh->qh_endpt2 |= cpu_to_hc32(QH_ENDPT2_PORTNUM(ttdev->portnr) |
-				     QH_ENDPT2_HUBADDR(parent_devnum));
+	qh->qh_endpt2 |= cpu_to_hc32(QH_ENDPT2_PORTNUM(portnr) |
+				     QH_ENDPT2_HUBADDR(hubaddr));
 }
 
 static int
@@ -1658,8 +1606,10 @@ int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
 	ctrl->hcor = hcor;
 	ctrl->priv = ctrl;
 
-	if (init == USB_INIT_DEVICE)
+	ctrl->init = init;
+	if (ctrl->init == USB_INIT_DEVICE)
 		goto done;
+
 	ret = ehci_reset(ctrl);
 	if (ret)
 		goto err;
@@ -1678,6 +1628,9 @@ err:
 int ehci_deregister(struct udevice *dev)
 {
 	struct ehci_ctrl *ctrl = dev_get_priv(dev);
+
+	if (ctrl->init == USB_INIT_DEVICE)
+		return 0;
 
 	ehci_shutdown(ctrl);
 

@@ -21,6 +21,8 @@
 #define MCFGR_SWRST       ((uint32_t)(1)<<31) /* Software Reset */
 #define MCFGR_DMA_RST     ((uint32_t)(1)<<28) /* DMA Reset */
 #define MCFGR_PS_SHIFT          16
+#define MCFGR_AWCACHE_SHIFT	8
+#define MCFGR_AWCACHE_MASK	(0xf << MCFGR_AWCACHE_SHIFT)
 #define JR_INTMASK	  0x00000001
 #define JRCR_RESET                  0x01
 #define JRINT_ERR_HALT_INPROGRESS   0x4
@@ -35,14 +37,13 @@
 #define JQ_ENQ_ERR		-3
 
 struct op_ring {
-	dma_addr_t desc;
+	phys_addr_t desc;
 	uint32_t status;
 } __packed;
 
 struct jr_info {
-	void (*callback)(dma_addr_t desc, uint32_t status, void *arg);
-	dma_addr_t desc_phys_addr;
-	uint32_t desc_addr;
+	void (*callback)(uint32_t status, void *arg);
+	phys_addr_t desc_phys_addr;
 	uint32_t desc_len;
 	uint32_t op_done;
 	void *arg;

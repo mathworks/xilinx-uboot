@@ -13,7 +13,6 @@
 
 #define CONFIG_SYS_CORTEX_R4
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_SYS_NO_FLASH
 
 /* ram memory-related information */
@@ -23,7 +22,9 @@
 #define PHYS_SDRAM_1_SIZE			0x00198000
 
 #define CONFIG_ENV_SIZE				0x10000
-#define CONFIG_ENV_IS_IN_FLASH
+#define CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_ENV_SECT_SIZE			CONFIG_ENV_SIZE
+#define CONFIG_ENV_OFFSET			0x30000
 #define CONFIG_ENV_ADDR				\
 	(PHYS_SDRAM_1_SIZE - CONFIG_ENV_SIZE)
 #define CONFIG_SYS_MAXARGS			16
@@ -34,7 +35,6 @@
 #define CONFIG_PL01X_SERIAL
 
 /* user interface */
-#define CONFIG_SYS_PROMPT			"STV0991> "
 #define CONFIG_SYS_CBSIZE			1024
 #define CONFIG_SYS_PBSIZE			(CONFIG_SYS_CBSIZE \
 						+sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -53,7 +53,6 @@
 /* GMAC related configs */
 
 #define CONFIG_MII
-#define CONFIG_PHYLIB
 #define CONFIG_DW_ALTDESCRIPTOR
 #define CONFIG_PHY_MICREL
 
@@ -72,7 +71,17 @@
 #define CONFIG_BOOTDELAY                       3
 #define CONFIG_BOOTCOMMAND                     "go 0x40040000"
 
-#define CONFIG_OF_SEPARATE
-#define CONFIG_OF_CONTROL
 #define CONFIG_OF_LIBFDT
+
+/*
++ * QSPI support
++ */
+#ifdef CONFIG_OF_CONTROL		/* QSPI is controlled via DT */
+#define CONFIG_CQSPI_DECODER		0
+#define CONFIG_CQSPI_REF_CLK		((30/4)/2)*1000*1000
+#define CONFIG_CMD_SPI
+
+#define CONFIG_CMD_SF
+#endif
+
 #endif /* __CONFIG_H */

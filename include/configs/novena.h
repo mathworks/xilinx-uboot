@@ -16,6 +16,7 @@
 #define CONFIG_FIT
 #define CONFIG_KEYBOARD
 
+#include <config_distro_defaults.h>
 #include "mx6_common.h"
 
 /* U-Boot Commands */
@@ -25,7 +26,6 @@
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_I2C
 #define CONFIG_FAT_WRITE
-#define CONFIG_CMD_FUSE
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PCI
 #define CONFIG_CMD_PING
@@ -59,7 +59,7 @@
 /* Booting Linux */
 #define CONFIG_BOOTFILE			"fitImage"
 #define CONFIG_BOOTARGS			"console=ttymxc1,115200 "
-#define CONFIG_BOOTCOMMAND		"run net_nfs"
+#define CONFIG_BOOTCOMMAND		"run distro_bootcmd ; run net_nfs"
 #define CONFIG_HOSTNAME			novena
 
 /* Physical Memory Map */
@@ -83,6 +83,7 @@
 
 /* SPL */
 #define CONFIG_SPL_FAT_SUPPORT
+#define CONFIG_SPL_EXT_SUPPORT
 #define CONFIG_SPL_MMC_SUPPORT
 #include "imx6_spl.h"			/* common IMX6 SPL configuration */
 
@@ -103,6 +104,8 @@
 /* I2C */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_I2C_MULTI_BUS
 #define CONFIG_I2C_MXC
@@ -117,11 +120,6 @@
 /* MMC Configs */
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_USDHC_NUM	2
-
-/* OCOTP Configs */
-#ifdef CONFIG_CMD_FUSE
-#define CONFIG_MXC_OCOTP
-#endif
 
 /* PCI express */
 #ifdef CONFIG_CMD_PCI
@@ -193,6 +191,7 @@
 #endif
 
 /* Extra U-Boot environment. */
+#ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"fdt_high=0xffffffff\0"						\
 	"initrd_high=0xffffffff\0"					\
@@ -201,7 +200,12 @@
 	"bootdev=/dev/mmcblk0p1\0"					\
 	"rootdev=/dev/mmcblk0p2\0"					\
 	"netdev=eth0\0"							\
-	"kernel_addr_r=0x18000000\0"					\
+	"kernel_addr_r="__stringify(CONFIG_LOADADDR)"\0"		\
+	"pxefile_addr_r="__stringify(CONFIG_LOADADDR)"\0"		\
+	"scriptaddr="__stringify(CONFIG_LOADADDR)"\0"			\
+	"ramdisk_addr_r=0x28000000\0"		   			\
+	"fdt_addr_r=0x18000000\0"					\
+	"fdtfile=imx6q-novena.dtb\0"					\
 	"addcons="							\
 		"setenv bootargs ${bootargs} "				\
 		"console=${consdev},${baudrate}\0"			\
@@ -245,5 +249,19 @@
 		"fatwrite mmc 0:1 ${loadaddr} u-boot.img ${filesize} ; "\
 		"fi ; "							\
 		"fi\0"							\
+	BOOTENV
+
+#define BOOT_TARGET_DEVICES(func) \
+	func(MMC, mmc, 0) \
+	func(USB, usb, 0) \
+	func(SATA, sata, 0) \
+	func(PXE, pxe, na) \
+	func(DHCP, dhcp, na)
+
+#include <config_distro_bootcmd.h>
+
+#else
+#define CONFIG_EXTRA_ENV_SETTINGS
+#endif /* CONFIG_SPL_BUILD */
 
 #endif				/* __CONFIG_H */

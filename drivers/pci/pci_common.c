@@ -11,6 +11,7 @@
  */
 
 #include <common.h>
+#include <dm.h>
 #include <errno.h>
 #include <pci.h>
 #include <asm/io.h>
@@ -221,11 +222,16 @@ phys_addr_t pci_hose_bus_to_phys(struct pci_controller *hose,
 		return phys_addr;
 	}
 
+#ifdef CONFIG_DM_PCI
+	/* The root controller has the region information */
+	hose = pci_bus_to_hose(0);
+#endif
+
 	/*
 	 * if PCI_REGION_MEM is set we do a two pass search with preference
 	 * on matches that don't have PCI_REGION_SYS_MEMORY set
 	 */
-	if ((flags & PCI_REGION_MEM) == PCI_REGION_MEM) {
+	if ((flags & PCI_REGION_TYPE) == PCI_REGION_MEM) {
 		ret = __pci_hose_bus_to_phys(hose, bus_addr,
 				flags, PCI_REGION_SYS_MEMORY, &phys_addr);
 		if (!ret)
@@ -262,7 +268,7 @@ int __pci_hose_phys_to_bus(struct pci_controller *hose,
 		bus_addr = phys_addr - res->phys_start + res->bus_start;
 
 		if (bus_addr >= res->bus_start &&
-		    bus_addr < res->bus_start + res->size) {
+		    (bus_addr - res->bus_start) < res->size) {
 			*ba = bus_addr;
 			return 0;
 		}
@@ -283,11 +289,16 @@ pci_addr_t pci_hose_phys_to_bus(struct pci_controller *hose,
 		return bus_addr;
 	}
 
+#ifdef CONFIG_DM_PCI
+	/* The root controller has the region information */
+	hose = pci_bus_to_hose(0);
+#endif
+
 	/*
 	 * if PCI_REGION_MEM is set we do a two pass search with preference
 	 * on matches that don't have PCI_REGION_SYS_MEMORY set
 	 */
-	if ((flags & PCI_REGION_MEM) == PCI_REGION_MEM) {
+	if ((flags & PCI_REGION_TYPE) == PCI_REGION_MEM) {
 		ret = __pci_hose_phys_to_bus(hose, phys_addr,
 				flags, PCI_REGION_SYS_MEMORY, &bus_addr);
 		if (!ret)

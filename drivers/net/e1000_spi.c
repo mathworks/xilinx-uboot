@@ -1,3 +1,5 @@
+#include <common.h>
+#include <console.h>
 #include "e1000.h"
 #include <linux/compiler.h>
 

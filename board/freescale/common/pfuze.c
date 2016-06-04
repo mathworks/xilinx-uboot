@@ -9,10 +9,12 @@
 #include <power/pmic.h>
 #include <power/pfuze100_pmic.h>
 
+#ifndef CONFIG_DM_PMIC_PFUZE100
 int pfuze_mode_init(struct pmic *p, u32 mode)
 {
 	unsigned char offset, i, switch_num;
-	u32 id, ret;
+	u32 id;
+	int ret;
 
 	pmic_reg_read(p, PFUZE100_DEVICEID, &id);
 	id = id & 0xf;
@@ -90,3 +92,4 @@ struct pmic *pfuze_common_init(unsigned char i2cbus)
 
 	return p;
 }
+#endif

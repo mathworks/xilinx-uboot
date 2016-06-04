@@ -101,7 +101,6 @@
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH_STMICRO
 
 
 /*
@@ -153,13 +152,11 @@
 #define CONFIG_CMD_BOOTLDR
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_SF
 
 #define CONFIG_BOOTCOMMAND	"run ramboot"
 #define CONFIG_BOOTARGS	"root=/dev/mtdblock0 rw"
-#define CONFIG_SYS_PROMPT	"minotaur> "
 
 #define BOOT_ENV_SETTINGS \
 	"update=tftpboot $(loadaddr) u-boot.ldr;" \

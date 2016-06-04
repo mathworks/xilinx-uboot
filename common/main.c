@@ -10,6 +10,7 @@
 #include <common.h>
 #include <autoboot.h>
 #include <cli.h>
+#include <console.h>
 #include <version.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -75,7 +76,7 @@ void main_loop(void)
 	run_preboot_environment_command();
 
 #if defined(CONFIG_UPDATE_TFTP)
-	update_tftp(0UL);
+	update_tftp(0UL, NULL, NULL);
 #endif /* CONFIG_UPDATE_TFTP */
 
 	s = bootdelay_process();

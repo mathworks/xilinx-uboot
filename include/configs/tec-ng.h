@@ -11,11 +11,9 @@
 #include "tegra30-common.h"
 
 /* High-level configuration options */
-#define V_PROMPT			"Tegra30 (TEC-NG) # "
 #define CONFIG_TEGRA_BOARD_STRING	"Avionic Design Tamonten™ NG Evaluation Carrier"
 
 /* Board-specific serial config */
-#define CONFIG_SERIAL_MULTI
 #define CONFIG_TEGRA_ENABLE_UARTD
 #define CONFIG_SYS_NS16550_COM1		NV_PA_APB_UARTD_BASE
 
@@ -36,9 +34,7 @@
 #define CONFIG_SYS_MMC_ENV_PART		2
 
 /* SPI */
-#define CONFIG_TEGRA20_SLINK
 #define CONFIG_TEGRA_SLINK_CTRLS       6
-#define CONFIG_SPI_FLASH_WINBOND
 #define CONFIG_SF_DEFAULT_MODE         SPI_MODE_0
 #define CONFIG_SF_DEFAULT_SPEED        24000000
 #define CONFIG_CMD_SPI

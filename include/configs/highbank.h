@@ -13,7 +13,6 @@
 #define CONFIG_SYS_THUMB_BUILD
 
 #define CONFIG_SYS_NO_FLASH
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_FIT
@@ -75,8 +74,9 @@
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
+ * The DRAM is already setup, so do not touch the DT node later.
  */
-#define CONFIG_NR_DRAM_BANKS		1
+#define CONFIG_NR_DRAM_BANKS		0
 #define PHYS_SDRAM_1_SIZE		(4089 << 20)
 #define CONFIG_SYS_MEMTEST_START	0x100000
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1_SIZE - 0x100000)

@@ -59,6 +59,7 @@
 /*
  * Console configuration
  */
+#undef CONFIG_SYS_PROMPT
 #if defined(CONFIG_SYS_LITTLE_ENDIAN)
 #define CONFIG_SYS_PROMPT		"maltael # "
 #else
@@ -79,7 +80,6 @@
  */
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(115200 * 16)
@@ -121,7 +121,6 @@
  */
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_PCI
 #define CONFIG_CMD_PING

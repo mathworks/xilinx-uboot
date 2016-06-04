@@ -14,7 +14,6 @@
 #define CONFIG_KZM_A9_GT
 #define CONFIG_RMOBILE_BOARD_STRING	"KMC KZM-A9-GT"
 #define CONFIG_MACH_TYPE MACH_TYPE_KZM9G
-#define CONFIG_SYS_GENERIC_BOARD
 
 #include <asm/arch/rmobile.h>
 
@@ -53,7 +52,6 @@
 
 /* prompt */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"KZM-A9-GT# "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_PBSIZE		256
 #define CONFIG_SYS_MAXARGS		16

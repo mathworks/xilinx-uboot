@@ -36,12 +36,6 @@
 
 #define CQSPI_FIFO_WIDTH			(4)
 
-/* Controller sram size in word */
-#define CQSPI_REG_SRAM_SIZE_WORD		(128)
-#define CQSPI_REG_SRAM_RESV_WORDS		(2)
-#define CQSPI_REG_SRAM_PARTITION_WR		(1)
-#define CQSPI_REG_SRAM_PARTITION_RD		\
-	(CQSPI_REG_SRAM_SIZE_WORD - CQSPI_REG_SRAM_RESV_WORDS)
 #define CQSPI_REG_SRAM_THRESHOLD_WORDS		(50)
 
 /* Transfer mode */
@@ -64,10 +58,10 @@
 #define	CQSPI_REG_CONFIG			0x00
 #define	CQSPI_REG_CONFIG_CLK_POL_LSB		1
 #define	CQSPI_REG_CONFIG_CLK_PHA_LSB		2
-#define	CQSPI_REG_CONFIG_ENABLE_MASK		(1 << 0)
-#define	CQSPI_REG_CONFIG_DIRECT_MASK		(1 << 7)
-#define	CQSPI_REG_CONFIG_DECODE_MASK		(1 << 9)
-#define	CQSPI_REG_CONFIG_XIP_IMM_MASK		(1 << 18)
+#define	CQSPI_REG_CONFIG_ENABLE_MASK		BIT(0)
+#define	CQSPI_REG_CONFIG_DIRECT_MASK		BIT(7)
+#define	CQSPI_REG_CONFIG_DECODE_MASK		BIT(9)
+#define	CQSPI_REG_CONFIG_XIP_IMM_MASK		BIT(18)
 #define	CQSPI_REG_CONFIG_CHIPSELECT_LSB		10
 #define	CQSPI_REG_CONFIG_BAUD_LSB		19
 #define	CQSPI_REG_CONFIG_IDLE_LSB		31
@@ -128,18 +122,18 @@
 #define	CQSPI_REG_IRQMASK			0x44
 
 #define	CQSPI_REG_INDIRECTRD			0x60
-#define	CQSPI_REG_INDIRECTRD_START_MASK		(1 << 0)
-#define	CQSPI_REG_INDIRECTRD_CANCEL_MASK	(1 << 1)
-#define	CQSPI_REG_INDIRECTRD_INPROGRESS_MASK	(1 << 2)
-#define	CQSPI_REG_INDIRECTRD_DONE_MASK		(1 << 5)
+#define	CQSPI_REG_INDIRECTRD_START_MASK		BIT(0)
+#define	CQSPI_REG_INDIRECTRD_CANCEL_MASK	BIT(1)
+#define	CQSPI_REG_INDIRECTRD_INPROGRESS_MASK	BIT(2)
+#define	CQSPI_REG_INDIRECTRD_DONE_MASK		BIT(5)
 
 #define	CQSPI_REG_INDIRECTRDWATERMARK		0x64
 #define	CQSPI_REG_INDIRECTRDSTARTADDR		0x68
 #define	CQSPI_REG_INDIRECTRDBYTES		0x6C
 
 #define	CQSPI_REG_CMDCTRL			0x90
-#define	CQSPI_REG_CMDCTRL_EXECUTE_MASK		(1 << 0)
-#define	CQSPI_REG_CMDCTRL_INPROGRESS_MASK	(1 << 1)
+#define	CQSPI_REG_CMDCTRL_EXECUTE_MASK		BIT(0)
+#define	CQSPI_REG_CMDCTRL_INPROGRESS_MASK	BIT(1)
 #define	CQSPI_REG_CMDCTRL_DUMMY_LSB		7
 #define	CQSPI_REG_CMDCTRL_WR_BYTES_LSB		12
 #define	CQSPI_REG_CMDCTRL_WR_EN_LSB		15
@@ -155,10 +149,10 @@
 #define	CQSPI_REG_CMDCTRL_OPCODE_MASK		0xFF
 
 #define	CQSPI_REG_INDIRECTWR			0x70
-#define	CQSPI_REG_INDIRECTWR_START_MASK		(1 << 0)
-#define	CQSPI_REG_INDIRECTWR_CANCEL_MASK	(1 << 1)
-#define	CQSPI_REG_INDIRECTWR_INPROGRESS_MASK	(1 << 2)
-#define	CQSPI_REG_INDIRECTWR_DONE_MASK		(1 << 5)
+#define	CQSPI_REG_INDIRECTWR_START_MASK		BIT(0)
+#define	CQSPI_REG_INDIRECTWR_CANCEL_MASK	BIT(1)
+#define	CQSPI_REG_INDIRECTWR_INPROGRESS_MASK	BIT(2)
+#define	CQSPI_REG_INDIRECTWR_DONE_MASK		BIT(5)
 
 #define	CQSPI_REG_INDIRECTWRWATERMARK		0x74
 #define	CQSPI_REG_INDIRECTWRSTARTADDR		0x78
@@ -206,17 +200,15 @@ static void cadence_qspi_apb_read_fifo_data(void *dest,
 	unsigned int *dest_ptr = (unsigned int *)dest;
 	unsigned int *src_ptr = (unsigned int *)src_ahb_addr;
 
-	while (remaining > 0) {
-		if (remaining >= CQSPI_FIFO_WIDTH) {
-			*dest_ptr = readl(src_ptr);
-			remaining -= CQSPI_FIFO_WIDTH;
-		} else {
-			/* dangling bytes */
-			temp = readl(src_ptr);
-			memcpy(dest_ptr, &temp, remaining);
-			break;
-		}
+	while (remaining >= sizeof(dest_ptr)) {
+		*dest_ptr = readl(src_ptr);
+		remaining -= sizeof(src_ptr);
 		dest_ptr++;
+	}
+	if (remaining) {
+		/* dangling bytes */
+		temp = readl(src_ptr);
+		memcpy(dest_ptr, &temp, remaining);
 	}
 
 	return;
@@ -225,24 +217,26 @@ static void cadence_qspi_apb_read_fifo_data(void *dest,
 static void cadence_qspi_apb_write_fifo_data(const void *dest_ahb_addr,
 	const void *src, unsigned int bytes)
 {
-	unsigned int temp;
+	unsigned int temp = 0;
+	int i;
 	int remaining = bytes;
 	unsigned int *dest_ptr = (unsigned int *)dest_ahb_addr;
 	unsigned int *src_ptr = (unsigned int *)src;
 
-	while (remaining > 0) {
-		if (remaining >= CQSPI_FIFO_WIDTH) {
-			writel(*src_ptr, dest_ptr);
-			remaining -= sizeof(unsigned int);
-		} else {
-			/* dangling bytes */
-			memcpy(&temp, src_ptr, remaining);
-			writel(temp, dest_ptr);
-			break;
-		}
-		src_ptr++;
+	while (remaining >= CQSPI_FIFO_WIDTH) {
+		for (i = CQSPI_FIFO_WIDTH/sizeof(src_ptr) - 1; i >= 0; i--)
+			writel(*(src_ptr+i), dest_ptr+i);
+		src_ptr += CQSPI_FIFO_WIDTH/sizeof(src_ptr);
+		remaining -= CQSPI_FIFO_WIDTH;
 	}
-
+	if (remaining) {
+		/* dangling bytes */
+		i = remaining/sizeof(dest_ptr);
+		memcpy(&temp, src_ptr+i, remaining % sizeof(dest_ptr));
+		writel(temp, dest_ptr+i);
+		for (--i; i >= 0; i--)
+			writel(*(src_ptr+i), dest_ptr+i);
+	}
 	return;
 }
 
@@ -538,6 +532,9 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_platdata *plat)
 	/* Configure the remap address register, no remap */
 	writel(0, plat->regbase + CQSPI_REG_REMAP);
 
+	/* Indirect mode configurations */
+	writel((plat->sram_size/2), plat->regbase + CQSPI_REG_SRAMPARTITION);
+
 	/* Disable all interrupts */
 	writel(0, plat->regbase + CQSPI_REG_IRQMASK);
 
@@ -700,10 +697,6 @@ int cadence_qspi_apb_indirect_read_setup(struct cadence_spi_platdata *plat,
 	writel(((u32)plat->ahbbase & CQSPI_INDIRECTTRIGGER_ADDR_MASK),
 	       plat->regbase + CQSPI_REG_INDIRECTTRIGGER);
 
-	/* Configure SRAM partition for read. */
-	writel(CQSPI_REG_SRAM_PARTITION_RD, plat->regbase +
-	       CQSPI_REG_SRAMPARTITION);
-
 	/* Configure the opcode */
 	rd_reg = cmdbuf[0] << CQSPI_REG_RD_INSTR_OPCODE_LSB;
 
@@ -800,9 +793,6 @@ int cadence_qspi_apb_indirect_write_setup(struct cadence_spi_platdata *plat,
 	/* Setup the indirect trigger address */
 	writel(((u32)plat->ahbbase & CQSPI_INDIRECTTRIGGER_ADDR_MASK),
 	       plat->regbase + CQSPI_REG_INDIRECTTRIGGER);
-
-	writel(CQSPI_REG_SRAM_PARTITION_WR,
-	       plat->regbase + CQSPI_REG_SRAMPARTITION);
 
 	/* Configure the opcode */
 	reg = cmdbuf[0] << CQSPI_REG_WR_INSTR_OPCODE_LSB;

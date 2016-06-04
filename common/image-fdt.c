@@ -326,7 +326,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 
 			if (load == image_start ||
 			    load == image_data) {
-				fdt_blob = (char *)image_data;
+				fdt_addr = load;
 				break;
 			}
 
@@ -492,7 +492,8 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		}
 	}
 	if (IMAGE_OF_SYSTEM_SETUP) {
-		if (ft_system_setup(blob, gd->bd)) {
+		fdt_ret = ft_system_setup(blob, gd->bd);
+		if (fdt_ret) {
 			printf("ERROR: system-specific fdt fixup failed: %s\n",
 			       fdt_strerror(fdt_ret));
 			goto err;

@@ -23,7 +23,6 @@
 
 /* Command line configuration */
 #define CONFIG_CMD_CACHE
-#define CONFIG_CMD_ELF
 #undef CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
@@ -88,7 +87,6 @@
 	""
 
 #define CONFIG_PRAM		512	/* 512 KB */
-#define CONFIG_SYS_PROMPT	"-> "
 #define CONFIG_SYS_LONGHELP	/* undef to save memory */
 
 #ifdef CONFIG_CMD_KGDB

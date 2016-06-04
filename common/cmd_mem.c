@@ -12,9 +12,11 @@
  */
 
 #include <common.h>
+#include <console.h>
 #include <bootretry.h>
 #include <cli.h>
 #include <command.h>
+#include <console.h>
 #ifdef CONFIG_HAS_DATAFLASH
 #include <dataflash.h>
 #endif
@@ -929,7 +931,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 		addr[offset] = 0;
 	}
 
-	return 0;
+	return errs;
 }
 
 static ulong mem_test_quick(vu_long *buf, ulong start_addr, ulong end_addr,
@@ -988,7 +990,7 @@ static ulong mem_test_quick(vu_long *buf, ulong start_addr, ulong end_addr,
 		val += incr;
 	}
 
-	return 0;
+	return errs;
 }
 
 /*
@@ -1036,7 +1038,7 @@ static int do_mem_mtest(cmd_tbl_t *cmdtp, int flag, int argc,
 		return -1;
 	}
 
-	printf("Testing %08x ... %08x:\n", (uint)start, (uint)end);
+	printf("Testing %08lx ... %08lx:\n", start, end);
 	debug("%s:%d: start %#08lx end %#08lx\n", __func__, __LINE__,
 	      start, end);
 

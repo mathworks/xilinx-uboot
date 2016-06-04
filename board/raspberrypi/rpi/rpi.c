@@ -10,6 +10,7 @@
 #include <fdt_support.h>
 #include <fdt_simplefb.h>
 #include <lcd.h>
+#include <memalign.h>
 #include <mmc.h>
 #include <asm/gpio.h>
 #include <asm/arch/mbox.h>
@@ -73,116 +74,136 @@ struct msg_get_clock_rate {
 	u32 end_tag;
 };
 
-/* See comments in mbox.h for data source */
-static const struct {
+/*
+ * http://raspberryalphaomega.org.uk/2013/02/06/automatic-raspberry-pi-board-revision-detection-model-a-b1-and-b2/
+ * http://www.raspberrypi.org/forums/viewtopic.php?f=63&t=32733
+ * http://git.drogon.net/?p=wiringPi;a=blob;f=wiringPi/wiringPi.c;h=503151f61014418b9c42f4476a6086f75cd4e64b;hb=refs/heads/master#l922
+ */
+struct rpi_model {
 	const char *name;
 	const char *fdtfile;
 	bool has_onboard_eth;
-} models[] = {
-	[0] = {
-		"Unknown model",
+};
+
+static const struct rpi_model rpi_model_unknown = {
+	"Unknown model",
 #ifdef CONFIG_BCM2836
-		"bcm2836-rpi-other.dtb",
+	"bcm2836-rpi-other.dtb",
 #else
-		"bcm2835-rpi-other.dtb",
+	"bcm2835-rpi-other.dtb",
 #endif
-		false,
-	},
-#ifdef CONFIG_BCM2836
-	[BCM2836_BOARD_REV_2_B] = {
+	false,
+};
+
+static const struct rpi_model rpi_models_new_scheme[] = {
+	[0x4] = {
 		"2 Model B",
 		"bcm2836-rpi-2-b.dtb",
 		true,
 	},
-#else
-	[BCM2835_BOARD_REV_B_I2C0_2] = {
+	[0x9] = {
+		"Zero",
+		"bcm2835-rpi-zero.dtb",
+		false,
+	},
+};
+
+static const struct rpi_model rpi_models_old_scheme[] = {
+	[0x2] = {
 		"Model B (no P5)",
 		"bcm2835-rpi-b-i2c0.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_I2C0_3] = {
+	[0x3] = {
 		"Model B (no P5)",
 		"bcm2835-rpi-b-i2c0.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_I2C1_4] = {
+	[0x4] = {
 		"Model B",
 		"bcm2835-rpi-b.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_I2C1_5] = {
+	[0x5] = {
 		"Model B",
 		"bcm2835-rpi-b.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_I2C1_6] = {
+	[0x6] = {
 		"Model B",
 		"bcm2835-rpi-b.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_A_7] = {
+	[0x7] = {
 		"Model A",
 		"bcm2835-rpi-a.dtb",
 		false,
 	},
-	[BCM2835_BOARD_REV_A_8] = {
+	[0x8] = {
 		"Model A",
 		"bcm2835-rpi-a.dtb",
 		false,
 	},
-	[BCM2835_BOARD_REV_A_9] = {
+	[0x9] = {
 		"Model A",
 		"bcm2835-rpi-a.dtb",
 		false,
 	},
-	[BCM2835_BOARD_REV_B_REV2_d] = {
+	[0xd] = {
 		"Model B rev2",
 		"bcm2835-rpi-b-rev2.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_REV2_e] = {
+	[0xe] = {
 		"Model B rev2",
 		"bcm2835-rpi-b-rev2.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_REV2_f] = {
+	[0xf] = {
 		"Model B rev2",
 		"bcm2835-rpi-b-rev2.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_B_PLUS] = {
+	[0x10] = {
 		"Model B+",
 		"bcm2835-rpi-b-plus.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_CM] = {
+	[0x11] = {
 		"Compute Module",
 		"bcm2835-rpi-cm.dtb",
 		false,
 	},
-	[BCM2835_BOARD_REV_A_PLUS] = {
+	[0x12] = {
 		"Model A+",
 		"bcm2835-rpi-a-plus.dtb",
 		false,
 	},
-	[BCM2835_BOARD_REV_B_PLUS_13] = {
+	[0x13] = {
 		"Model B+",
 		"bcm2835-rpi-b-plus.dtb",
 		true,
 	},
-	[BCM2835_BOARD_REV_CM_14] = {
+	[0x14] = {
 		"Compute Module",
 		"bcm2835-rpi-cm.dtb",
 		false,
 	},
-#endif
+	[0x15] = {
+		"Model A+",
+		"bcm2835-rpi-a-plus.dtb",
+		false,
+	},
 };
 
-u32 rpi_board_rev = 0;
+static uint32_t revision;
+static uint32_t rev_scheme;
+static uint32_t rev_type;
+static const struct rpi_model *model;
 
 int dram_init(void)
 {
-	ALLOC_ALIGN_BUFFER(struct msg_get_arm_mem, msg, 1, 16);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_arm_mem, msg, 1);
 	int ret;
 
 	BCM2835_MBOX_INIT_HDR(msg);
@@ -206,16 +227,16 @@ static void set_fdtfile(void)
 	if (getenv("fdtfile"))
 		return;
 
-	fdtfile = models[rpi_board_rev].fdtfile;
+	fdtfile = model->fdtfile;
 	setenv("fdtfile", fdtfile);
 }
 
 static void set_usbethaddr(void)
 {
-	ALLOC_ALIGN_BUFFER(struct msg_get_mac_address, msg, 1, 16);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_mac_address, msg, 1);
 	int ret;
 
-	if (!models[rpi_board_rev].has_onboard_eth)
+	if (!model->has_onboard_eth)
 		return;
 
 	if (getenv("usbethaddr"))
@@ -236,16 +257,35 @@ static void set_usbethaddr(void)
 	return;
 }
 
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+static void set_board_info(void)
+{
+	char s[11];
+
+	snprintf(s, sizeof(s), "0x%X", revision);
+	setenv("board_revision", s);
+	snprintf(s, sizeof(s), "%d", rev_scheme);
+	setenv("board_rev_scheme", s);
+	/* Can't rename this to board_rev_type since it's an ABI for scripts */
+	snprintf(s, sizeof(s), "0x%X", rev_type);
+	setenv("board_rev", s);
+	setenv("board_name", model->name);
+}
+#endif /* CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG */
+
 int misc_init_r(void)
 {
 	set_fdtfile();
 	set_usbethaddr();
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	set_board_info();
+#endif
 	return 0;
 }
 
 static int power_on_module(u32 module)
 {
-	ALLOC_ALIGN_BUFFER(struct msg_set_power_state, msg_pwr, 1, 16);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_set_power_state, msg_pwr, 1);
 	int ret;
 
 	BCM2835_MBOX_INIT_HDR(msg_pwr);
@@ -269,9 +309,10 @@ static int power_on_module(u32 module)
 
 static void get_board_rev(void)
 {
-	ALLOC_ALIGN_BUFFER(struct msg_get_board_rev, msg, 1, 16);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_board_rev, msg, 1);
 	int ret;
-	const char *name;
+	const struct rpi_model *models;
+	uint32_t models_count;
 
 	BCM2835_MBOX_INIT_HDR(msg);
 	BCM2835_MBOX_INIT_TAG(&msg->get_board_rev, GET_BOARD_REV);
@@ -294,23 +335,29 @@ static void get_board_rev(void)
 	 * http://www.raspberrypi.org/forums/viewtopic.php?f=63&t=98367&start=250
 	 * http://www.raspberrypi.org/forums/viewtopic.php?f=31&t=20594
 	 */
-	rpi_board_rev = msg->get_board_rev.body.resp.rev;
-	if (rpi_board_rev & 0x800000)
-		rpi_board_rev = (rpi_board_rev >> 4) & 0xff;
-	else
-		rpi_board_rev &= 0xff;
-	if (rpi_board_rev >= ARRAY_SIZE(models)) {
-		printf("RPI: Board rev %u outside known range\n",
-		       rpi_board_rev);
-		rpi_board_rev = 0;
+	revision = msg->get_board_rev.body.resp.rev;
+	if (revision & 0x800000) {
+		rev_scheme = 1;
+		rev_type = (revision >> 4) & 0xff;
+		models = rpi_models_new_scheme;
+		models_count = ARRAY_SIZE(rpi_models_new_scheme);
+	} else {
+		rev_scheme = 0;
+		rev_type = revision & 0xff;
+		models = rpi_models_old_scheme;
+		models_count = ARRAY_SIZE(rpi_models_old_scheme);
 	}
-	if (!models[rpi_board_rev].name) {
-		printf("RPI: Board rev %u unknown\n", rpi_board_rev);
-		rpi_board_rev = 0;
+	if (rev_type >= models_count) {
+		printf("RPI: Board rev 0x%x outside known range\n", rev_type);
+		model = &rpi_model_unknown;
+	} else if (!models[rev_type].name) {
+		printf("RPI: Board rev 0x%x unknown\n", rev_type);
+		model = &rpi_model_unknown;
+	} else {
+		model = &models[rev_type];
 	}
 
-	name = models[rpi_board_rev].name;
-	printf("RPI %s\n", name);
+	printf("RPI %s (0x%x)\n", model->name, revision);
 }
 
 int board_init(void)
@@ -324,7 +371,7 @@ int board_init(void)
 
 int board_mmc_init(bd_t *bis)
 {
-	ALLOC_ALIGN_BUFFER(struct msg_get_clock_rate, msg_clk, 1, 16);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_clock_rate, msg_clk, 1);
 	int ret;
 
 	power_on_module(BCM2835_MBOX_POWER_DEVID_SDHCI);

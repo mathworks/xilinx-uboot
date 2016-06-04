@@ -59,7 +59,7 @@ void clock_init_uart(void)
 
 	/* open the clock for uart */
 	setbits_le32(&ccm->apb1_gate,
-		CLK_GATE_OPEN << (APB1_GATE_UART_SHIFT+CONFIG_CONS_INDEX-1));
+		CLK_GATE_OPEN << (APB1_GATE_UART_SHIFT+CONFIG_CONS_INDEX - 1));
 }
 
 int clock_twi_onoff(int port, int state)
@@ -67,16 +67,13 @@ int clock_twi_onoff(int port, int state)
 	struct sunxi_ccm_reg *const ccm =
 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
 
-	if (port > 2)
-		return -1;
-
 	/* set the apb clock gate for twi */
 	if (state)
 		setbits_le32(&ccm->apb1_gate,
-			     CLK_GATE_OPEN << (APB1_GATE_TWI_SHIFT+port));
+			     CLK_GATE_OPEN << (APB1_GATE_TWI_SHIFT + port));
 	else
 		clrbits_le32(&ccm->apb1_gate,
-			     CLK_GATE_OPEN << (APB1_GATE_TWI_SHIFT+port));
+			     CLK_GATE_OPEN << (APB1_GATE_TWI_SHIFT + port));
 
 	return 0;
 }
@@ -196,6 +193,15 @@ void clock_set_pll3(unsigned int clk)
 	/* PLL3 rate = 3000000 * m */
 	writel(CCM_PLL3_CTRL_EN | CCM_PLL3_CTRL_INTEGER_MODE |
 	       CCM_PLL3_CTRL_M(clk / 3000000), &ccm->pll3_cfg);
+}
+
+unsigned int clock_get_pll3(void)
+{
+	struct sunxi_ccm_reg *const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	uint32_t rval = readl(&ccm->pll3_cfg);
+	int m = ((rval & CCM_PLL3_CTRL_M_MASK) >> CCM_PLL3_CTRL_M_SHIFT);
+	return 3000000 * m;
 }
 
 unsigned int clock_get_pll5p(void)

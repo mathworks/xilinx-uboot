@@ -117,14 +117,18 @@ enum {
 
 /*
  * Expected regulators setup after call of:
- * - regulator_autoset()
+ * - regulator_autoset_by_name()
  * - regulator_list_autoset()
  */
 
-/* BUCK1: for testing regulator_autoset() */
+/* BUCK1: for testing regulator_autoset_by_name() */
 #define SANDBOX_BUCK1_AUTOSET_EXPECTED_UV	1200000
 #define SANDBOX_BUCK1_AUTOSET_EXPECTED_UA	200000
 #define SANDBOX_BUCK1_AUTOSET_EXPECTED_ENABLE	true
+
+/* BUCK2: for testing sandbox ADC's supply */
+#define SANDBOX_BUCK2_INITIAL_EXPECTED_UV	3000000
+#define SANDBOX_BUCK2_SET_UV			3300000
 
 /* LDO1/2 for testing regulator_list_autoset() */
 #define SANDBOX_LDO1_AUTOSET_EXPECTED_UV	1800000

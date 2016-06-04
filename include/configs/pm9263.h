@@ -18,7 +18,6 @@
  */
 #include <asm/hardware.h>
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* ARM asynchronous clock */
 #define CONFIG_DISPLAY_CPUINFO
@@ -370,7 +369,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_PROMPT		"u-boot-pm9263> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		\

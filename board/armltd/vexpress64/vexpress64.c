@@ -13,6 +13,7 @@
 #include <linux/compiler.h>
 #include <dm/platdata.h>
 #include <dm/platform_data/serial_pl01x.h>
+#include "pcie.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -27,8 +28,16 @@ U_BOOT_DEVICE(vexpress_serials) = {
 	.platdata = &serial_platdata,
 };
 
+/* This function gets replaced by platforms supporting PCIe.
+ * The replacement function, eg. on Juno, initialises the PCIe bus.
+ */
+__weak void vexpress64_pcie_init(void)
+{
+}
+
 int board_init(void)
 {
+	vexpress64_pcie_init();
 	return 0;
 }
 
@@ -36,6 +45,16 @@ int dram_init(void)
 {
 	gd->ram_size = PHYS_SDRAM_1_SIZE;
 	return 0;
+}
+
+void dram_init_banksize(void)
+{
+	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
+	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
+#ifdef PHYS_SDRAM_2
+	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
+	gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
+#endif
 }
 
 /*

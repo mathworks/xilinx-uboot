@@ -52,7 +52,6 @@
  * Miscellaneous configurable options
  */
 #define	CONFIG_SYS_LONGHELP				/* undef to save memory      */
-#define	CONFIG_SYS_PROMPT		"Pb1x00 # "	/* Monitor Command Prompt    */
 #define	CONFIG_SYS_CBSIZE		256		/* Console I/O Buffer Size   */
 #define	CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)  /* Print Buffer Size */
 #define	CONFIG_SYS_MAXARGS		16		/* max number of command args*/
@@ -169,13 +168,11 @@
  * Command line configuration.
  */
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 
 #undef CONFIG_CMD_FAT
 #undef CONFIG_CMD_IDE
-#undef CONFIG_CMD_ELF
 #undef CONFIG_CMD_BEDBUG
 
 #endif	/* __CONFIG_H */

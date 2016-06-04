@@ -20,7 +20,6 @@
 #include <asm/hardware.h>
 /* ARM asynchronous clock */
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -336,7 +335,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_PROMPT		"pm9261> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		\

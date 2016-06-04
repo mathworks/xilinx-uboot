@@ -14,7 +14,6 @@
 
 #define CONFIG_AC14XX 1
 #define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Memory map for the ifm AC14xx board:
@@ -421,7 +420,6 @@
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"ac14xx> "	/* Monitor Command Prompt */
 
 #ifdef CONFIG_CMD_KGDB
 # define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */

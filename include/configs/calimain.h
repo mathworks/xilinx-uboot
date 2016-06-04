@@ -18,7 +18,6 @@
 #define CONFIG_DRIVER_TI_EMAC
 #define MACH_TYPE_CALIMAIN	3528
 #define CONFIG_MACH_TYPE	MACH_TYPE_CALIMAIN
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * SoC Configuration
@@ -152,7 +151,6 @@
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART2_BASE /* Base address of UART2 */
@@ -194,7 +192,6 @@
  * U-Boot general configuration
  */
 #define CONFIG_BOOTFILE        "uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT      "Calimain > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE      1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE      (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS     16 /* max number of command args */
@@ -318,7 +315,6 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_GPIO
 
 #ifndef CONFIG_DRIVER_TI_EMAC
 #undef CONFIG_CMD_DHCP

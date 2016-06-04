@@ -13,18 +13,20 @@
 #include <spi.h>
 #include <asm/gpio.h>
 #include <asm/omap_gpio.h>
+#include <asm/omap_common.h>
+#include <asm/ti-common/ti-edma3.h>
 
 /* ti qpsi register bit masks */
 #define QSPI_TIMEOUT                    2000000
 #define QSPI_FCLK                       192000000
 /* clock control */
-#define QSPI_CLK_EN                     (1 << 31)
+#define QSPI_CLK_EN                     BIT(31)
 #define QSPI_CLK_DIV_MAX                0xffff
 /* command */
 #define QSPI_EN_CS(n)                   (n << 28)
 #define QSPI_WLEN(n)                    ((n-1) << 19)
-#define QSPI_3_PIN                      (1 << 18)
-#define QSPI_RD_SNGL                    (1 << 16)
+#define QSPI_3_PIN                      BIT(18)
+#define QSPI_RD_SNGL                    BIT(16)
 #define QSPI_WR_SNGL                    (2 << 16)
 #define QSPI_INVAL                      (4 << 16)
 #define QSPI_RD_QUAD                    (7 << 16)
@@ -34,8 +36,8 @@
 #define QSPI_CSPOL(n)                   (1 << (1 + n*8))
 #define QSPI_CKPOL(n)                   (1 << (n*8))
 /* status */
-#define QSPI_WC                         (1 << 1)
-#define QSPI_BUSY                       (1 << 0)
+#define QSPI_WC                         BIT(1)
+#define QSPI_BUSY                       BIT(0)
 #define QSPI_WC_BUSY                    (QSPI_WC | QSPI_BUSY)
 #define QSPI_XFER_DONE                  QSPI_WC
 #define MM_SWITCH                       0x01
@@ -106,7 +108,6 @@ static void ti_spi_setup_spi_register(struct ti_qspi_slave *qslave)
 	slave->memory_map = (void *)MMAP_START_ADDR_DRA;
 #else
 	slave->memory_map = (void *)MMAP_START_ADDR_AM43x;
-	slave->op_mode_rx = 8;
 #endif
 
 #ifdef CONFIG_QSPI_QUAD_SUPPORT
@@ -114,6 +115,7 @@ static void ti_spi_setup_spi_register(struct ti_qspi_slave *qslave)
 			QSPI_SETUP0_NUM_D_BYTES_8_BITS |
 			QSPI_SETUP0_READ_QUAD | QSPI_CMD_WRITE |
 			QSPI_NUM_DUMMY_BITS);
+	slave->op_mode_rx = SPI_OPM_RX_QOF;
 #else
 	memval |= QSPI_CMD_READ | QSPI_SETUP0_NUM_A_BYTES |
 			QSPI_SETUP0_NUM_D_BYTES_NO_BITS |
@@ -168,6 +170,8 @@ void spi_cs_deactivate(struct spi_slave *slave)
 	debug("spi_cs_deactivate: 0x%08x\n", (u32)slave);
 
 	writel(qslave->cmd | QSPI_INVAL, &qslave->base->cmd);
+	/* dummy readl to ensure bus sync */
+	readl(&qslave->base->cmd);
 }
 
 void spi_init(void)
@@ -289,7 +293,7 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	qslave->cmd = 0;
 	qslave->cmd |= QSPI_WLEN(8);
 	qslave->cmd |= QSPI_EN_CS(slave->cs);
-	if (flags & SPI_3WIRE)
+	if (qslave->mode & SPI_3WIRE)
 		qslave->cmd |= QSPI_3_PIN;
 	qslave->cmd |= 0xfff;
 
@@ -347,3 +351,26 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 
 	return 0;
 }
+
+/* TODO: control from sf layer to here through dm-spi */
+#ifdef CONFIG_TI_EDMA3
+void spi_flash_copy_mmap(void *data, void *offset, size_t len)
+{
+	unsigned int			addr = (unsigned int) (data);
+	unsigned int			edma_slot_num = 1;
+
+	/* Invalidate the area, so no writeback into the RAM races with DMA */
+	invalidate_dcache_range(addr, addr + roundup(len, ARCH_DMA_MINALIGN));
+
+	/* enable edma3 clocks */
+	enable_edma3_clocks();
+
+	/* Call edma3 api to do actual DMA transfer	*/
+	edma3_transfer(EDMA3_BASE, edma_slot_num, data, offset, len);
+
+	/* disable edma3 clocks */
+	disable_edma3_clocks();
+
+	*((unsigned int *)offset) += len;
+}
+#endif

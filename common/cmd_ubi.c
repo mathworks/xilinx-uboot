@@ -14,7 +14,7 @@
 #include <common.h>
 #include <command.h>
 #include <exports.h>
-
+#include <memalign.h>
 #include <nand.h>
 #include <onenand_uboot.h>
 #include <linux/mtd/mtd.h>
@@ -255,7 +255,7 @@ static int ubi_remove_vol(char *volume)
 
 	return 0;
 out_err:
-	ubi_err("cannot remove volume %s, error %d", volume, err);
+	ubi_err(ubi, "cannot remove volume %s, error %d", volume, err);
 	if (err < 0)
 		err = -err;
 	return err;
@@ -284,8 +284,8 @@ static int ubi_volume_continue_write(char *volume, void *buf, size_t size)
 			return -err;
 
 		if (err) {
-			ubi_warn("volume %d on UBI device %d is corrupted",
-					vol->vol_id, ubi->ubi_num);
+			ubi_warn(ubi, "volume %d on UBI device %d is corrupt",
+				 vol->vol_id, ubi->ubi_num);
 			vol->corrupted = 1;
 		}
 
@@ -363,7 +363,7 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 	tbuf_size = vol->usable_leb_size;
 	if (size < tbuf_size)
 		tbuf_size = ALIGN(size, ubi->min_io_size);
-	tbuf = malloc(tbuf_size);
+	tbuf = malloc_cache_aligned(tbuf_size);
 	if (!tbuf) {
 		printf("NO MEM\n");
 		return ENOMEM;

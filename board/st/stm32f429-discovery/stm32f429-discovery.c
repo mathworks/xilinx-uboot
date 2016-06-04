@@ -6,7 +6,7 @@
  * Pavel Boldin, Emcraft Systems, paboldin@emcraft.com
  *
  * (C) Copyright 2015
- * Kamil Lulko, <rev13@wp.pl>
+ * Kamil Lulko, <kamil.lulko@gmail.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -17,6 +17,8 @@
 #include <asm/arch/stm32.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/fmc.h>
+#include <dm/platdata.h>
+#include <dm/platform_data/serial_stm32.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -263,6 +265,15 @@ int dram_init(void)
 	return rv;
 }
 
+static const struct stm32_serial_platdata serial_platdata = {
+	.base = (struct stm32_usart *)STM32_USART1_BASE,
+};
+
+U_BOOT_DEVICE(stm32_serials) = {
+	.name = "serial_stm32",
+	.platdata = &serial_platdata,
+};
+
 u32 get_board_rev(void)
 {
 	return 0;
@@ -285,3 +296,22 @@ int board_init(void)
 
 	return 0;
 }
+
+#ifdef CONFIG_MISC_INIT_R
+int misc_init_r(void)
+{
+	char serialno[25];
+	uint32_t u_id_low, u_id_mid, u_id_high;
+
+	if (!getenv("serial#")) {
+		u_id_low  = readl(&STM32_U_ID->u_id_low);
+		u_id_mid  = readl(&STM32_U_ID->u_id_mid);
+		u_id_high = readl(&STM32_U_ID->u_id_high);
+		sprintf(serialno, "%08x%08x%08x",
+			u_id_high, u_id_mid, u_id_low);
+		setenv("serial#", serialno);
+	}
+
+	return 0;
+}
+#endif

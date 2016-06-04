@@ -33,10 +33,6 @@
 
 /* CONTROL_ID_CODE */
 #define CONTROL_ID_CODE		0x4A002204
-#define STD_FUSE_DIE_ID_0	0x4A002200
-#define STD_FUSE_DIE_ID_1	0x4A002208
-#define STD_FUSE_DIE_ID_2	0x4A00220c
-#define STD_FUSE_DIE_ID_3	0x4A002210
 
 #define OMAP4_CONTROL_ID_CODE_ES1_0	0x0B85202F
 #define OMAP4_CONTROL_ID_CODE_ES2_0	0x1B85202F
@@ -123,5 +119,16 @@ struct s32ktimer {
 
 /* ABB tranxdone mask */
 #define OMAP_ABB_MPU_TXDONE_MASK	(0x1 << 7)
+
+/* Boot parameters */
+#ifndef __ASSEMBLY__
+struct omap_boot_parameters {
+	unsigned int boot_message;
+	unsigned int boot_device_descriptor;
+	unsigned char boot_device;
+	unsigned char reset_reason;
+	unsigned char ch_flags;
+};
+#endif
 
 #endif

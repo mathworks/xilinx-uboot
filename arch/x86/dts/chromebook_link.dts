@@ -1,7 +1,10 @@
 /dts-v1/;
 
 /include/ "skeleton.dtsi"
+/include/ "keyboard.dtsi"
 /include/ "serial.dtsi"
+/include/ "rtc.dtsi"
+/include/ "tsc_timer.dtsi"
 
 / {
 	model = "Google Link";
@@ -38,6 +41,10 @@
 
 	chosen {
 		stdout-path = "/serial";
+	};
+
+	keyboard {
+		intel,duplicate-por;
 	};
 
 	spd {
@@ -207,8 +214,6 @@
 					rw-mrc-cache {
 						label = "rw-mrc-cache";
 						reg = <0x003e0000 0x00010000>;
-						type = "wiped";
-						wipe-value = [ff];
 					};
 				};
 			};
@@ -234,6 +239,11 @@
 				};
 			};
 		};
+	};
+
+	tpm {
+		reg = <0xfed40000 0x5000>;
+		compatible = "infineon,slb9635lpc";
 	};
 
 	microcode {

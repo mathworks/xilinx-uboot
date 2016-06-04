@@ -365,6 +365,7 @@ static void spl_dram_init(int width, int size_mb, int board_model)
 		.sde_to_rst = 0x10,	/* 14 cycles, 200us (JEDEC default) */
 		.rst_to_cke = 0x23,	/* 33 cycles, 500us (JEDEC default) */
 		.pd_fast_exit = 1, /* enable precharge power-down fast exit */
+		.ddr_type = DDR_TYPE_DDR3,
 	};
 
 	/*
@@ -573,7 +574,3 @@ int spl_start_uboot(void)
 	return ret;
 }
 #endif
-
-void reset_cpu(ulong addr)
-{
-}

@@ -17,6 +17,13 @@ config SYS_HUSH_PARSER
 	help
 	  Backward compatibility.
 
+config SYS_PROMPT
+	string "Shell prompt"
+	default "=> "
+	help
+	  This string is displayed in the command line to the left of the
+	  cursor.
+
 menu "Autoboot options"
 
 config AUTOBOOT_KEYED
@@ -140,6 +147,12 @@ config CMD_BOOTM
 	default y
 	help
 	  Boot an application image from the memory.
+
+config CMD_ELF
+	bool "bootelf, bootvx"
+	default y
+	help
+	  Boot an ELF/vxWorks image from the memory.
 
 config CMD_GO
 	bool "go"
@@ -337,6 +350,17 @@ config CMD_FPGA
 	help
 	  FPGA support.
 
+config CMD_REMOTEPROC
+	bool "remoteproc"
+	depends on REMOTEPROC
+	help
+	  Support for Remote Processor control
+
+config CMD_GPIO
+	bool "gpio"
+	help
+	  GPIO support.
+
 endmenu
 
 
@@ -437,6 +461,20 @@ endmenu
 
 menu "Misc commands"
 
+config CMD_AMBAPP
+	bool "ambapp"
+	depends on LEON3
+	default y
+	help
+	  Lists AMBA Plug-n-Play information.
+
+config SYS_AMBAPP_PRINT_ON_STARTUP
+	bool "Show AMBA PnP info on startup"
+	depends on CMD_AMBAPP
+	default n
+	help
+	  Show AMBA Plug-n-Play information on startup.
+
 config CMD_TIME
 	bool "time"
 	help
@@ -463,6 +501,13 @@ config CMD_SETGETDCR
 	  setdcr - Set an AMCC PPC 4xx DCR's value
 	  getidcr - Get a register value via indirect DCR addressing
 	  setidcr - Set a register value via indirect DCR addressing
+
+config CMD_ZYNQ_AES
+	bool "Zynq AES"
+	depends on CMD_ZYNQ_RSA
+	help
+	  Decrypts the encrypted image present in source address
+	  and places the decrypted image at destination address
 
 config CMD_ZYNQ_RSA
 	bool "Zynq RSA"
@@ -623,4 +668,54 @@ config CMD_REGULATOR
 
 endmenu
 
+menu "Security commands"
+config CMD_TPM
+	bool "Enable the 'tpm' command"
+	depends on TPM
+	help
+	  This provides a means to talk to a TPM from the command line. A wide
+	  range of commands if provided - see 'tpm help' for details. The
+	  command requires a suitable TPM on your board and the correct driver
+	  must be enabled.
+
+config CMD_TPM_TEST
+	bool "Enable the 'tpm test' command"
+	depends on CMD_TPM
+	help
+	  This provides a a series of tests to confirm that the TPM is working
+	  correctly. The tests cover initialisation, non-volatile RAM, extend,
+	  global lock and checking that timing is within expectations. The
+	  tests pass correctly on Infineon TPMs but may need to be adjusted
+	  for other devices.
+
 endmenu
+
+endmenu
+
+config CONSOLE_RECORD
+	bool "Console recording"
+	help
+	  This provides a way to record console output (and provide console
+	  input) through cirular buffers. This is mostly useful for testing.
+	  Console output is recorded even when the console is silent.
+	  To enable console recording, call console_record_reset_enable()
+	  from your code.
+
+config CONSOLE_RECORD_OUT_SIZE
+	hex "Output buffer size"
+	depends on CONSOLE_RECORD
+	default 0x400 if CONSOLE_RECORD
+	help
+	  Set the size of the console output buffer. When this fills up, no
+	  more data will be recorded until some is removed. The buffer is
+	  allocated immediately after the malloc() region is ready.
+
+config CONSOLE_RECORD_IN_SIZE
+	hex "Input buffer size"
+	depends on CONSOLE_RECORD
+	default 0x100 if CONSOLE_RECORD
+	help
+	  Set the size of the console input buffer. When this contains data,
+	  tstc() and getc() will use this in preference to real device input.
+	  The buffer is allocated immediately after the malloc() region is
+	  ready.

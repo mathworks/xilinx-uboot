@@ -1,6 +1,9 @@
 #ifndef __ASM_ARM_SYSTEM_H
 #define __ASM_ARM_SYSTEM_H
 
+#include <common.h>
+#include <linux/compiler.h>
+
 #ifdef CONFIG_ARM64
 
 /*
@@ -17,6 +20,7 @@
 #define PGTABLE_SIZE	(0x10000)
 /* 2MB granularity */
 #define MMU_SECTION_SHIFT	21
+#define MMU_SECTION_SIZE	(1 << MMU_SECTION_SHIFT)
 
 #ifndef __ASSEMBLY__
 
@@ -87,6 +91,24 @@ void protect_secure_region(void);
 void smp_kick_all_cpus(void);
 
 void flush_l3_cache(void);
+
+/*
+ *Issue a hypervisor call in accordance with ARM "SMC Calling convention",
+ * DEN0028A
+ *
+ * @args: input and output arguments
+ *
+ */
+void hvc_call(struct pt_regs *args);
+
+/*
+ *Issue a secure monitor call in accordance with ARM "SMC Calling convention",
+ * DEN0028A
+ *
+ * @args: input and output arguments
+ *
+ */
+void smc_call(struct pt_regs *args);
 
 #endif	/* __ASSEMBLY__ */
 
@@ -194,7 +216,7 @@ void save_boot_params_ret(void);
 static inline unsigned int get_cr(void)
 {
 	unsigned int val;
-	asm("mrc p15, 0, %0, c1, c0, 0	@ get CR" : "=r" (val) : : "cc");
+	asm volatile("mrc p15, 0, %0, c1, c0, 0	@ get CR" : "=r" (val) : : "cc");
 	return val;
 }
 
@@ -278,11 +300,6 @@ enum {
  */
 void mmu_page_table_flush(unsigned long start, unsigned long stop);
 
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-void noncached_init(void);
-phys_addr_t noncached_alloc(size_t size, size_t align);
-#endif /* CONFIG_SYS_NONCACHED_MEMORY */
-
 #endif /* __ASSEMBLY__ */
 
 #define arch_align_stack(x) (x)
@@ -301,6 +318,12 @@ phys_addr_t noncached_alloc(size_t size, size_t align);
  */
 void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 				     enum dcache_option option);
+
+#ifdef CONFIG_SYS_NONCACHED_MEMORY
+void noncached_init(void);
+phys_addr_t noncached_alloc(size_t size, size_t align);
+#endif /* CONFIG_SYS_NONCACHED_MEMORY */
+
 #endif /* __ASSEMBLY__ */
 
 #endif

@@ -199,7 +199,7 @@ int xhci_reset(struct xhci_hcor *hcor)
 	int ret;
 
 	/* Halting the Host first */
-	debug("// Halt the HC\n");
+	debug("// Halt the HC: %p\n", hcor);
 	state = xhci_readl(&hcor->or_usbsts) & STS_HALT;
 	if (!state) {
 		cmd = xhci_readl(&hcor->or_usbcmd);
@@ -1064,6 +1064,8 @@ int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
 	struct xhci_ctrl *ctrl;
 	int ret;
 
+	*controller = NULL;
+
 	if (xhci_hcd_init(index, &hccr, (struct xhci_hcor **)&hcor) != 0)
 		return -ENODEV;
 
@@ -1077,7 +1079,12 @@ int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
 
 	ret = xhci_lowlevel_init(ctrl);
 
-	*controller = &xhcic[index];
+	if (ret) {
+		ctrl->hccr = NULL;
+		ctrl->hcor = NULL;
+	} else {
+		*controller = &xhcic[index];
+	}
 
 	return ret;
 }
@@ -1093,9 +1100,11 @@ int usb_lowlevel_stop(int index)
 {
 	struct xhci_ctrl *ctrl = (xhcic + index);
 
-	xhci_lowlevel_stop(ctrl);
-	xhci_hcd_stop(index);
-	xhci_cleanup(ctrl);
+	if (ctrl->hcor) {
+		xhci_lowlevel_stop(ctrl);
+		xhci_hcd_stop(index);
+		xhci_cleanup(ctrl);
+	}
 
 	return 0;
 }
@@ -1110,7 +1119,7 @@ static struct usb_device *get_usb_device(struct udevice *dev)
 	if (device_get_uclass_id(dev) == UCLASS_USB)
 		udev = dev_get_uclass_priv(dev);
 	else
-		udev = dev_get_parentdata(dev);
+		udev = dev_get_parent_priv(dev);
 
 	return udev;
 }
@@ -1141,7 +1150,7 @@ static int xhci_submit_control_msg(struct udevice *dev, struct usb_device *udev,
 		} else {
 			while (!is_root_hub(hub->parent))
 				hub = hub->parent;
-			uhop = dev_get_parentdata(hub);
+			uhop = dev_get_parent_priv(hub);
 			root_portnr = uhop->portnr;
 		}
 	}

@@ -13,15 +13,7 @@
 
 #include <common.h>
 #include <mmc.h>
-#ifdef CONFIG_AXP152_POWER
-#include <axp152.h>
-#endif
-#ifdef CONFIG_AXP209_POWER
-#include <axp209.h>
-#endif
-#ifdef CONFIG_AXP221_POWER
-#include <axp221.h>
-#endif
+#include <axp_pmic.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/display.h>
@@ -31,7 +23,7 @@
 #include <asm/arch/usb_phy.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <linux/usb/musb.h>
+#include <nand.h>
 #include <net.h>
 
 #if defined CONFIG_VIDEO_LCD_PANEL_I2C && !(defined CONFIG_SPL_BUILD)
@@ -107,6 +99,46 @@ int dram_init(void)
 
 	return 0;
 }
+
+#if defined(CONFIG_NAND_SUNXI) && defined(CONFIG_SPL_BUILD)
+static void nand_pinmux_setup(void)
+{
+	unsigned int pin;
+
+	for (pin = SUNXI_GPC(0); pin <= SUNXI_GPC(19); pin++)
+		sunxi_gpio_set_cfgpin(pin, SUNXI_GPC_NAND);
+
+#if defined CONFIG_MACH_SUN4I || defined CONFIG_MACH_SUN7I
+	for (pin = SUNXI_GPC(20); pin <= SUNXI_GPC(22); pin++)
+		sunxi_gpio_set_cfgpin(pin, SUNXI_GPC_NAND);
+#endif
+	/* sun4i / sun7i do have a PC23, but it is not used for nand,
+	 * only sun7i has a PC24 */
+#ifdef CONFIG_MACH_SUN7I
+	sunxi_gpio_set_cfgpin(SUNXI_GPC(24), SUNXI_GPC_NAND);
+#endif
+}
+
+static void nand_clock_setup(void)
+{
+	struct sunxi_ccm_reg *const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+
+	setbits_le32(&ccm->ahb_gate0, (CLK_GATE_OPEN << AHB_GATE_OFFSET_NAND0));
+#ifdef CONFIG_MACH_SUN9I
+	setbits_le32(&ccm->ahb_gate1, (1 << AHB_GATE_OFFSET_DMA));
+#else
+	setbits_le32(&ccm->ahb_gate0, (1 << AHB_GATE_OFFSET_DMA));
+#endif
+	setbits_le32(&ccm->nand0_clk_cfg, CCM_NAND_CTRL_ENABLE | AHB_DIV_1);
+}
+
+void board_nand_init(void)
+{
+	nand_pinmux_setup();
+	nand_clock_setup();
+}
+#endif
 
 #ifdef CONFIG_GENERIC_MMC
 static void mmc_pinmux_setup(int sdc)
@@ -294,21 +326,19 @@ int board_mmc_init(bd_t *bis)
 		return -1;
 #endif
 
-#if CONFIG_MMC_SUNXI_SLOT == 0 && CONFIG_MMC_SUNXI_SLOT_EXTRA == 2
+#if !defined(CONFIG_SPL_BUILD) && CONFIG_MMC_SUNXI_SLOT_EXTRA == 2
 	/*
-	 * Both mmc0 and mmc2 are bootable, figure out where we're booting
-	 * from. Try mmc0 first, just like the brom does.
+	 * On systems with an emmc (mmc2), figure out if we are booting from
+	 * the emmc and if we are make it "mmc dev 0" so that boot.scr, etc.
+	 * are searched there first. Note we only do this for u-boot proper,
+	 * not for the SPL, see spl_boot_device().
 	 */
-	if (mmc_getcd(mmc0) && mmc_init(mmc0) == 0 &&
-	    mmc0->block_dev.block_read(0, 16, 1, buf) == 1) {
-		buf[12] = 0;
-		if (strcmp(&buf[4], "eGON.BT0") == 0)
-			return 0;
+	if (!sunxi_mmc_has_egon_boot_signature(mmc0) &&
+	    sunxi_mmc_has_egon_boot_signature(mmc1)) {
+		/* Booting from emmc / mmc2, swap */
+		mmc0->block_dev.dev = 1;
+		mmc1->block_dev.dev = 0;
 	}
-
-	/* no bootable card in mmc0, so we must be booting from mmc2, swap */
-	mmc0->block_dev.dev = 1;
-	mmc1->block_dev.dev = 0;
 #endif
 
 	return 0;
@@ -400,40 +430,45 @@ void sunxi_board_init(void)
 	int power_failed = 0;
 	unsigned long ramsize;
 
-#ifdef CONFIG_AXP152_POWER
-	power_failed = axp152_init();
-	power_failed |= axp152_set_dcdc2(1400);
-	power_failed |= axp152_set_dcdc3(1500);
-	power_failed |= axp152_set_dcdc4(1250);
-	power_failed |= axp152_set_ldo2(3000);
+#if defined CONFIG_AXP152_POWER || defined CONFIG_AXP209_POWER || \
+	defined CONFIG_AXP221_POWER || defined CONFIG_AXP818_POWER
+	power_failed = axp_init();
+
+#if defined CONFIG_AXP221_POWER || defined CONFIG_AXP818_POWER
+	power_failed |= axp_set_dcdc1(CONFIG_AXP_DCDC1_VOLT);
 #endif
-#ifdef CONFIG_AXP209_POWER
-	power_failed |= axp209_init();
-	power_failed |= axp209_set_dcdc2(1400);
-	power_failed |= axp209_set_dcdc3(1250);
-	power_failed |= axp209_set_ldo2(3000);
-	power_failed |= axp209_set_ldo3(2800);
-	power_failed |= axp209_set_ldo4(2800);
+	power_failed |= axp_set_dcdc2(CONFIG_AXP_DCDC2_VOLT);
+	power_failed |= axp_set_dcdc3(CONFIG_AXP_DCDC3_VOLT);
+#if !defined(CONFIG_AXP209_POWER) && !defined(CONFIG_AXP818_POWER)
+	power_failed |= axp_set_dcdc4(CONFIG_AXP_DCDC4_VOLT);
 #endif
-#ifdef CONFIG_AXP221_POWER
-	power_failed = axp221_init();
-	power_failed |= axp221_set_dcdc1(CONFIG_AXP221_DCDC1_VOLT);
-	power_failed |= axp221_set_dcdc2(1200); /* A31:VDD-GPU, A23:VDD-SYS */
-	power_failed |= axp221_set_dcdc3(1200); /* VDD-CPU */
-#ifdef CONFIG_MACH_SUN6I
-	power_failed |= axp221_set_dcdc4(1200); /* A31:VDD-SYS */
-#else
-	power_failed |= axp221_set_dcdc4(0);    /* A23:unused */
-#endif
-	power_failed |= axp221_set_dcdc5(1500); /* VCC-DRAM */
-	power_failed |= axp221_set_dldo1(CONFIG_AXP221_DLDO1_VOLT);
-	power_failed |= axp221_set_dldo4(CONFIG_AXP221_DLDO4_VOLT);
-	power_failed |= axp221_set_aldo1(CONFIG_AXP221_ALDO1_VOLT);
-	power_failed |= axp221_set_aldo2(CONFIG_AXP221_ALDO2_VOLT);
-	power_failed |= axp221_set_aldo3(CONFIG_AXP221_ALDO3_VOLT);
-	power_failed |= axp221_set_eldo(3, CONFIG_AXP221_ELDO3_VOLT);
+#if defined CONFIG_AXP221_POWER || defined CONFIG_AXP818_POWER
+	power_failed |= axp_set_dcdc5(CONFIG_AXP_DCDC5_VOLT);
 #endif
 
+#ifdef CONFIG_AXP221_POWER
+	power_failed |= axp_set_aldo1(CONFIG_AXP_ALDO1_VOLT);
+#endif
+#ifndef CONFIG_AXP818_POWER
+	power_failed |= axp_set_aldo2(CONFIG_AXP_ALDO2_VOLT);
+#endif
+#if !defined(CONFIG_AXP152_POWER) && !defined(CONFIG_AXP818_POWER)
+	power_failed |= axp_set_aldo3(CONFIG_AXP_ALDO3_VOLT);
+#endif
+#ifdef CONFIG_AXP209_POWER
+	power_failed |= axp_set_aldo4(CONFIG_AXP_ALDO4_VOLT);
+#endif
+
+#ifdef CONFIG_AXP221_POWER
+	power_failed |= axp_set_dldo1(CONFIG_AXP_DLDO1_VOLT);
+	power_failed |= axp_set_dldo2(CONFIG_AXP_DLDO2_VOLT);
+	power_failed |= axp_set_dldo3(CONFIG_AXP_DLDO3_VOLT);
+	power_failed |= axp_set_dldo4(CONFIG_AXP_DLDO4_VOLT);
+	power_failed |= axp_set_eldo(1, CONFIG_AXP_ELDO1_VOLT);
+	power_failed |= axp_set_eldo(2, CONFIG_AXP_ELDO2_VOLT);
+	power_failed |= axp_set_eldo(3, CONFIG_AXP_ELDO3_VOLT);
+#endif
+#endif
 	printf("DRAM:");
 	ramsize = sunxi_dram_init();
 	printf(" %lu MiB\n", ramsize >> 20);
@@ -449,28 +484,6 @@ void sunxi_board_init(void)
 	else
 		printf("Failed to set core voltage! Can't set CPU frequency\n");
 }
-#endif
-
-#if defined(CONFIG_MUSB_HOST) || defined(CONFIG_MUSB_GADGET)
-extern const struct musb_platform_ops sunxi_musb_ops;
-
-static struct musb_hdrc_config musb_config = {
-	.multipoint     = 1,
-	.dyn_fifo       = 1,
-	.num_eps        = 6,
-	.ram_bits       = 11,
-};
-
-static struct musb_hdrc_platform_data musb_plat = {
-#if defined(CONFIG_MUSB_HOST)
-	.mode           = MUSB_HOST,
-#else
-	.mode		= MUSB_PERIPHERAL,
-#endif
-	.config         = &musb_config,
-	.power          = 250,
-	.platform_ops	= &sunxi_musb_ops,
-};
 #endif
 
 #ifdef CONFIG_USB_GADGET
@@ -500,6 +513,31 @@ void get_board_serial(struct tag_serialnr *serialnr)
 }
 #endif
 
+#if !defined(CONFIG_SPL_BUILD)
+#include <asm/arch/spl.h>
+
+/*
+ * Check the SPL header for the "sunxi" variant. If found: parse values
+ * that might have been passed by the loader ("fel" utility), and update
+ * the environment accordingly.
+ */
+static void parse_spl_header(const uint32_t spl_addr)
+{
+	struct boot_file_head *spl = (void *)spl_addr;
+	if (memcmp(spl->spl_signature, SPL_SIGNATURE, 3) == 0) {
+		uint8_t spl_header_version = spl->spl_signature[3];
+		if (spl_header_version == SPL_HEADER_VERSION) {
+			if (spl->fel_script_address)
+				setenv_hex("fel_scriptaddr",
+					   spl->fel_script_address);
+			return;
+		}
+		printf("sunxi SPL version mismatch: expected %u, got %u\n",
+		       SPL_HEADER_VERSION, spl_header_version);
+	}
+}
+#endif
+
 #ifdef CONFIG_MISC_INIT_R
 int misc_init_r(void)
 {
@@ -507,6 +545,16 @@ int misc_init_r(void)
 	unsigned int sid[4];
 	uint8_t mac_addr[6];
 	int ret;
+
+#if !defined(CONFIG_SPL_BUILD)
+	setenv("fel_booted", NULL);
+	setenv("fel_scriptaddr", NULL);
+	/* determine if we are running in FEL mode */
+	if (!is_boot0_magic(SPL_ADDR + 4)) { /* eGON.BT0 */
+		setenv("fel_booted", "1");
+		parse_spl_header(SPL_ADDR);
+	}
+#endif
 
 	ret = sunxi_get_sid(sid);
 	if (ret == 0 && sid[0] != 0 && sid[3] != 0) {
@@ -535,9 +583,8 @@ int misc_init_r(void)
 	if (ret)
 		return ret;
 #endif
-#if defined(CONFIG_MUSB_HOST) || defined(CONFIG_MUSB_GADGET)
-	musb_register(&musb_plat, NULL, (void *)SUNXI_USB0_BASE);
-#endif
+	sunxi_musb_board_init();
+
 	return 0;
 }
 #endif

@@ -11,6 +11,7 @@
 #include <environment.h>
 #include <errno.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <search.h>
 #include <ubi_uboot.h>
 #undef crc32
@@ -180,8 +181,7 @@ void env_relocate_spec(void)
 		return;
 	}
 
-	if (ubi_volume_read(CONFIG_ENV_UBI_VOLUME, (void *)&buf,
-			    CONFIG_ENV_SIZE)) {
+	if (ubi_volume_read(CONFIG_ENV_UBI_VOLUME, buf, CONFIG_ENV_SIZE)) {
 		printf("\n** Unable to read env from %s:%s **\n",
 		       CONFIG_ENV_UBI_PART, CONFIG_ENV_UBI_VOLUME);
 		set_default_env(NULL);

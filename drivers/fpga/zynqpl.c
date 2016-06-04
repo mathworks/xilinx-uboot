@@ -8,6 +8,7 @@
  */
 
 #include <common.h>
+#include <console.h>
 #include <asm/io.h>
 #include <fs.h>
 #include <zynqpl.h>
@@ -204,7 +205,7 @@ static int zynq_dma_xfer_init(bitstream_type bstype)
 	/* Clear loopback bit */
 	clrbits_le32(&devcfg_base->mctrl, DEVCFG_MCTRL_PCAP_LPBK);
 
-	if (bstype != BIT_PARTIAL) {
+	if (bstype != BIT_PARTIAL && bstype != BIT_NONE) {
 		zynq_slcr_devcfg_disable();
 
 		/* Setting PCFG_PROG_B signal to high */
@@ -500,60 +501,20 @@ struct xilinx_fpga_op zynq_op = {
  * Load the encrypted image from src addr and decrypt the image and
  * place it back the decrypted image into dstaddr.
  */
-int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen)
+int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
+		      u8 bstype)
 {
-	u32 isr_status, status;
-
 	if ((srcaddr < SZ_1M) || (dstaddr < SZ_1M)) {
 		printf("%s: src and dst addr should be > 1M\n",
 		       __func__);
 		return FPGA_FAIL;
 	}
 
-	isr_status = readl(&devcfg_base->int_sts);
-
-	/* Clear it all, so if Boot ROM comes back, it can proceed */
-	writel(0xFFFFFFFF, &devcfg_base->int_sts);
-
-	if (isr_status & DEVCFG_ISR_FATAL_ERROR_MASK) {
-		debug("%s: Fatal errors in PCAP 0x%X\n", __func__, isr_status);
-
-		/* If RX FIFO overflow, need to flush RX FIFO first */
-		if (isr_status & DEVCFG_ISR_RX_FIFO_OV) {
-			writel(DEVCFG_MCTRL_RFIFO_FLUSH, &devcfg_base->mctrl);
-			writel(0xFFFFFFFF, &devcfg_base->int_sts);
-		}
+	if (zynq_dma_xfer_init(bstype)) {
+		printf("%s: zynq_dma_xfer_init FAIL\n", __func__);
 		return FPGA_FAIL;
 	}
 
-	status = readl(&devcfg_base->status);
-
-	debug("%s: Status = 0x%08X\n", __func__, status);
-
-	if (status & DEVCFG_STATUS_DMA_CMD_Q_F) {
-		printf("%s: Error: device busy\n", __func__);
-		return FPGA_FAIL;
-	}
-
-	debug("%s: Device ready\n", __func__);
-
-	if (!(status & DEVCFG_STATUS_DMA_CMD_Q_E)) {
-		if (!(readl(&devcfg_base->int_sts) & DEVCFG_ISR_DMA_DONE)) {
-			/* Error state, transfer cannot occur */
-			printf("%s: ISR indicates error\n", __func__);
-			return FPGA_FAIL;
-		} else {
-			/* Clear out the status */
-			writel(DEVCFG_ISR_DMA_DONE, &devcfg_base->int_sts);
-		}
-	}
-
-	if (status & DEVCFG_STATUS_DMA_DONE_CNT_MASK) {
-		/* Clear the count of completed DMA transfers */
-		writel(DEVCFG_STATUS_DMA_DONE_CNT_MASK, &devcfg_base->status);
-	}
-
-	clrbits_le32(&devcfg_base->mctrl, DEVCFG_MCTRL_PCAP_LPBK);
 	writel((readl(&devcfg_base->ctrl) | DEVCFG_CTRL_PCAP_RATE_EN_MASK),
 	       &devcfg_base->ctrl);
 
@@ -579,25 +540,51 @@ static int do_zynq_decrypt_image(cmd_tbl_t *cmdtp, int flag, int argc,
 	u32 srclen;
 	u32 dstaddr;
 	u32 dstlen;
+	u8 imgtype = BIT_NONE;
 	int status;
+	u8 i = 1;
 
-	if (argc < 5)
+	if (argc < 4 && argc > 5)
 		goto usage;
 
-	srcaddr = simple_strtoul(argv[1], &endp, 16);
-	if (*argv[1] == 0 || *endp != 0)
-		return -1;
-	srclen = simple_strtoul(argv[2], &endp, 16);
-	if (*argv[2] == 0 || *endp != 0)
-		return -1;
-	dstaddr = simple_strtoul(argv[3], &endp, 16);
-	if (*argv[3] == 0 || *endp != 0)
-		return -1;
-	dstlen = simple_strtoul(argv[4], &endp, 16);
-	if (*argv[4] == 0 || *endp != 0)
-		return -1;
+	if (argc == 4) {
+		if (!strcmp("load", argv[i]))
+			imgtype = BIT_FULL;
+		else if (!strcmp("loadp", argv[i]))
+			imgtype = BIT_PARTIAL;
+		else
+			goto usage;
+		i++;
+	}
 
-	status = zynq_decrypt_load(srcaddr, srclen, dstaddr, dstlen);
+	srcaddr = simple_strtoul(argv[i], &endp, 16);
+	if (*argv[i++] == 0 || *endp != 0)
+		goto usage;
+	srclen = simple_strtoul(argv[i], &endp, 16);
+	if (*argv[i++] == 0 || *endp != 0)
+		goto usage;
+	if (argc == 4) {
+		dstaddr = 0xFFFFFFFF;
+		dstlen = srclen;
+	} else {
+		dstaddr = simple_strtoul(argv[i], &endp, 16);
+		if (*argv[i++] == 0 || *endp != 0)
+			goto usage;
+		dstlen = simple_strtoul(argv[i], &endp, 16);
+		if (*argv[i++] == 0 || *endp != 0)
+			goto usage;
+	}
+
+	/*
+	 * If the image is not bitstream but destination address is
+	 * 0xFFFFFFFF
+	 */
+	if (imgtype == BIT_NONE && dstaddr == 0xFFFFFFFF) {
+		printf("ERR:use zynqaes load/loadp encrypted bitstream\n");
+		goto usage;
+	}
+
+	status = zynq_decrypt_load(srcaddr, srclen, dstaddr, dstlen, imgtype);
 	if (status != 0)
 		return -1;
 
@@ -609,11 +596,17 @@ usage:
 
 #ifdef CONFIG_SYS_LONGHELP
 static char zynqaes_help_text[] =
-"zynqaes <srcaddr> <srclen> <dstaddr> <dstlen>  -\n"
+"zynqaes [operation type] <srcaddr> <srclen> <dstaddr> <dstlen>  -\n"
 "Decrypts the encrypted image present in source address\n"
 "and places the decrypted image at destination address\n"
-"The destination address should be 0xFFFFFFFF for loading\n"
-"the encrypted bitstreams\n";
+"zynqaes operations:\n"
+"   zynqaes <srcaddr> <srclen> <dstaddr> <dstlen>\n"
+"   zynqaes load <srcaddr> <srclen>\n"
+"   zynqaes loadp <srcaddr> <srclen>\n"
+"if operation type is load or loadp, it loads the encrypted\n"
+"full or partial bitstream on to PL respectively. If no valid\n"
+"operation type specified then it loads decrypted image back\n"
+"to memory and it doesnt support loading PL bistsream\n";
 #endif
 
 U_BOOT_CMD(

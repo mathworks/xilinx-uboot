@@ -57,11 +57,10 @@
 #define ENABLE_JFFS	1
 #endif
 
-/* Define which commmands should be available at u-boot command prompt */
+/* Define which commands should be available at u-boot command prompt */
 
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_I2C
 #if ENABLE_JFFS
 #define CONFIG_CMD_JFFS2
@@ -206,8 +205,6 @@
 /* default bootargs that are considered during boot */
 #define CONFIG_BOOTARGS		" console=ttyS2,115200 rootfstype=romfs"\
 				" loaderversion=$loaderversion"
-
-#define CONFIG_SYS_PROMPT	"URMEL > "
 
 /* default RAM address for user programs */
 #define CONFIG_SYS_LOAD_ADDR	0x20000

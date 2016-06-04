@@ -47,6 +47,17 @@ void setup_gpmi_io_clk(u32 cfg)
 		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_INPUT_APB_MASK |
 		     MXC_CCM_CCGR4_PL301_MX6QPER1_BCH_MASK);
 
+#if defined(CONFIG_MX6SX)
+	clrbits_le32(&imx_ccm->CCGR4, MXC_CCM_CCGR4_QSPI2_ENFC_MASK);
+
+	clrsetbits_le32(&imx_ccm->cs2cdr,
+			MXC_CCM_CS2CDR_QSPI2_CLK_PODF_MASK |
+			MXC_CCM_CS2CDR_QSPI2_CLK_PRED_MASK |
+			MXC_CCM_CS2CDR_QSPI2_CLK_SEL_MASK,
+			cfg);
+
+	setbits_le32(&imx_ccm->CCGR4, MXC_CCM_CCGR4_QSPI2_ENFC_MASK);
+#else
 	clrbits_le32(&imx_ccm->CCGR2, MXC_CCM_CCGR2_IOMUX_IPT_CLK_IO_MASK);
 
 	clrsetbits_le32(&imx_ccm->cs2cdr,
@@ -56,6 +67,7 @@ void setup_gpmi_io_clk(u32 cfg)
 			cfg);
 
 	setbits_le32(&imx_ccm->CCGR2, MXC_CCM_CCGR2_IOMUX_IPT_CLK_IO_MASK);
+#endif
 	setbits_le32(&imx_ccm->CCGR4,
 		     MXC_CCM_CCGR4_RAWNAND_U_BCH_INPUT_APB_MASK |
 		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_BCH_MASK |
@@ -81,43 +93,37 @@ void enable_usboh3_clk(unsigned char enable)
 #if defined(CONFIG_FEC_MXC) && !defined(CONFIG_MX6SX)
 void enable_enet_clk(unsigned char enable)
 {
-	u32 mask = MXC_CCM_CCGR1_ENET_CLK_ENABLE_MASK;
+	u32 mask, *addr;
+
+	if (is_cpu_type(MXC_CPU_MX6UL)) {
+		mask = MXC_CCM_CCGR3_ENET_MASK;
+		addr = &imx_ccm->CCGR3;
+	} else {
+		mask = MXC_CCM_CCGR1_ENET_MASK;
+		addr = &imx_ccm->CCGR1;
+	}
 
 	if (enable)
-		setbits_le32(&imx_ccm->CCGR1, mask);
+		setbits_le32(addr, mask);
 	else
-		clrbits_le32(&imx_ccm->CCGR1, mask);
+		clrbits_le32(addr, mask);
 }
 #endif
 
 #ifdef CONFIG_MXC_UART
 void enable_uart_clk(unsigned char enable)
 {
-	u32 mask = MXC_CCM_CCGR5_UART_MASK | MXC_CCM_CCGR5_UART_SERIAL_MASK;
+	u32 mask;
+
+	if (is_cpu_type(MXC_CPU_MX6UL))
+		mask = MXC_CCM_CCGR5_UART_MASK;
+	else
+		mask = MXC_CCM_CCGR5_UART_MASK | MXC_CCM_CCGR5_UART_SERIAL_MASK;
 
 	if (enable)
 		setbits_le32(&imx_ccm->CCGR5, mask);
 	else
 		clrbits_le32(&imx_ccm->CCGR5, mask);
-}
-#endif
-
-#ifdef CONFIG_SPI
-/* spi_num can be from 0 - 4 */
-int enable_cspi_clock(unsigned char enable, unsigned spi_num)
-{
-	u32 mask;
-
-	if (spi_num > 4)
-		return -EINVAL;
-
-	mask = MXC_CCM_CCGR_CG_MASK << (spi_num * 2);
-	if (enable)
-		setbits_le32(&imx_ccm->CCGR1, mask);
-	else
-		clrbits_le32(&imx_ccm->CCGR1, mask);
-
-	return 0;
 }
 #endif
 
@@ -145,6 +151,7 @@ int enable_i2c_clk(unsigned char enable, unsigned i2c_num)
 {
 	u32 reg;
 	u32 mask;
+	u32 *addr;
 
 	if (i2c_num > 3)
 		return -EINVAL;
@@ -159,14 +166,19 @@ int enable_i2c_clk(unsigned char enable, unsigned i2c_num)
 			reg &= ~mask;
 		__raw_writel(reg, &imx_ccm->CCGR2);
 	} else {
-		mask = MXC_CCM_CCGR_CG_MASK
-			<< (MXC_CCM_CCGR1_I2C4_SERIAL_OFFSET);
-		reg = __raw_readl(&imx_ccm->CCGR1);
+		if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL)) {
+			mask = MXC_CCM_CCGR6_I2C4_MASK;
+			addr = &imx_ccm->CCGR6;
+		} else {
+			mask = MXC_CCM_CCGR1_I2C4_SERIAL_MASK;
+			addr = &imx_ccm->CCGR1;
+		}
+		reg = __raw_readl(addr);
 		if (enable)
 			reg |= mask;
 		else
 			reg &= ~mask;
-		__raw_writel(reg, &imx_ccm->CCGR1);
+		__raw_writel(reg, addr);
 	}
 	return 0;
 }
@@ -227,9 +239,11 @@ static u32 mxc_get_pll_pfd(enum pll_clocks pll, int pfd_num)
 
 	switch (pll) {
 	case PLL_BUS:
-		if (pfd_num == 3) {
-			/* No PFD3 on PPL2 */
-			return 0;
+		if (!is_cpu_type(MXC_CPU_MX6UL)) {
+			if (pfd_num == 3) {
+				/* No PFD3 on PPL2 */
+				return 0;
+			}
 		}
 		div = __raw_readl(&imx_ccm->analog_pfd_528);
 		freq = (u64)decode_pll(PLL_BUS, MXC_HCLK);
@@ -261,10 +275,12 @@ static u32 get_mcu_main_clk(void)
 
 u32 get_periph_clk(void)
 {
-	u32 reg, freq = 0;
+	u32 reg, div = 0, freq = 0;
 
 	reg = __raw_readl(&imx_ccm->cbcdr);
 	if (reg & MXC_CCM_CBCDR_PERIPH_CLK_SEL) {
+		div = (reg & MXC_CCM_CBCDR_PERIPH_CLK2_PODF_MASK) >>
+		       MXC_CCM_CBCDR_PERIPH_CLK2_PODF_OFFSET;
 		reg = __raw_readl(&imx_ccm->cbcmr);
 		reg &= MXC_CCM_CBCMR_PERIPH_CLK2_SEL_MASK;
 		reg >>= MXC_CCM_CBCMR_PERIPH_CLK2_SEL_OFFSET;
@@ -304,7 +320,7 @@ u32 get_periph_clk(void)
 		}
 	}
 
-	return freq;
+	return freq / (div + 1);
 }
 
 static u32 get_ipg_clk(void)
@@ -323,10 +339,12 @@ static u32 get_ipg_per_clk(void)
 	u32 reg, perclk_podf;
 
 	reg = __raw_readl(&imx_ccm->cscmr1);
-#if (defined(CONFIG_MX6SL) || defined(CONFIG_MX6SX))
-	if (reg & MXC_CCM_CSCMR1_PER_CLK_SEL_MASK)
-		return MXC_HCLK; /* OSC 24Mhz */
-#endif
+	if (is_cpu_type(MXC_CPU_MX6SL) || is_cpu_type(MXC_CPU_MX6SX) ||
+	    is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL)) {
+		if (reg & MXC_CCM_CSCMR1_PER_CLK_SEL_MASK)
+			return MXC_HCLK; /* OSC 24Mhz */
+	}
+
 	perclk_podf = reg & MXC_CCM_CSCMR1_PERCLK_PODF_MASK;
 
 	return get_ipg_clk() / (perclk_podf + 1);
@@ -337,10 +355,13 @@ static u32 get_uart_clk(void)
 	u32 reg, uart_podf;
 	u32 freq = decode_pll(PLL_USBOTG, MXC_HCLK) / 6; /* static divider */
 	reg = __raw_readl(&imx_ccm->cscdr1);
-#if (defined(CONFIG_MX6SL) || defined(CONFIG_MX6SX))
-	if (reg & MXC_CCM_CSCDR1_UART_CLK_SEL)
-		freq = MXC_HCLK;
-#endif
+
+	if (is_cpu_type(MXC_CPU_MX6SL) || is_cpu_type(MXC_CPU_MX6SX) ||
+	    is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL)) {
+		if (reg & MXC_CCM_CSCDR1_UART_CLK_SEL)
+			freq = MXC_HCLK;
+	}
+
 	reg &= MXC_CCM_CSCDR1_UART_CLK_PODF_MASK;
 	uart_podf = reg >> MXC_CCM_CSCDR1_UART_CLK_PODF_OFFSET;
 
@@ -352,8 +373,14 @@ static u32 get_cspi_clk(void)
 	u32 reg, cspi_podf;
 
 	reg = __raw_readl(&imx_ccm->cscdr2);
-	reg &= MXC_CCM_CSCDR2_ECSPI_CLK_PODF_MASK;
-	cspi_podf = reg >> MXC_CCM_CSCDR2_ECSPI_CLK_PODF_OFFSET;
+	cspi_podf = (reg & MXC_CCM_CSCDR2_ECSPI_CLK_PODF_MASK) >>
+		     MXC_CCM_CSCDR2_ECSPI_CLK_PODF_OFFSET;
+
+	if (is_mx6dqp() || is_cpu_type(MXC_CPU_MX6SL) ||
+	    is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL)) {
+		if (reg & MXC_CCM_CSCDR2_ECSPI_CLK_SEL_MASK)
+			return MXC_HCLK / (cspi_podf + 1);
+	}
 
 	return	decode_pll(PLL_USBOTG, MXC_HCLK) / (8 * (cspi_podf + 1));
 }
@@ -405,47 +432,307 @@ static u32 get_emi_slow_clk(void)
 	return root_freq / (emi_slow_podf + 1);
 }
 
-#if (defined(CONFIG_MX6SL) || defined(CONFIG_MX6SX))
 static u32 get_mmdc_ch0_clk(void)
 {
 	u32 cbcmr = __raw_readl(&imx_ccm->cbcmr);
 	u32 cbcdr = __raw_readl(&imx_ccm->cbcdr);
-	u32 freq, podf;
 
-	podf = (cbcdr & MXC_CCM_CBCDR_MMDC_CH1_PODF_MASK) \
-			>> MXC_CCM_CBCDR_MMDC_CH1_PODF_OFFSET;
+	u32 freq, podf, per2_clk2_podf;
 
-	switch ((cbcmr & MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_MASK) >>
-		MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_OFFSET) {
-	case 0:
-		freq = decode_pll(PLL_BUS, MXC_HCLK);
-		break;
+	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL) ||
+	    is_cpu_type(MXC_CPU_MX6SL)) {
+		podf = (cbcdr & MXC_CCM_CBCDR_MMDC_CH1_PODF_MASK) >>
+			MXC_CCM_CBCDR_MMDC_CH1_PODF_OFFSET;
+		if (cbcdr & MXC_CCM_CBCDR_PERIPH2_CLK_SEL) {
+			per2_clk2_podf = (cbcdr & MXC_CCM_CBCDR_PERIPH2_CLK2_PODF_MASK) >>
+				MXC_CCM_CBCDR_PERIPH2_CLK2_PODF_OFFSET;
+			if (is_cpu_type(MXC_CPU_MX6SL)) {
+				if (cbcmr & MXC_CCM_CBCMR_PERIPH2_CLK2_SEL)
+					freq = MXC_HCLK;
+				else
+					freq = decode_pll(PLL_USBOTG, MXC_HCLK);
+			} else {
+				if (cbcmr & MXC_CCM_CBCMR_PERIPH2_CLK2_SEL)
+					freq = decode_pll(PLL_BUS, MXC_HCLK);
+				else
+					freq = decode_pll(PLL_USBOTG, MXC_HCLK);
+			}
+		} else {
+			per2_clk2_podf = 0;
+			switch ((cbcmr &
+				MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_MASK) >>
+				MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_OFFSET) {
+			case 0:
+				freq = decode_pll(PLL_BUS, MXC_HCLK);
+				break;
+			case 1:
+				freq = mxc_get_pll_pfd(PLL_BUS, 2);
+				break;
+			case 2:
+				freq = mxc_get_pll_pfd(PLL_BUS, 0);
+				break;
+			case 3:
+				/* static / 2 divider */
+				freq =  mxc_get_pll_pfd(PLL_BUS, 2) / 2;
+				break;
+			}
+		}
+		return freq / (podf + 1) / (per2_clk2_podf + 1);
+	} else {
+		podf = (cbcdr & MXC_CCM_CBCDR_MMDC_CH0_PODF_MASK) >>
+			MXC_CCM_CBCDR_MMDC_CH0_PODF_OFFSET;
+		return get_periph_clk() / (podf + 1);
+	}
+}
+
+#if defined(CONFIG_VIDEO_MXS)
+static int enable_pll_video(u32 pll_div, u32 pll_num, u32 pll_denom,
+			    u32 post_div)
+{
+	u32 reg = 0;
+	ulong start;
+
+	debug("pll5 div = %d, num = %d, denom = %d\n",
+	      pll_div, pll_num, pll_denom);
+
+	/* Power up PLL5 video */
+	writel(BM_ANADIG_PLL_VIDEO_POWERDOWN |
+	       BM_ANADIG_PLL_VIDEO_BYPASS |
+	       BM_ANADIG_PLL_VIDEO_DIV_SELECT |
+	       BM_ANADIG_PLL_VIDEO_POST_DIV_SELECT,
+	       &imx_ccm->analog_pll_video_clr);
+
+	/* Set div, num and denom */
+	switch (post_div) {
 	case 1:
-		freq = mxc_get_pll_pfd(PLL_BUS, 2);
+		writel(BF_ANADIG_PLL_VIDEO_DIV_SELECT(pll_div) |
+		       BF_ANADIG_PLL_VIDEO_POST_DIV_SELECT(0x2),
+		       &imx_ccm->analog_pll_video_set);
 		break;
 	case 2:
-		freq = mxc_get_pll_pfd(PLL_BUS, 0);
+		writel(BF_ANADIG_PLL_VIDEO_DIV_SELECT(pll_div) |
+		       BF_ANADIG_PLL_VIDEO_POST_DIV_SELECT(0x1),
+		       &imx_ccm->analog_pll_video_set);
 		break;
-	case 3:
-		/* static / 2 divider */
-		freq =  mxc_get_pll_pfd(PLL_BUS, 2) / 2;
+	case 4:
+		writel(BF_ANADIG_PLL_VIDEO_DIV_SELECT(pll_div) |
+		       BF_ANADIG_PLL_VIDEO_POST_DIV_SELECT(0x0),
+		       &imx_ccm->analog_pll_video_set);
+		break;
+	default:
+		puts("Wrong test_div!\n");
+		return -EINVAL;
 	}
 
-	return freq / (podf + 1);
+	writel(BF_ANADIG_PLL_VIDEO_NUM_A(pll_num),
+	       &imx_ccm->analog_pll_video_num);
+	writel(BF_ANADIG_PLL_VIDEO_DENOM_B(pll_denom),
+	       &imx_ccm->analog_pll_video_denom);
 
+	/* Wait PLL5 lock */
+	start = get_timer(0);	/* Get current timestamp */
+
+	do {
+		reg = readl(&imx_ccm->analog_pll_video);
+		if (reg & BM_ANADIG_PLL_VIDEO_LOCK) {
+			/* Enable PLL out */
+			writel(BM_ANADIG_PLL_VIDEO_ENABLE,
+			       &imx_ccm->analog_pll_video_set);
+			return 0;
+		}
+	} while (get_timer(0) < (start + 10)); /* Wait 10ms */
+
+	puts("Lock PLL5 timeout\n");
+
+	return -ETIME;
 }
-#else
-static u32 get_mmdc_ch0_clk(void)
-{
-	u32 cbcdr = __raw_readl(&imx_ccm->cbcdr);
-	u32 mmdc_ch0_podf = (cbcdr & MXC_CCM_CBCDR_MMDC_CH0_PODF_MASK) >>
-				MXC_CCM_CBCDR_MMDC_CH0_PODF_OFFSET;
 
-	return get_periph_clk() / (mmdc_ch0_podf + 1);
+/*
+ * 24M--> PLL_VIDEO -> LCDIFx_PRED -> LCDIFx_PODF -> LCD
+ *
+ * 'freq' using KHz as unit, see driver/video/mxsfb.c.
+ */
+void mxs_set_lcdclk(u32 base_addr, u32 freq)
+{
+	u32 reg = 0;
+	u32 hck = MXC_HCLK / 1000;
+	/* DIV_SELECT ranges from 27 to 54 */
+	u32 min = hck * 27;
+	u32 max = hck * 54;
+	u32 temp, best = 0;
+	u32 i, j, max_pred = 8, max_postd = 8, pred = 1, postd = 1;
+	u32 pll_div, pll_num, pll_denom, post_div = 1;
+
+	debug("mxs_set_lcdclk, freq = %dKHz\n", freq);
+
+	if ((!is_cpu_type(MXC_CPU_MX6SX)) && !is_cpu_type(MXC_CPU_MX6UL)) {
+		debug("This chip not support lcd!\n");
+		return;
+	}
+
+	if (base_addr == LCDIF1_BASE_ADDR) {
+		reg = readl(&imx_ccm->cscdr2);
+		/* Can't change clocks when clock not from pre-mux */
+		if ((reg & MXC_CCM_CSCDR2_LCDIF1_CLK_SEL_MASK) != 0)
+			return;
+	}
+
+	if (is_cpu_type(MXC_CPU_MX6SX)) {
+		reg = readl(&imx_ccm->cscdr2);
+		/* Can't change clocks when clock not from pre-mux */
+		if ((reg & MXC_CCM_CSCDR2_LCDIF2_CLK_SEL_MASK) != 0)
+			return;
+	}
+
+	temp = freq * max_pred * max_postd;
+	if (temp > max) {
+		puts("Please decrease freq, too large!\n");
+		return;
+	}
+	if (temp < min) {
+		/*
+		 * Register: PLL_VIDEO
+		 * Bit Field: POST_DIV_SELECT
+		 * 00 — Divide by 4.
+		 * 01 — Divide by 2.
+		 * 10 — Divide by 1.
+		 * 11 — Reserved
+		 * No need to check post_div(1)
+		 */
+		for (post_div = 2; post_div <= 4; post_div <<= 1) {
+			if ((temp * post_div) > min) {
+				freq *= post_div;
+				break;
+			}
+		}
+
+		if (post_div > 4) {
+			printf("Fail to set rate to %dkhz", freq);
+			return;
+		}
+	}
+
+	/* Choose the best pred and postd to match freq for lcd */
+	for (i = 1; i <= max_pred; i++) {
+		for (j = 1; j <= max_postd; j++) {
+			temp = freq * i * j;
+			if (temp > max || temp < min)
+				continue;
+			if (best == 0 || temp < best) {
+				best = temp;
+				pred = i;
+				postd = j;
+			}
+		}
+	}
+
+	if (best == 0) {
+		printf("Fail to set rate to %dKHz", freq);
+		return;
+	}
+
+	debug("best %d, pred = %d, postd = %d\n", best, pred, postd);
+
+	pll_div = best / hck;
+	pll_denom = 1000000;
+	pll_num = (best - hck * pll_div) * pll_denom / hck;
+
+	/*
+	 *                                  pll_num
+	 *             (24MHz * (pll_div + --------- ))
+	 *                                 pll_denom
+	 *freq KHz =  --------------------------------
+	 *             post_div * pred * postd * 1000
+	 */
+
+	if (base_addr == LCDIF1_BASE_ADDR) {
+		if (enable_pll_video(pll_div, pll_num, pll_denom, post_div))
+			return;
+
+		/* Select pre-lcd clock to PLL5 and set pre divider */
+		clrsetbits_le32(&imx_ccm->cscdr2,
+				MXC_CCM_CSCDR2_LCDIF1_PRED_SEL_MASK |
+				MXC_CCM_CSCDR2_LCDIF1_PRE_DIV_MASK,
+				(0x2 << MXC_CCM_CSCDR2_LCDIF1_PRED_SEL_OFFSET) |
+				((pred - 1) <<
+				 MXC_CCM_CSCDR2_LCDIF1_PRE_DIV_OFFSET));
+
+		/* Set the post divider */
+		clrsetbits_le32(&imx_ccm->cbcmr,
+				MXC_CCM_CBCMR_LCDIF1_PODF_MASK,
+				((postd - 1) <<
+				 MXC_CCM_CBCMR_LCDIF1_PODF_OFFSET));
+	} else if (is_cpu_type(MXC_CPU_MX6SX)) {
+		/* Setting LCDIF2 for i.MX6SX */
+		if (enable_pll_video(pll_div, pll_num, pll_denom, post_div))
+			return;
+
+		/* Select pre-lcd clock to PLL5 and set pre divider */
+		clrsetbits_le32(&imx_ccm->cscdr2,
+				MXC_CCM_CSCDR2_LCDIF2_PRED_SEL_MASK |
+				MXC_CCM_CSCDR2_LCDIF2_PRE_DIV_MASK,
+				(0x2 << MXC_CCM_CSCDR2_LCDIF2_PRED_SEL_OFFSET) |
+				((pred - 1) <<
+				 MXC_CCM_CSCDR2_LCDIF2_PRE_DIV_OFFSET));
+
+		/* Set the post divider */
+		clrsetbits_le32(&imx_ccm->cscmr1,
+				MXC_CCM_CSCMR1_LCDIF2_PODF_MASK,
+				((postd - 1) <<
+				 MXC_CCM_CSCMR1_LCDIF2_PODF_OFFSET));
+	}
+}
+
+int enable_lcdif_clock(u32 base_addr)
+{
+	u32 reg = 0;
+	u32 lcdif_clk_sel_mask, lcdif_ccgr3_mask;
+
+	if (is_cpu_type(MXC_CPU_MX6SX)) {
+		if ((base_addr == LCDIF1_BASE_ADDR) ||
+		    (base_addr == LCDIF2_BASE_ADDR)) {
+			puts("Wrong LCD interface!\n");
+			return -EINVAL;
+		}
+		/* Set to pre-mux clock at default */
+		lcdif_clk_sel_mask = (base_addr == LCDIF2_BASE_ADDR) ?
+			MXC_CCM_CSCDR2_LCDIF2_CLK_SEL_MASK :
+			MXC_CCM_CSCDR2_LCDIF1_CLK_SEL_MASK;
+		lcdif_ccgr3_mask = (base_addr == LCDIF2_BASE_ADDR) ?
+			(MXC_CCM_CCGR3_LCDIF2_PIX_MASK |
+			 MXC_CCM_CCGR3_DISP_AXI_MASK) :
+			(MXC_CCM_CCGR3_LCDIF1_PIX_MASK |
+			 MXC_CCM_CCGR3_DISP_AXI_MASK);
+	} else if (is_cpu_type(MXC_CPU_MX6UL)) {
+		if (base_addr != LCDIF1_BASE_ADDR) {
+			puts("Wrong LCD interface!\n");
+			return -EINVAL;
+		}
+		/* Set to pre-mux clock at default */
+		lcdif_clk_sel_mask = MXC_CCM_CSCDR2_LCDIF1_CLK_SEL_MASK;
+		lcdif_ccgr3_mask =  MXC_CCM_CCGR3_LCDIF1_PIX_MASK;
+	} else {
+		return 0;
+	}
+
+	reg = readl(&imx_ccm->cscdr2);
+	reg &= ~lcdif_clk_sel_mask;
+	writel(reg, &imx_ccm->cscdr2);
+
+	/* Enable the LCDIF pix clock */
+	reg = readl(&imx_ccm->CCGR3);
+	reg |= lcdif_ccgr3_mask;
+	writel(reg, &imx_ccm->CCGR3);
+
+	reg = readl(&imx_ccm->CCGR2);
+	reg |= MXC_CCM_CCGR2_LCD_MASK;
+	writel(reg, &imx_ccm->CCGR2);
+
+	return 0;
 }
 #endif
 
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_FSL_QSPI
 /* qspi_num can be from 0 - 1 */
 void enable_qspi_clk(int qspi_num)
 {
@@ -496,7 +783,7 @@ void enable_qspi_clk(int qspi_num)
 #endif
 
 #ifdef CONFIG_FEC_MXC
-int enable_fec_anatop_clock(enum enet_freq freq)
+int enable_fec_anatop_clock(int fec_id, enum enet_freq freq)
 {
 	u32 reg = 0;
 	s32 timeout = 100000;
@@ -508,8 +795,20 @@ int enable_fec_anatop_clock(enum enet_freq freq)
 		return -EINVAL;
 
 	reg = readl(&anatop->pll_enet);
-	reg &= ~BM_ANADIG_PLL_ENET_DIV_SELECT;
-	reg |= freq;
+
+	if (fec_id == 0) {
+		reg &= ~BM_ANADIG_PLL_ENET_DIV_SELECT;
+		reg |= BF_ANADIG_PLL_ENET_DIV_SELECT(freq);
+	} else if (fec_id == 1) {
+		/* Only i.MX6SX/UL support ENET2 */
+		if (!(is_cpu_type(MXC_CPU_MX6SX) ||
+		      is_cpu_type(MXC_CPU_MX6UL)))
+			return -EINVAL;
+		reg &= ~BM_ANADIG_PLL_ENET2_DIV_SELECT;
+		reg |= BF_ANADIG_PLL_ENET2_DIV_SELECT(freq);
+	} else {
+		return -EINVAL;
+	}
 
 	if ((reg & BM_ANADIG_PLL_ENET_POWERDOWN) ||
 	    (!(reg & BM_ANADIG_PLL_ENET_LOCK))) {
@@ -524,7 +823,10 @@ int enable_fec_anatop_clock(enum enet_freq freq)
 	}
 
 	/* Enable FEC clock */
-	reg |= BM_ANADIG_PLL_ENET_ENABLE;
+	if (fec_id == 0)
+		reg |= BM_ANADIG_PLL_ENET_ENABLE;
+	else
+		reg |= BM_ANADIG_PLL_ENET2_ENABLE;
 	reg &= ~BM_ANADIG_PLL_ENET_BYPASS;
 	writel(reg, &anatop->pll_enet);
 
@@ -606,6 +908,7 @@ u32 imx_get_fecclk(void)
 	return mxc_get_clock(MXC_IPG_CLK);
 }
 
+#if defined(CONFIG_CMD_SATA) || defined(CONFIG_PCIE_IMX)
 static int enable_enet_pll(uint32_t en)
 {
 	struct mxc_ccm_reg *const imx_ccm
@@ -630,8 +933,9 @@ static int enable_enet_pll(uint32_t en)
 	writel(reg, &imx_ccm->analog_pll_enet);
 	return 0;
 }
+#endif
 
-#ifndef CONFIG_MX6SX
+#ifdef CONFIG_CMD_SATA
 static void ungate_sata_clock(void)
 {
 	struct mxc_ccm_reg *const imx_ccm =
@@ -640,18 +944,7 @@ static void ungate_sata_clock(void)
 	/* Enable SATA clock. */
 	setbits_le32(&imx_ccm->CCGR5, MXC_CCM_CCGR5_SATA_MASK);
 }
-#endif
 
-static void ungate_pcie_clock(void)
-{
-	struct mxc_ccm_reg *const imx_ccm =
-		(struct mxc_ccm_reg *)CCM_BASE_ADDR;
-
-	/* Enable PCIe clock. */
-	setbits_le32(&imx_ccm->CCGR4, MXC_CCM_CCGR4_PCIE_MASK);
-}
-
-#ifndef CONFIG_MX6SX
 int enable_sata_clock(void)
 {
 	ungate_sata_clock();
@@ -666,6 +959,16 @@ void disable_sata_clock(void)
 	clrbits_le32(&imx_ccm->CCGR5, MXC_CCM_CCGR5_SATA_MASK);
 }
 #endif
+
+#ifdef CONFIG_PCIE_IMX
+static void ungate_pcie_clock(void)
+{
+	struct mxc_ccm_reg *const imx_ccm =
+		(struct mxc_ccm_reg *)CCM_BASE_ADDR;
+
+	/* Enable PCIe clock. */
+	setbits_le32(&imx_ccm->CCGR4, MXC_CCM_CCGR4_PCIE_MASK);
+}
 
 int enable_pcie_clock(void)
 {
@@ -706,7 +1009,7 @@ int enable_pcie_clock(void)
 	clrbits_le32(&ccm_regs->cbcmr, MXC_CCM_CBCMR_PCIE_AXI_CLK_SEL);
 
 	/* Party time! Ungate the clock to the PCIe. */
-#ifndef CONFIG_MX6SX
+#ifdef CONFIG_CMD_SATA
 	ungate_sata_clock();
 #endif
 	ungate_pcie_clock();
@@ -714,6 +1017,7 @@ int enable_pcie_clock(void)
 	return enable_enet_pll(BM_ANADIG_PLL_ENET_ENABLE_SATA |
 			       BM_ANADIG_PLL_ENET_ENABLE_PCIE);
 }
+#endif
 
 #ifdef CONFIG_SECURE_BOOT
 void hab_caam_clock_enable(unsigned char enable)
@@ -856,6 +1160,11 @@ void enable_ipu_clock(void)
 	reg = readl(&mxc_ccm->CCGR3);
 	reg |= MXC_CCM_CCGR3_IPU1_IPU_MASK;
 	writel(reg, &mxc_ccm->CCGR3);
+
+	if (is_mx6dqp()) {
+		setbits_le32(&mxc_ccm->CCGR6, MXC_CCM_CCGR6_PRG_CLK0_MASK);
+		setbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU2_IPU_MASK);
+	}
 }
 #endif
 /***************************************************/

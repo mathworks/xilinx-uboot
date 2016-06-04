@@ -17,7 +17,6 @@
 
 #define CONFIG_SYS_NO_FLASH
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* Generic Interrupt Controller Definitions */
 #define CONFIG_GICV2
@@ -27,8 +26,11 @@
 #define CONFIG_SYS_ALT_MEMTEST
 #define CONFIG_SYS_MEMTEST_SCRATCH	0xfffc0000
 
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		CONFIG_SYS_SDRAM_SIZE
+#ifndef CONFIG_NR_DRAM_BANKS
+# define CONFIG_NR_DRAM_BANKS		2
+#endif
+#define CONFIG_SYS_MEMTEST_START	0
+#define CONFIG_SYS_MEMTEST_END		1000
 
 /* Have release address at the end of 256MB for now */
 #define CPU_RELEASE_ADDR	0xFFFFFF0
@@ -42,30 +44,23 @@
 #define CONFIG_BOOTP_VCI_STRING		"U-boot.armv8.Xilinx_ZynqMP"
 
 /* Text base on 16MB for now - 0 doesn't work */
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x7fff0)
+#define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
 
 /* Flat Device Tree Definitions */
 #define CONFIG_OF_LIBFDT
 
 /* Generic Timer Definitions - setup in EL3. Setup by ATF for other cases */
-#define COUNTER_FREQUENCY		4000000
+#ifndef COUNTER_FREQUENCY
+# define COUNTER_FREQUENCY		100000000
+#endif
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 0x2000000)
 
 /* Serial setup */
-#if defined(CONFIG_ZYNQ_DCC)
-# define CONFIG_ARM_DCC
-# define CONFIG_CPU_ARMV8
-# define CONFIG_BOOTARGS	"setenv bootargs console=hvc0 " \
-				"earlycon=dcc; run nosmp;"
-#else
-# if defined(CONFIG_ZYNQ_SERIAL_UART0) || defined(CONFIG_ZYNQ_SERIAL_UART1)
-#  define CONFIG_ZYNQ_SERIAL
-#  define CONFIG_BOOTARGS	"setenv bootargs console=ttyPS0,${baudrate} " \
-				"earlycon=cdns,mmio,0xff000000,${baudrate}n8"
-# endif
-#endif
+#define CONFIG_ARM_DCC
+#define CONFIG_CPU_ARMV8
+#define CONFIG_ZYNQ_SERIAL
 
 #define CONFIG_CONS_INDEX		0
 #define CONFIG_BAUDRATE			115200
@@ -79,7 +74,6 @@
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_FS_GENERIC
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_ELF
 #define CONFIG_MP
 
 #define CONFIG_CMD_MII
@@ -108,6 +102,7 @@
 # define CONFIG_SPI_FLASH_WINBOND
 # define CONFIG_CMD_SPI
 # define CONFIG_CMD_SF
+# define CONFIG_CMD_SF_TEST
 #endif
 
 /* NAND */
@@ -126,6 +121,7 @@
 # define CONFIG_SDHCI
 # define CONFIG_ZYNQ_SDHCI
 # define CONFIG_CMD_MMC
+# define CONFIG_SUPPORT_EMMC_BOOT
 # ifndef CONFIG_ZYNQ_SDHCI_MAX_FREQ
 #  define CONFIG_ZYNQ_SDHCI_MAX_FREQ	200000000
 # endif
@@ -140,34 +136,35 @@
 #define CONFIG_SYS_LOAD_ADDR		0x8000000
 
 #if defined(CONFIG_ZYNQMP_USB)
-# define CONFIG_USB_XHCI_DWC3
-# define CONFIG_USB_XHCI
-# define CONFIG_USB_MAX_CONTROLLER_COUNT	1
-# define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS	2
-# define CONFIG_CMD_USB
-# define CONFIG_USB_STORAGE
-# define CONFIG_USB_XHCI_ZYNQMP
+#define CONFIG_USB_XHCI_DWC3
+#define CONFIG_USB_XHCI
+#define CONFIG_USB_MAX_CONTROLLER_COUNT         1
+#define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS      2
+#define CONFIG_CMD_USB
+#define CONFIG_USB_STORAGE
+#define CONFIG_USB_XHCI_ZYNQMP
 
-# define CONFIG_USB_DWC3
-# define CONFIG_USB_DWC3_GADGET
+#define CONFIG_USB_DWC3
+#define CONFIG_USB_DWC3_GADGET
 
-# define CONFIG_USB_GADGET
-# define CONFIG_USB_GADGET_DUALSPEED
-# define CONFIG_USB_GADGET_VBUS_DRAW	2
-# define CONFIG_USBDOWNLOAD_GADGET
-# define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x1800000
-# define DFU_DEFAULT_POLL_TIMEOUT	300
-# define CONFIG_DFU_FUNCTION
-# define CONFIG_DFU_RAM
-# define CONFIG_G_DNL_VENDOR_NUM	0x03FD
-# define CONFIG_G_DNL_PRODUCT_NUM	0x0300
-# define CONFIG_G_DNL_MANUFACTURER	"Xilinx"
-# define CONFIG_USB_CABLE_CHECK
-# define CONFIG_CMD_DFU
-# define CONFIG_CMD_THOR_DOWNLOAD
-# define CONFIG_THOR_FUNCTION
-# define CONFIG_THOR_RESET_OFF
-# define DFU_ALT_INFO_RAM \
+#define CONFIG_USB_GADGET
+#define CONFIG_USB_GADGET_DOWNLOAD
+#define CONFIG_USB_GADGET_DUALSPEED
+#define CONFIG_USB_GADGET_VBUS_DRAW	2
+#define CONFIG_USBDOWNLOAD_GADGET
+#define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x1800000
+#define DFU_DEFAULT_POLL_TIMEOUT	300
+#define CONFIG_USB_FUNCTION_DFU
+#define CONFIG_DFU_RAM
+#define CONFIG_G_DNL_VENDOR_NUM		0x03FD
+#define CONFIG_G_DNL_PRODUCT_NUM	0x0300
+#define CONFIG_G_DNL_MANUFACTURER	"Xilinx"
+#define CONFIG_USB_CABLE_CHECK
+#define CONFIG_CMD_DFU
+#define CONFIG_CMD_THOR_DOWNLOAD
+#define CONFIG_USB_FUNCTION_THOR
+#define CONFIG_THOR_RESET_OFF
+#define DFU_ALT_INFO_RAM \
 	"dfu_ram_info=" \
 	"setenv dfu_alt_info " \
 	"Image ram $kernel_addr $kernel_size\\\\;" \
@@ -184,33 +181,41 @@
 #endif
 
 /* Initial environment variables */
+#ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"ethaddr=00:0a:35:00:01:22\0" \
 	"kernel_addr=0x200000\0" \
 	"initrd_addr=0xa00000\0" \
 	"initrd_size=0x2000000\0" \
-	"fdt_addr=0x7000000\0" \
+	"fdt_addr=4000000\0" \
 	"fdt_high=0x10000000\0" \
-	"kernel_offset=0x400000\0" \
-	"fdt_offset=0x2400000\0" \
-	"kernel_size=0x2000000\0" \
-	"fdt_size=0x80000\0" \
+	"loadbootenv_addr=0x100000\0" \
+	"sdbootdev=0\0"\
+	CONFIG_KERNEL_FDT_OFST_SIZE \
+	"bootenv=uEnv.txt\0" \
+	"loadbootenv=load mmc $sdbootdev:$partid ${loadbootenv_addr} ${bootenv}\0" \
+	"importbootenv=echo Importing environment from SD ...; " \
+		"env import -t ${loadbootenv_addr} $filesize\0" \
+	"sd_uEnvtxt_existence_test=test -e mmc $sdbootdev:$partid /uEnv.txt\0" \
 	"sata_root=if test $scsidevs -gt 0; then setenv bootargs $bootargs root=/dev/sda rw rootfstype=ext4; fi\0" \
-	"veloce=fdt addr f000000 && " \
+	"sataboot=load scsi 0 80000 boot/Image && load scsi 0 $fdt_addr boot/system.dtb && booti 80000 - $fdt_addr\0" \
+	"veloce=fdt addr f000000 && fdt resize" \
 		"fdt set /amba/misc_clk clock-frequency <48000> && "\
 		"fdt set /timer clock-frequency <240000> && " \
 		"fdt set /amba/i2c_clk clock-frequency <240000> && " \
 		"booti 80000 - f000000\0" \
-	"netboot=tftpboot 80000 Image && tftpboot $fdt_addr system.dtb && " \
-		 "booti 80000 - $fdt_addr\0" \
+	"netboot=tftpboot 10000000 image.ub && bootm\0" \
 	"qspiboot=sf probe 0 0 0 && sf read $fdt_addr $fdt_offset $fdt_size && " \
 		  "sf read $kernel_addr $kernel_offset $kernel_size && " \
 		  "booti $kernel_addr - $fdt_addr\0" \
-	"sdboot=mmcinfo && load mmc 0:$partid $fdt_addr system.dtb && " \
-		"load mmc 0:$partid $kernel_addr Image && " \
-		"booti $kernel_addr - $fdt_addr\0" \
-	"sdboot1=mmc dev 1 && mmcinfo && load mmc 1:$partid $fdt_addr system.dtb && " \
-		"load mmc 1:$partid $kernel_addr Image && " \
+	"uenvboot=" \
+		"if run sd_uEnvtxt_existence_test; then " \
+			"run loadbootenv; " \
+			"echo Loaded environment from ${bootenv}; " \
+			"run importbootenv; " \
+		"fi\0" \
+	"sdboot=mmc dev $sdbootdev && mmcinfo && run uenvboot; " \
+		"load mmc $sdbootdev:$partid $fdt_addr system.dtb && " \
+		"load mmc $sdbootdev:$partid $kernel_addr Image && " \
 		"booti $kernel_addr - $fdt_addr\0" \
 	"nandboot=nand info && nand read $fdt_addr $fdt_offset $fdt_size && " \
 		  "nand read $kernel_addr $kernel_offset $kernel_size && " \
@@ -219,19 +224,23 @@
 		"tftpb 0x80000 Image && " \
 		"fdt set /chosen/dom0 reg <0x80000 0x$filesize> && "\
 		"tftpb 6000000 xen.ub && bootm 6000000 - $fdt_addr\0" \
-	"jtagboot=tftpboot 10000000 image.ub && bootm\0" \
+	"jtagboot=tftpboot 80000 Image && tftpboot $fdt_addr system.dtb && " \
+		 "tftpboot 6000000 rootfs.cpio.ub && booti 80000 6000000 $fdt_addr\0" \
 	"nosmp=setenv bootargs $bootargs maxcpus=1\0" \
 	"nfsroot=setenv bootargs $bootargs root=/dev/nfs nfsroot=$serverip:/mnt/sata,tcp ip=$ipaddr:$serverip:$serverip:255.255.255.0:zynqmp:eth0:off rw\0" \
 	"sdroot=setenv bootargs $bootargs root=/dev/mmcblk0p2 rw rootwait\0" \
 	"sdroot1=setenv bootargs $bootargs root=/dev/mmcblk1p2 rw rootwait\0" \
+	"android=setenv bootargs $bootargs init=/init androidboot.selinux=disabled androidboot.hardware=$board\0" \
+	"android_debug=run android && setenv bootargs $bootargs video=DP-1:1024x768@60 drm.debug=0xf\0" \
 	"usbhostboot=usb start && load usb 0 $fdt_addr system.dtb && " \
 		     "load usb 0 $kernel_addr Image && " \
 		     "booti $kernel_addr - $fdt_addr\0" \
 	DFU_ALT_INFO
+#endif
 
-#define CONFIG_PREBOOT		"run bootargs; run sata_root; run setup"
+#define CONFIG_PREBOOT		"run setup"
 #define CONFIG_BOOTCOMMAND	"run $modeboot"
-#define CONFIG_BOOTDELAY	5
+#define CONFIG_BOOTDELAY	3
 
 #define CONFIG_BOARD_LATE_INIT
 
@@ -242,7 +251,6 @@
 /* Monitor Command Prompt */
 /* Console I/O Buffer Size */
 #define CONFIG_SYS_CBSIZE		2048
-#define CONFIG_SYS_PROMPT		"ZynqMP> "
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 					sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_HUSH_PARSER
@@ -253,17 +261,15 @@
 #define CONFIG_SYS_MAXARGS		64
 
 /* Ethernet driver */
-#if defined(CONFIG_ZYNQ_GEM0) || defined(CONFIG_ZYNQ_GEM1) || \
-	defined(CONFIG_ZYNQ_GEM2) || defined(CONFIG_ZYNQ_GEM3)
+#if defined(CONFIG_ZYNQ_GEM)
 # define CONFIG_NET_MULTI
-# define CONFIG_ZYNQ_GEM
 # define CONFIG_MII
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-# define CONFIG_PHYLIB
 # define CONFIG_PHY_MARVELL
 # define CONFIG_PHY_NATSEMI
 # define CONFIG_PHY_TI
 # define CONFIG_PHY_GIGE
+# define PHY_ANEG_TIMEOUT       20000
 #endif
 
 /* I2C */
@@ -288,12 +294,18 @@
 #define CONFIG_LIBATA
 #define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
-#define CONFIG_SYS_SCSI_MAX_SCSI_ID	1
+#define CONFIG_SYS_SCSI_MAX_SCSI_ID	2
 #define CONFIG_SYS_SCSI_MAX_LUN		1
 #define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
 					 CONFIG_SYS_SCSI_MAX_LUN)
 #define CONFIG_CMD_SCSI
 #endif
+
+#define CONFIG_ARM_SMC
+
+#define CONFIG_FPGA_ZYNQMPPL
+#define CONFIG_FPGA_XILINX
+#define CONFIG_FPGA
 
 #define CONFIG_SYS_BOOTM_LEN	(60 * 1024 * 1024)
 

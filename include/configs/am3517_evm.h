@@ -19,7 +19,6 @@
 #define CONFIG_OMAP		1	/* in a TI OMAP core */
 #define CONFIG_OMAP3_AM3517EVM	1	/* working with AM3517EVM */
 #define CONFIG_OMAP_COMMON
-#define CONFIG_SYS_GENERIC_BOARD
 /* Common ARM Erratas */
 #define CONFIG_ARM_ERRATA_454179
 #define CONFIG_ARM_ERRATA_430973
@@ -41,6 +40,8 @@
 #define V_SCLK			(V_OSCK >> 1)
 
 #define CONFIG_MISC_INIT_R
+
+#define CONFIG_OF_LIBFDT
 
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
@@ -71,7 +72,6 @@
  */
 #define V_NS16550_CLK			48000000	/* 48MHz (APLL96/2) */
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
@@ -95,16 +95,16 @@
 
 /*
  * USB configuration
- * Enable CONFIG_MUSB_HOST for Host functionalities MSC, keyboard
- * Enable CONFIG_MUSB_GADGET for Device functionalities.
+ * Enable CONFIG_USB_MUSB_HOST for Host functionalities MSC, keyboard
+ * Enable CONFIG_USB_MUSB_GADGET for Device functionalities.
  */
 #define CONFIG_USB_MUSB_AM35X
-#define CONFIG_MUSB_HOST
-#define CONFIG_MUSB_PIO_ONLY
+#define CONFIG_USB_MUSB_HOST
+#define CONFIG_USB_MUSB_PIO_ONLY
 
 #ifdef CONFIG_USB_MUSB_AM35X
 
-#ifdef CONFIG_MUSB_HOST
+#ifdef CONFIG_USB_MUSB_HOST
 #define CONFIG_CMD_USB
 
 #define CONFIG_USB_STORAGE
@@ -116,13 +116,13 @@
 #define CONFIG_PREBOOT "usb start"
 #endif /* CONFIG_USB_KEYBOARD */
 
-#endif /* CONFIG_MUSB_HOST */
+#endif /* CONFIG_USB_MUSB_HOST */
 
-#ifdef CONFIG_MUSB_GADGET
+#ifdef CONFIG_USB_MUSB_GADGET
 #define CONFIG_USB_GADGET_DUALSPEED
 #define CONFIG_USB_ETHER
 #define CONFIG_USB_ETH_RNDIS
-#endif /* CONFIG_MUSB_GADGET */
+#endif /* CONFIG_USB_MUSB_GADGET */
 
 #endif /* CONFIG_USB_MUSB_AM35X */
 
@@ -216,11 +216,8 @@
 /*
  * Miscellaneous configurable options
  */
-#define V_PROMPT			"AM3517_EVM # "
-
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT		V_PROMPT
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \

@@ -244,7 +244,7 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 
 	list_del(&req->list);
 	req->trb = NULL;
-	dwc3_flush_cache((int)req->request.dma, req->request.length);
+	dwc3_flush_cache((long)req->request.dma, req->request.length);
 
 	if (req->request.status == -EINPROGRESS)
 		req->request.status = status;
@@ -294,7 +294,7 @@ int dwc3_send_gadget_generic_command(struct dwc3 *dwc, unsigned cmd, u32 param)
 int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
 		unsigned cmd, struct dwc3_gadget_ep_cmd_params *params)
 {
-	u32			timeout = 500;
+	u32			timeout = 50000;
 	u32			reg;
 
 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR0(ep), params->param0);
@@ -771,8 +771,8 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
 
 	trb->ctrl |= DWC3_TRB_CTRL_HWO;
 
-	dwc3_flush_cache((int)dma, length);
-	dwc3_flush_cache((int)trb, sizeof(*trb));
+	dwc3_flush_cache((long)dma, length);
+	dwc3_flush_cache((long)trb, sizeof(*trb));
 }
 
 /*
@@ -1769,7 +1769,7 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 	slot %= DWC3_TRB_NUM;
 	trb = &dep->trb_pool[slot];
 
-	dwc3_flush_cache((int)trb, sizeof(*trb));
+	dwc3_flush_cache((long)trb, sizeof(*trb));
 	__dwc3_cleanup_done_trbs(dwc, dep, req, trb, event, status);
 	dwc3_gadget_giveback(dep, req, status);
 
@@ -2670,7 +2670,7 @@ void dwc3_gadget_uboot_handle_interrupt(struct dwc3 *dwc)
 
 		for (i = 0; i < dwc->num_event_buffers; i++) {
 			evt = dwc->ev_buffs[i];
-			dwc3_flush_cache((int)evt->buf, evt->length);
+			dwc3_flush_cache((long)evt->buf, evt->length);
 		}
 
 		dwc3_thread_interrupt(0, dwc);

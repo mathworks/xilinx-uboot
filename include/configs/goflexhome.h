@@ -15,7 +15,6 @@
 #ifndef _CONFIG_GOFLEXHOME_H
 #define _CONFIG_GOFLEXHOME_H
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Version number information
@@ -69,9 +68,6 @@
  * to enable certain macros
  */
 #include "mv-common.h"
-
-#undef CONFIG_SYS_PROMPT	/* previously defined in mv-common.h */
-#define CONFIG_SYS_PROMPT	"GoFlexHome> "	/* Command Prompt */
 
 /*
  *  Environment variables configurations

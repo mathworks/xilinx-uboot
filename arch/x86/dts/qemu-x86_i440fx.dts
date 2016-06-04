@@ -10,6 +10,9 @@
 
 /include/ "skeleton.dtsi"
 /include/ "serial.dtsi"
+/include/ "keyboard.dtsi"
+/include/ "rtc.dtsi"
+/include/ "tsc_timer.dtsi"
 
 / {
 	model = "QEMU x86 (I440FX)";
@@ -21,6 +24,29 @@
 
 	chosen {
 		stdout-path = "/serial";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "cpu-x86";
+			reg = <0>;
+			intel,apic-id = <0>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "cpu-x86";
+			reg = <1>;
+			intel,apic-id = <1>;
+		};
+	};
+
+	tsc-timer {
+		clock-frequency = <1000000000>;
 	};
 
 	pci {

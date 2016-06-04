@@ -14,6 +14,7 @@
 #include <u-boot/sha256.h>
 #include <spi_flash.h>
 #include <zynqpl.h>
+#include <fpga.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -409,6 +410,7 @@ static int do_zynq_verify_image(cmd_tbl_t *cmdtp, int flag, int argc,
 	u32 part_img_len;
 	u32 part_attr;
 	u32 part_load_addr;
+	u32 part_dst_addr;
 	u32 part_chksum_offset;
 	u32 part_start_addr;
 	u32 part_total_size;
@@ -450,8 +452,7 @@ static int do_zynq_verify_image(cmd_tbl_t *cmdtp, int flag, int argc,
 	    (partitioncount > ZYNQ_MAX_PARTITION_NUMBER))
 		return -1;
 
-	/* Skip the first two partitions FSBL and u-boot */
-	partition_num = 2;
+	partition_num = 0;
 
 	while (partition_num < partitioncount) {
 		if (((part_hdr[partition_num].partitionattr &
@@ -472,11 +473,6 @@ static int do_zynq_verify_image(cmd_tbl_t *cmdtp, int flag, int argc,
 			part_chksum_offset = hdr_ptr->checksumoffset;
 			part_start_addr = hdr_ptr->partitionstart;
 			part_total_size = hdr_ptr->partitionwordlen;
-
-			if (part_attr & ZYNQ_ATTRIBUTE_PL_IMAGE_MASK) {
-				printf("Bitstream\r\n");
-				return -1;
-			}
 
 			if (part_data_len != part_img_len) {
 				debug("Encrypted\r\n");
@@ -508,14 +504,19 @@ static int do_zynq_verify_image(cmd_tbl_t *cmdtp, int flag, int argc,
 				size = part_img_len;
 			}
 
-			if ((part_load_addr < CONFIG_SYS_SDRAM_BASE) &&
+			if ((part_load_addr < gd->bd->bi_dram[0].start) &&
 			    ((part_load_addr + part_data_len) >
-			    (CONFIG_SYS_SDRAM_BASE + gd->ram_size))) {
+			    (gd->bd->bi_dram[0].start +
+			     gd->bd->bi_dram[0].size))) {
 				printf("INVALID_LOAD_ADDRESS_FAIL\r\n");
 				return -1;
 			}
 
-			memcpy((u32 *)part_load_addr, (u32 *)srcaddr, size);
+			if (part_attr & ZYNQ_ATTRIBUTE_PL_IMAGE_MASK)
+				part_load_addr = srcaddr;
+			else
+				memcpy((u32 *)part_load_addr, (u32 *)srcaddr,
+				       size);
 
 			if (!signed_part_flag && !part_chksum_flag) {
 				printf("Partition not signed & no chksum\n");
@@ -550,10 +551,17 @@ static int do_zynq_verify_image(cmd_tbl_t *cmdtp, int flag, int argc,
 
 			if (encrypt_part_flag) {
 				debug("DECRYPTION \r\n");
+
+				part_dst_addr = part_load_addr;
+
+				if (part_attr & ZYNQ_ATTRIBUTE_PL_IMAGE_MASK)
+					part_dst_addr = 0xFFFFFFFF;
+
 				status = zynq_decrypt_load(part_load_addr,
 							   part_img_len,
-							   part_load_addr,
-							   part_data_len);
+							   part_dst_addr,
+							   part_data_len,
+							   BIT_NONE);
 				if (status != 0) {
 					printf("DECRYPTION_FAIL\r\n");
 					return -1;

@@ -12,9 +12,6 @@
 #ifndef _CONFIG_EDMINIV2_H
 #define _CONFIG_EDMINIV2_H
 
-/* general settings */
-#define CONFIG_SYS_GENERIC_BOARD
-
 /*
  * SPL
  */
@@ -91,7 +88,6 @@
  * NS16550 Configuration
  */
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		CONFIG_SYS_TCLK
@@ -130,7 +126,6 @@
 #define CONFIG_INITRD_TAG	1	/* enable INITRD tag */
 #define CONFIG_SETUP_MEMORY_TAGS 1	/* enable memory tag */
 
-#define	CONFIG_SYS_PROMPT	"EDMiniV2> "	/* Command Prompt */
 #define	CONFIG_SYS_CBSIZE	1024	/* Console I/O Buff Size */
 #define	CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE \
 		+sizeof(CONFIG_SYS_PROMPT) + 16)	/* Print Buff */

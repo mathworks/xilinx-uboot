@@ -12,6 +12,7 @@
 #include <common.h>
 #include <bootretry.h>
 #include <cli.h>
+#include <console.h>
 #include <linux/ctype.h>
 
 #define DEBUG_PARSER	0	/* set to 1 to debug */
@@ -68,7 +69,7 @@ void cli_simple_process_macros(const char *input, char *output)
 	/* 1 = waiting for '(' or '{' */
 	/* 2 = waiting for ')' or '}' */
 	/* 3 = waiting for '''  */
-	char *output_start = output;
+	char __maybe_unused *output_start = output;
 
 	debug_parser("[PROCESS_MACROS] INPUT len %zd: \"%s\"\n", strlen(input),
 		     input);
@@ -258,7 +259,7 @@ int cli_simple_run_command(const char *cmd, int flag)
 
 void cli_simple_loop(void)
 {
-	static char lastcommand[CONFIG_SYS_CBSIZE] = { 0, };
+	static char lastcommand[CONFIG_SYS_CBSIZE + 1] = { 0, };
 
 	int len;
 	int flag;

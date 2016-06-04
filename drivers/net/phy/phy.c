@@ -11,6 +11,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <console.h>
 #include <dm.h>
 #include <malloc.h>
 #include <net.h>
@@ -490,6 +491,9 @@ int phy_init(void)
 #ifdef CONFIG_PHY_VITESSE
 	phy_vitesse_init();
 #endif
+#ifdef CONFIG_PHY_XILINX
+	phy_xilinx_init();
+#endif
 
 	return 0;
 }
@@ -557,7 +561,7 @@ static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 }
 
 static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
-					    int phy_id,
+					    u32 phy_id,
 					    phy_interface_t interface)
 {
 	struct phy_device *dev;
@@ -574,7 +578,7 @@ static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
 	memset(dev, 0, sizeof(*dev));
 
 	dev->duplex = -1;
-	dev->link = 1;
+	dev->link = 0;
 	dev->interface = interface;
 
 	dev->autoneg = AUTONEG_ENABLE;
@@ -674,8 +678,16 @@ static struct phy_device *get_phy_device_by_mask(struct mii_dev *bus,
 		if (phydev)
 			return phydev;
 	}
-	printf("Phy %d not found\n", ffs(phy_mask) - 1);
-	return phy_device_create(bus, ffs(phy_mask) - 1, 0xffffffff, interface);
+
+	debug("\n%s PHY: ", bus->name);
+	while (phy_mask) {
+		int addr = ffs(phy_mask) - 1;
+		debug("%d ", addr);
+		phy_mask &= ~(1 << addr);
+	}
+	debug("not found\n");
+
+	return NULL;
 }
 
 /**
@@ -766,11 +778,13 @@ struct phy_device *phy_find_by_mask(struct mii_dev *bus, unsigned phy_mask,
 		phy_interface_t interface)
 {
 	/* Reset the bus */
-	if (bus->reset)
+	if (bus->reset) {
 		bus->reset(bus);
 
-	/* Wait 15ms to make sure the PHY has come out of hard reset */
-	udelay(15000);
+		/* Wait 15ms to make sure the PHY has come out of hard reset */
+		udelay(15000);
+	}
+
 	return get_phy_device_by_mask(bus, phy_mask, interface);
 }
 
@@ -782,7 +796,7 @@ void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev)
 {
 	/* Soft Reset the PHY */
 	phy_reset(phydev);
-	if (phydev->dev) {
+	if (phydev->dev && phydev->dev != dev) {
 		printf("%s:%d is connected to %s.  Reconnecting to %s\n",
 				phydev->bus->name, phydev->addr,
 				phydev->dev->name, dev->name);

@@ -7,6 +7,7 @@
 
 # core
 ifndef CONFIG_SPL_BUILD
+obj-y += init/
 obj-y += main.o
 obj-y += exports.o
 obj-y += hash.o
@@ -90,13 +91,18 @@ obj-$(CONFIG_CMD_DTT) += cmd_dtt.o
 obj-$(CONFIG_CMD_ECHO) += cmd_echo.o
 obj-$(CONFIG_ENV_IS_IN_EEPROM) += cmd_eeprom.o
 obj-$(CONFIG_CMD_EEPROM) += cmd_eeprom.o
+obj-$(CONFIG_EFI_STUB) += cmd_efi.o
 obj-$(CONFIG_CMD_ELF) += cmd_elf.o
 obj-$(CONFIG_SYS_HUSH_PARSER) += cmd_exit.o
 obj-$(CONFIG_CMD_EXT4) += cmd_ext4.o
 obj-$(CONFIG_CMD_EXT2) += cmd_ext2.o
 obj-$(CONFIG_CMD_FAT) += cmd_fat.o
 obj-$(CONFIG_CMD_FDC) += cmd_fdc.o
+ifdef CONFIG_TARGET_ZYNQMP_MINI
+obj-$(CONFIG_OF_LIBFDT) += fdt_support.o
+else
 obj-$(CONFIG_OF_LIBFDT) += cmd_fdt.o fdt_support.o
+endif
 obj-$(CONFIG_CMD_FITUPD) += cmd_fitupd.o
 obj-$(CONFIG_CMD_FLASH) += cmd_flash.o
 ifdef CONFIG_FPGA
@@ -153,6 +159,7 @@ obj-$(CONFIG_CMD_PXE) += cmd_pxe.o
 obj-$(CONFIG_CMD_READ) += cmd_read.o
 obj-$(CONFIG_CMD_REGINFO) += cmd_reginfo.o
 obj-$(CONFIG_CMD_REISER) += cmd_reiser.o
+obj-$(CONFIG_CMD_REMOTEPROC) += cmd_remoteproc.o
 obj-$(CONFIG_SANDBOX) += cmd_host.o
 obj-$(CONFIG_CMD_SATA) += cmd_sata.o
 obj-$(CONFIG_CMD_SF) += cmd_sf.o
@@ -168,6 +175,7 @@ obj-$(CONFIG_CMD_TIME) += cmd_time.o
 obj-$(CONFIG_CMD_TRACE) += cmd_trace.o
 obj-$(CONFIG_SYS_HUSH_PARSER) += cmd_test.o
 obj-$(CONFIG_CMD_TPM) += cmd_tpm.o
+obj-$(CONFIG_CMD_TPM_TEST) += cmd_tpm_test.o
 obj-$(CONFIG_CMD_TSI148) += cmd_tsi148.o
 obj-$(CONFIG_CMD_UBI) += cmd_ubi.o
 obj-$(CONFIG_CMD_UBIFS) += cmd_ubifs.o
@@ -209,9 +217,11 @@ obj-$(CONFIG_LYNXKDI) += lynxkdi.o
 obj-$(CONFIG_MENU) += menu.o
 obj-$(CONFIG_MODEM_SUPPORT) += modem.o
 obj-$(CONFIG_UPDATE_TFTP) += update.o
+obj-$(CONFIG_DFU_TFTP) += update.o
 obj-$(CONFIG_USB_KEYBOARD) += usb_kbd.o
 obj-$(CONFIG_CMD_DFU) += cmd_dfu.o
 obj-$(CONFIG_CMD_GPT) += cmd_gpt.o
+obj-$(CONFIG_CMD_ETHSW) += cmd_ethsw.o
 
 # Power
 obj-$(CONFIG_CMD_PMIC) += cmd_pmic.o
@@ -222,6 +232,7 @@ ifdef CONFIG_SPL_BUILD
 obj-$(CONFIG_ENV_IS_IN_FLASH) += env_flash.o
 obj-$(CONFIG_SPL_YMODEM_SUPPORT) += xyzModem.o
 obj-$(CONFIG_SPL_NET_SUPPORT) += miiphyutil.o
+obj-$(CONFIG_SPL_OF_TRANSLATE) += fdt_support.o
 ifdef CONFIG_SPL_USB_HOST_SUPPORT
 obj-$(CONFIG_SPL_USB_SUPPORT) += usb.o usb_hub.o
 obj-$(CONFIG_USB_STORAGE) += usb_storage.o
@@ -251,7 +262,11 @@ obj-$(CONFIG_DDR_SPD) += ddr_spd.o
 obj-$(CONFIG_SPD_EEPROM) += ddr_spd.o
 obj-$(CONFIG_HWCONFIG) += hwconfig.o
 obj-$(CONFIG_BOUNCE_BUFFER) += bouncebuf.o
+ifdef CONFIG_SPL_BUILD
+obj-$(CONFIG_SPL_SERIAL_SUPPORT) += console.o
+else
 obj-y += console.o
+endif
 obj-$(CONFIG_CROS_EC) += cros_ec.o
 obj-y += dlmalloc.o
 ifdef CONFIG_SYS_MALLOC_F_LEN
@@ -267,9 +282,14 @@ obj-y += memsize.o
 obj-y += stdio.o
 
 # This option is not just y/n - it can have a numeric value
+ifdef CONFIG_FASTBOOT_FLASH
+obj-y += image-sparse.o
 ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
-obj-y += aboot.o
 obj-y += fb_mmc.o
+endif
+ifdef CONFIG_FASTBOOT_FLASH_NAND_DEV
+obj-y += fb_nand.o
+endif
 endif
 
 obj-$(CONFIG_CMD_BLOB) += cmd_blob.o

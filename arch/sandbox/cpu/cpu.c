@@ -20,7 +20,7 @@ static struct udevice *map_dev;
 unsigned long map_len;
 #endif
 
-void reset_cpu(ulong ignored)
+void sandbox_exit(void)
 {
 	/* Do this here while it still has an effect */
 	os_fd_restore();
@@ -34,17 +34,13 @@ void reset_cpu(ulong ignored)
 	os_exit(0);
 }
 
-int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-	reset_cpu(0);
-
-	return 0;
-}
-
 /* delay x useconds */
 void __udelay(unsigned long usec)
 {
-	os_usleep(usec);
+	struct sandbox_state *state = state_get_current();
+
+	if (!state->skip_delays)
+		os_usleep(usec);
 }
 
 int cleanup_before_linux(void)

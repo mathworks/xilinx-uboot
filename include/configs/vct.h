@@ -54,7 +54,6 @@
 #endif
 
 #define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_REG_SIZE	-4
 #define CONFIG_SYS_NS16550_COM1		UART_1_BASE
 #define CONFIG_CONS_INDEX		1
@@ -84,7 +83,6 @@
  * Commands
  */
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_I2C
 
@@ -145,7 +143,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define CONFIG_SYS_PROMPT	"VCT# "		/* Monitor Command Prompt	*/
 #define CONFIG_SYS_CBSIZE	512		/* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE + \
 				 sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -289,7 +286,6 @@ int vct_gpio_get(int pin);
 #undef CONFIG_CMD_DHCP
 #undef CONFIG_CMD_EEPROM
 #undef CONFIG_CMD_EEPROM
-#undef CONFIG_CMD_ELF
 #undef CONFIG_CMD_FAT
 #undef CONFIG_CMD_I2C
 #undef CONFIG_CMD_I2C

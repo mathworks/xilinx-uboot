@@ -18,9 +18,6 @@
 
 #undef CONFIG_SPL_OS_BOOT
 
-/* Enable Generic board */
-#define CONFIG_SYS_GENERIC_BOARD
-
 /* Device Tree defines */
 #define CONFIG_OF_LIBFDT
 #define CONFIG_OF_BOARD_SETUP
@@ -105,14 +102,12 @@
  * Miscellaneous configurable options
  */
 #undef CONFIG_SYS_AUTOLOAD
-#undef CONFIG_SYS_PROMPT
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_BOOTCOMMAND
 #undef CONFIG_BOOTDELAY
 
 #define CONFIG_BOOTDELAY		3
 #define CONFIG_SYS_AUTOLOAD		"no"
-#define CONFIG_SYS_PROMPT		"CM-T54 # "
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \

@@ -14,16 +14,13 @@
 #include <errno.h>
 #include <miiphy.h>
 #include <malloc.h>
+#include <pci.h>
 #include <linux/compiler.h>
 #include <linux/err.h>
 #include <asm/io.h>
 #include "designware.h"
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#if !defined(CONFIG_PHYLIB)
-# error "DesignWare Ether MAC requires PHYLIB - missing CONFIG_PHYLIB"
-#endif
 
 static int dw_mdio_read(struct mii_dev *bus, int addr, int devad, int reg)
 {
@@ -106,8 +103,8 @@ static void tx_descs_init(struct dw_eth_dev *priv)
 
 #if defined(CONFIG_DW_ALTDESCRIPTOR)
 		desc_p->txrx_status &= ~(DESC_TXSTS_TXINT | DESC_TXSTS_TXLAST |
-				DESC_TXSTS_TXFIRST | DESC_TXSTS_TXCRCDIS | \
-				DESC_TXSTS_TXCHECKINSCTRL | \
+				DESC_TXSTS_TXFIRST | DESC_TXSTS_TXCRCDIS |
+				DESC_TXSTS_TXCHECKINSCTRL |
 				DESC_TXSTS_TXRINGEND | DESC_TXSTS_TXPADDIS);
 
 		desc_p->txrx_status |= DESC_TXSTS_TXCHAIN;
@@ -154,7 +151,7 @@ static void rx_descs_init(struct dw_eth_dev *priv)
 		desc_p->dmamac_next = &desc_table_p[idx + 1];
 
 		desc_p->dmamac_cntl =
-			(MAC_MAX_FRAME_SZ & DESC_RXCTRL_SIZE1MASK) | \
+			(MAC_MAX_FRAME_SZ & DESC_RXCTRL_SIZE1MASK) |
 				      DESC_RXCTRL_RXCHAIN;
 
 		desc_p->txrx_status = DESC_RXSTS_OWNBYDMA;
@@ -320,14 +317,14 @@ static int _dw_eth_send(struct dw_eth_dev *priv, void *packet, int length)
 
 #if defined(CONFIG_DW_ALTDESCRIPTOR)
 	desc_p->txrx_status |= DESC_TXSTS_TXFIRST | DESC_TXSTS_TXLAST;
-	desc_p->dmamac_cntl |= (length << DESC_TXCTRL_SIZE1SHFT) & \
+	desc_p->dmamac_cntl |= (length << DESC_TXCTRL_SIZE1SHFT) &
 			       DESC_TXCTRL_SIZE1MASK;
 
 	desc_p->txrx_status &= ~(DESC_TXSTS_MSK);
 	desc_p->txrx_status |= DESC_TXSTS_OWNBYDMA;
 #else
-	desc_p->dmamac_cntl |= ((length << DESC_TXCTRL_SIZE1SHFT) & \
-			       DESC_TXCTRL_SIZE1MASK) | DESC_TXCTRL_TXLAST | \
+	desc_p->dmamac_cntl |= ((length << DESC_TXCTRL_SIZE1SHFT) &
+			       DESC_TXCTRL_SIZE1MASK) | DESC_TXCTRL_TXLAST |
 			       DESC_TXCTRL_TXFIRST;
 
 	desc_p->txrx_status = DESC_TXSTS_OWNBYDMA;
@@ -367,7 +364,7 @@ static int _dw_eth_recv(struct dw_eth_dev *priv, uchar **packetp)
 	/* Check  if the owner is the CPU */
 	if (!(status & DESC_RXSTS_OWNBYDMA)) {
 
-		length = (status & DESC_RXSTS_FRMLENMSK) >> \
+		length = (status & DESC_RXSTS_FRMLENMSK) >>
 			 DESC_RXSTS_FRMLENSHFT;
 
 		/* Invalidate received data */
@@ -528,7 +525,7 @@ static int designware_eth_send(struct udevice *dev, void *packet, int length)
 	return _dw_eth_send(priv, packet, length);
 }
 
-static int designware_eth_recv(struct udevice *dev, uchar **packetp)
+static int designware_eth_recv(struct udevice *dev, int flags, uchar **packetp)
 {
 	struct dw_eth_dev *priv = dev_get_priv(dev);
 
@@ -558,16 +555,49 @@ static int designware_eth_write_hwaddr(struct udevice *dev)
 	return _dw_write_hwaddr(priv, pdata->enetaddr);
 }
 
+static int designware_eth_bind(struct udevice *dev)
+{
+#ifdef CONFIG_DM_PCI
+	static int num_cards;
+	char name[20];
+
+	/* Create a unique device name for PCI type devices */
+	if (device_is_on_pci_bus(dev)) {
+		sprintf(name, "eth_designware#%u", num_cards++);
+		device_set_name(dev, name);
+	}
+#endif
+
+	return 0;
+}
+
 static int designware_eth_probe(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct dw_eth_dev *priv = dev_get_priv(dev);
+	u32 iobase = pdata->iobase;
 	int ret;
 
-	debug("%s, iobase=%lx, priv=%p\n", __func__, pdata->iobase, priv);
-	priv->mac_regs_p = (struct eth_mac_regs *)pdata->iobase;
-	priv->dma_regs_p = (struct eth_dma_regs *)(pdata->iobase +
-			DW_DMA_BASE_OFFSET);
+#ifdef CONFIG_DM_PCI
+	/*
+	 * If we are on PCI bus, either directly attached to a PCI root port,
+	 * or via a PCI bridge, fill in platdata before we probe the hardware.
+	 */
+	if (device_is_on_pci_bus(dev)) {
+		pci_dev_t bdf = pci_get_bdf(dev);
+
+		dm_pci_read_config32(dev, PCI_BASE_ADDRESS_0, &iobase);
+		iobase &= PCI_BASE_ADDRESS_MEM_MASK;
+		iobase = pci_mem_to_phys(bdf, iobase);
+
+		pdata->iobase = iobase;
+		pdata->phy_interface = PHY_INTERFACE_MODE_RMII;
+	}
+#endif
+
+	debug("%s, iobase=%x, priv=%p\n", __func__, iobase, priv);
+	priv->mac_regs_p = (struct eth_mac_regs *)iobase;
+	priv->dma_regs_p = (struct eth_dma_regs *)(iobase + DW_DMA_BASE_OFFSET);
 	priv->interface = pdata->phy_interface;
 
 	dw_mdio_init(dev->name, priv->mac_regs_p);
@@ -577,6 +607,17 @@ static int designware_eth_probe(struct udevice *dev)
 	debug("%s, ret=%d\n", __func__, ret);
 
 	return ret;
+}
+
+static int designware_eth_remove(struct udevice *dev)
+{
+	struct dw_eth_dev *priv = dev_get_priv(dev);
+
+	free(priv->phydev);
+	mdio_unregister(priv->bus);
+	mdio_free(priv->bus);
+
+	return 0;
 }
 
 static const struct eth_ops designware_eth_ops = {
@@ -608,18 +649,28 @@ static int designware_eth_ofdata_to_platdata(struct udevice *dev)
 
 static const struct udevice_id designware_eth_ids[] = {
 	{ .compatible = "allwinner,sun7i-a20-gmac" },
+	{ .compatible = "altr,socfpga-stmmac" },
 	{ }
 };
 
-U_BOOT_DRIVER(eth_sandbox) = {
+U_BOOT_DRIVER(eth_designware) = {
 	.name	= "eth_designware",
 	.id	= UCLASS_ETH,
 	.of_match = designware_eth_ids,
 	.ofdata_to_platdata = designware_eth_ofdata_to_platdata,
+	.bind	= designware_eth_bind,
 	.probe	= designware_eth_probe,
+	.remove	= designware_eth_remove,
 	.ops	= &designware_eth_ops,
 	.priv_auto_alloc_size = sizeof(struct dw_eth_dev),
 	.platdata_auto_alloc_size = sizeof(struct eth_pdata),
 	.flags = DM_FLAG_ALLOC_PRIV_DMA,
 };
+
+static struct pci_device_id supported[] = {
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_QRK_EMAC) },
+	{ }
+};
+
+U_BOOT_PCI_DEVICE(eth_designware, supported);
 #endif

@@ -6,3 +6,4 @@
 #
 
 obj-y	:= vexpress64.o
+obj-$(CONFIG_TARGET_VEXPRESS64_JUNO)	+= pcie.o

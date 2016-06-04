@@ -25,7 +25,8 @@
  *    the GD ('global data') structure, both located in some readily
  *    available RAM (SRAM, locked cache...). In this context, VARIABLE
  *    global data, initialized or not (BSS), are UNAVAILABLE; only
- *    CONSTANT initialized data are available.
+ *    CONSTANT initialized data are available. GD should be zeroed
+ *    before board_init_f() is called.
  *
  * 2. Call board_init_f(). This function prepares the hardware for
  *    execution from system RAM (DRAM, DDR...) As system RAM may not
@@ -34,24 +35,29 @@
  *    data include the relocation destination, the future stack, and
  *    the future GD location.
  *
- * (the following applies only to non-SPL builds)
- *
  * 3. Set up intermediate environment where the stack and GD are the
  *    ones allocated by board_init_f() in system RAM, but BSS and
  *    initialized non-const data are still not available.
  *
- * 4. Call relocate_code(). This function relocates U-Boot from its
- *    current location into the relocation destination computed by
- *    board_init_f().
+ * 4a.For U-Boot proper (not SPL), call relocate_code(). This function
+ *    relocates U-Boot from its current location into the relocation
+ *    destination computed by board_init_f().
+ *
+ * 4b.For SPL, board_init_f() just returns (to crt0). There is no
+ *    code relocation in SPL.
  *
  * 5. Set up final environment for calling board_init_r(). This
  *    environment has BSS (initialized to 0), initialized non-const
  *    data (initialized to their intended value), and stack in system
- *    RAM. GD has retained values set by board_init_f(). Some CPUs
- *    have some work left to do at this point regarding memory, so
- *    call c_runtime_cpu_setup.
+ *    RAM (for SPL moving the stack and GD into RAM is optional - see
+ *    CONFIG_SPL_STACK_R). GD has retained values set by board_init_f().
  *
- * 6. Branch to board_init_r().
+ * 6. For U-Boot proper (not SPL), some CPUs have some work left to do
+ *    at this point regarding memory, so call c_runtime_cpu_setup.
+ *
+ * 7. Branch to board_init_r().
+ *
+ * For more information see 'Board Initialisation Flow in README.
  */
 
 /*
@@ -76,31 +82,11 @@ ENTRY(_main)
 #else
 	bic	sp, sp, #7	/* 8-byte alignment for ABI compliance */
 #endif
-	mov	r2, sp
-	sub	sp, sp, #GD_SIZE	/* allocate one GD above SP */
-#if defined(CONFIG_CPU_V7M)	/* v7M forbids using SP as BIC destination */
-	mov	r3, sp
-	bic	r3, r3, #7
-	mov	sp, r3
-#else
-	bic	sp, sp, #7	/* 8-byte alignment for ABI compliance */
-#endif
-	mov	r9, sp		/* GD is above SP */
-	mov	r1, sp
+	mov	r0, sp
+	bl	board_init_f_mem
+	mov	sp, r0
+
 	mov	r0, #0
-clr_gd:
-	cmp	r1, r2			/* while not at end of GD */
-#if defined(CONFIG_CPU_V7M)
-	itt	lo
-#endif
-	strlo	r0, [r1]		/* clear 32-bit GD word */
-	addlo	r1, r1, #4		/* move to next */
-	blo	clr_gd
-#if defined(CONFIG_SYS_MALLOC_F_LEN)
-	sub	sp, sp, #CONFIG_SYS_MALLOC_F_LEN
-	str	sp, [r9, #GD_MALLOC_BASE]
-#endif
-	/* mov r0, #0 not needed due to above code */
 	bl	board_init_f
 
 #if ! defined(CONFIG_SPL_BUILD)

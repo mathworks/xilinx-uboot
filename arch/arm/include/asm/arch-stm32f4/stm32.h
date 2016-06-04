@@ -3,7 +3,7 @@
  * Yuri Tikhonov, Emcraft Systems, yur@emcraft.com
  *
  * (C) Copyright 2015
- * Kamil Lulko, <rev13@wp.pl>
+ * Kamil Lulko, <kamil.lulko@gmail.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -14,6 +14,7 @@
 /*
  * Peripheral memory map
  */
+#define STM32_SYSMEM_BASE	0x1FFF0000
 #define STM32_PERIPH_BASE	0x40000000
 #define STM32_APB1PERIPH_BASE	(STM32_PERIPH_BASE + 0x00000000)
 #define STM32_APB2PERIPH_BASE	(STM32_PERIPH_BASE + 0x00010000)
@@ -25,6 +26,12 @@
 /*
  * Register maps
  */
+struct stm32_u_id_regs {
+	u32 u_id_low;
+	u32 u_id_mid;
+	u32 u_id_high;
+};
+
 struct stm32_rcc_regs {
 	u32 cr;		/* RCC clock control */
 	u32 pllcfgr;	/* RCC PLL configuration */
@@ -78,6 +85,9 @@ struct stm32_flash_regs {
 /*
  * Registers access macros
  */
+#define STM32_U_ID_BASE		(STM32_SYSMEM_BASE + 0x7A10)
+#define STM32_U_ID		((struct stm32_u_id_regs *)STM32_U_ID_BASE)
+
 #define STM32_RCC_BASE		(STM32_AHB1PERIPH_BASE + 0x3800)
 #define STM32_RCC		((struct stm32_rcc_regs *)STM32_RCC_BASE)
 
@@ -94,6 +104,15 @@ struct stm32_flash_regs {
 #define STM32_FLASH_CR_STRT		(1 << 16)
 #define STM32_FLASH_CR_LOCK		(1 << 31)
 #define STM32_FLASH_CR_SNB_OFFSET	3
+#define STM32_FLASH_CR_SNB_MASK		(15 << STM32_FLASH_CR_SNB_OFFSET)
+
+/*
+ * Peripheral base addresses
+ */
+#define STM32_USART1_BASE	(STM32_APB2PERIPH_BASE + 0x1000)
+#define STM32_USART2_BASE	(STM32_APB1PERIPH_BASE + 0x4400)
+#define STM32_USART3_BASE	(STM32_APB1PERIPH_BASE + 0x4800)
+#define STM32_USART6_BASE	(STM32_APB2PERIPH_BASE + 0x1400)
 
 enum clock {
 	CLOCK_CORE,

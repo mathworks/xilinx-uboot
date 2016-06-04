@@ -11,14 +11,7 @@
 #ifndef __T1024RDB_H
 #define __T1024RDB_H
 
-#if defined(CONFIG_T1023RDB)
-#ifdef CONFIG_SPL
-#define CONFIG_SYS_NO_FLASH
-#endif
-#endif
-
 /* High Level Configuration Options */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOOKE
 #define CONFIG_E500			/* BOOKE e500 family */
@@ -320,7 +313,7 @@ unsigned long get_board_ddr_clk(void);
 #if defined(CONFIG_T1024RDB)
 #define CONFIG_SYS_NOR_CSOR	CSOR_NAND_TRHZ_80
 #elif defined(CONFIG_T1023RDB)
-#define CONFIG_SYS_NOR_CSOR    (CSOR_NOR_ADM_SHIFT(4) | \
+#define CONFIG_SYS_NOR_CSOR    (CSOR_NOR_ADM_SHIFT(0) | \
 				CSOR_NAND_TRHZ_80 | CSOR_NOR_ADM_SHFT_MODE_EN)
 #endif
 #define CONFIG_SYS_NOR_FTIM0	(FTIM0_NOR_TACSE(0x4) | \
@@ -395,7 +388,9 @@ unsigned long get_board_ddr_clk(void);
 				| CSOR_NAND_PB(64))	/*Pages Per Block = 64*/
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(512 * 1024)
 #elif defined(CONFIG_T1023RDB)
-#define CONFIG_SYS_NAND_CSOR	(CSOR_NAND_RAL_3	/* RAL 3Bytes */ \
+#define CONFIG_SYS_NAND_CSOR	(CSOR_NAND_ECC_ENC_EN   /* ECC on encode */ \
+				| CSOR_NAND_ECC_DEC_EN  /* ECC on decode */ \
+				| CSOR_NAND_ECC_MODE_4	/* 4-bit ECC */ \
 				| CSOR_NAND_RAL_3	/* RAL 3Bytes */ \
 				| CSOR_NAND_PGS_2K	/* Page Size = 2K */ \
 				| CSOR_NAND_SPRZ_128	/* Spare size = 128 */ \
@@ -480,13 +475,13 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_INIT_RAM_ADDR	0xfdd00000	/* Initial L1 address */
 #ifdef CONFIG_PHYS_64BIT
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH	0xf
-#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe0ec000
+#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe03c000
 /* The assembler doesn't like typecast */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS \
 	((CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH * 1ull << 32) | \
 	  CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW)
 #else
-#define CONFIG_SYS_INIT_RAM_ADDR_PHYS	0xfe0ec000 /* Initial L1 address */
+#define CONFIG_SYS_INIT_RAM_ADDR_PHYS	0xfe03c000 /* Initial L1 address */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH 0
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW CONFIG_SYS_INIT_RAM_ADDR_PHYS
 #endif
@@ -501,7 +496,6 @@ unsigned long get_board_ddr_clk(void);
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(get_bus_freq(0)/2)
@@ -557,9 +551,8 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_FSL_I2C_OFFSET	0x118000
 #define CONFIG_SYS_FSL_I2C2_OFFSET	0x118100
 
-#define I2C_MUX_PCA_ADDR		0x77
-#define I2C_MUX_PCA_ADDR_PRI		0x77 /* Primary Mux*/
-
+#define I2C_PCA6408_BUS_NUM		1
+#define I2C_PCA6408_ADDR		0x20
 
 /* I2C bus multiplexer */
 #define I2C_MUX_CH_DEFAULT	0x8
@@ -574,11 +567,8 @@ unsigned long get_board_ddr_clk(void);
 /*
  * eSPI - Enhanced SPI
  */
-#define CONFIG_FSL_ESPI
 #if defined(CONFIG_T1024RDB)
-#define CONFIG_SPI_FLASH_STMICRO
 #elif defined(CONFIG_T1023RDB)
-#define CONFIG_SPI_FLASH_SPANSION
 #endif
 #define CONFIG_CMD_SF
 #define CONFIG_SPI_FLASH_BAR
@@ -686,7 +676,6 @@ unsigned long get_board_ddr_clk(void);
 #endif
 
 #define CONFIG_PCI_PNP			/* do pci plug-and-play */
-#define CONFIG_E1000
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #define CONFIG_DOS_PARTITION
 #endif	/* CONFIG_PCI */
@@ -757,8 +746,10 @@ unsigned long get_board_ddr_clk(void);
 
 #define CONFIG_SYS_DPAA_FMAN
 
+#ifdef CONFIG_T1024RDB
 #define CONFIG_QE
 #define CONFIG_U_QE
+#endif
 /* Default address of microcode for the Linux FMan driver */
 #if defined(CONFIG_SPIFLASH)
 /*
@@ -856,7 +847,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_ERRATA
 #define CONFIG_CMD_GREPENV
 #define CONFIG_CMD_IRQ
@@ -876,7 +866,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #else

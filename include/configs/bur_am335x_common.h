@@ -14,21 +14,18 @@
 /* ------------------------------------------------------------------------- */
 #define BUR_COMMON_ENV \
 "usbscript=usb start && fatload usb 0 0x80000000 usbscript.img && source\0" \
-"defaultip=192.168.60.253\0" \
-"defaultsip=192.168.60.254\0" \
+"brdefaultip=if test -r ${ipaddr}; then; else" \
+" setenv ipaddr 192.168.60.1; setenv serverip 192.168.60.254;" \
+" setenv gatewayip 192.168.60.254; setenv netmask 255.255.255.0; fi;\0" \
 "netconsole=echo switching to network console ...; " \
-"if dhcp; then setenv ncip ${serverip}; " \
-"else " \
-"setenv ncip 192.168.60.254; setenv serverip 192.168.60.254; " \
-"setenv gatewayip 192.168.60.254; setenv ipaddr 192.168.60.1; " \
-"fi; " \
+"if dhcp; then; else run brdefaultip; fi; setenv ncip ${serverip}; " \
 "setcurs 1 9; lcdputs myip; setcurs 10 9; lcdputs ${ipaddr};" \
 "setcurs 1 10;lcdputs serverip; setcurs 10 10; lcdputs ${serverip};" \
 "setenv stdout nc;setenv stdin nc;setenv stderr nc\0"
 
+#define CONFIG_PREBOOT			"run brdefaultip"
 #define CONFIG_CMD_TIME
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_AM33XX
 #define CONFIG_OMAP
@@ -49,7 +46,6 @@
 #include <asm/arch/omap.h>
 
 /* NS16550 Configuration */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		48000000
@@ -116,7 +112,6 @@
 #define CONFIG_CMD_I2C
 /* GPIO */
 #define CONFIG_OMAP_GPIO
-#define CONFIG_CMD_GPIO
 /*
  * ----------------------------------------------------------------------------
  * The following are general good-enough settings for U-Boot.  We set a
@@ -129,7 +124,6 @@
  */
 #define CONFIG_SYS_MALLOC_LEN		(5120 << 10)
 #define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT		"U-Boot (BuR V2.0)# "
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
 #define CONFIG_ENV_OVERWRITE		/* Overwrite ethaddr / serial# */
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV

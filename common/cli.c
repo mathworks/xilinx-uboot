@@ -12,6 +12,7 @@
 #include <common.h>
 #include <cli.h>
 #include <cli_hush.h>
+#include <console.h>
 #include <fdtdec.h>
 #include <malloc.h>
 
@@ -102,9 +103,9 @@ int run_command_list(const char *cmd, int len, int flag)
 	 * is pretty rare.
 	 */
 	rcode = cli_simple_run_command_list(buff, flag);
+#endif
 	if (need_buff)
 		free(buff);
-#endif
 
 	return rcode;
 }
@@ -135,7 +136,7 @@ int do_run(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 #endif
 
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 bool cli_process_fdt(const char **cmdp)
 {
 	/* Allow the fdt to override the boot command */
@@ -196,7 +197,7 @@ err:
 	 */
 	hang();
 }
-#endif /* CONFIG_OF_CONTROL */
+#endif /* CONFIG_IS_ENABLED(OF_CONTROL) */
 
 void cli_loop(void)
 {

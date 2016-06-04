@@ -11,9 +11,6 @@
 
 #include <configs/exynos4-common.h>
 
-#define CONFIG_SYS_PROMPT		"ORIGEN # "
-
-
 /* High Level Configuration Options */
 #define CONFIG_EXYNOS4210		1	/* which is a EXYNOS4210 SoC */
 #define CONFIG_ORIGEN			1	/* working with ORIGEN*/
@@ -54,7 +51,6 @@
 #define S5P_CHECK_LPA			0xABAD0000
 
 #undef CONFIG_CMD_PING
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EXT2
 #define CONFIG_CMD_FS_GENERIC
