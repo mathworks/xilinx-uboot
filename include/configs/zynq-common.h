@@ -255,6 +255,29 @@
 # define CONFIG_CMD_SAVEENV
 #endif
 
+/* 
+ * Initialize environment:
+ * Run the saveenv command on the first boot to initialize the env
+ * storage.
+ */
+#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ENV_IS_IN_MMC)
+# define CONFIG_CMD_PRE_SAVEENV		"mmc rescan;"
+#else
+# define CONFIG_CMD_PRE_SAVEENV		""
+#endif
+
+#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ZYNQ_INIT_ENV)
+# define CONFIG_INIT_ENV_ONCE \
+	"uenv_init=" \
+		"echo Storing default uboot environment...;" \
+		"env set uenv_init true;" \
+		CONFIG_CMD_PRE_SAVEENV \
+		"saveenv\0"
+#else
+# define CONFIG_INIT_ENV_ONCE \
+	"uenv_init=true \0"
+#endif
+
 /* Default environment */
 #define CONFIG_PREBOOT
 #define CONFIG_EXTRA_ENV_SETTINGS	\
@@ -265,7 +288,7 @@
 	"ramdisk_load_address=0x4000000\0"	\
 	"devicetree_image=devicetree.dtb\0"	\
 	"devicetree_load_address=0x2000000\0"	\
-	"bitstream_image=system.bit.bin\0"	\
+	"bitstream_image=system.bit\0"	\
 	"boot_image=BOOT.bin\0"	\
 	"loadbit_addr=0x100000\0"	\
 	"loadbootenv_addr=0x2000000\0" \
@@ -288,7 +311,13 @@
 	"mmc_loadbit=echo Loading bitstream from SD/MMC/eMMC to RAM.. && " \
 		"mmcinfo && " \
 		"load mmc 0 ${loadbit_addr} ${bitstream_image} && " \
-		"fpga load 0 ${loadbit_addr} ${filesize}\0" \
+		"fpga loadb 0 ${loadbit_addr} ${filesize}\0" \
+	"sd_bitstream_existence_test=test -e mmc 0 /${bitstream_image}\0" \
+	"sd_boot_loadbit=" \
+		"if run sd_bitstream_existence_test; then " \
+			"run mmc_loadbit;" \
+		"fi; \0" \
+	CONFIG_INIT_ENV_ONCE \
 	"norboot=echo Copying Linux from NOR flash to RAM... && " \
 		"cp.b 0xE2100000 ${kernel_load_address} ${kernel_size} && " \
 		"cp.b 0xE2600000 ${devicetree_load_address} ${devicetree_size} && " \
@@ -312,7 +341,9 @@
 			"run uenvcmd; " \
 		"fi\0" \
 	"sdboot=if mmcinfo; then " \
+			"run uenv_init; " \
 			"run uenvboot; " \
+			"run sd_boot_loadbit; " \
 			"echo Copying Linux from SD to RAM... && " \
 			"load mmc 0 ${kernel_load_address} ${kernel_image} && " \
 			"load mmc 0 ${devicetree_load_address} ${devicetree_image} && " \
