@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for bf525-ucr2 board
+ * U-Boot - Configuration file for bf525-ucr2 board
  * The board includes ADSP-BF525 rev. 0.2,
  * 32-bit SDRAM (SAMSUNG K4S561632H-UC75),
  * USB 2.0 High Speed OTG USB WIFI,
@@ -67,7 +67,6 @@
 
 /* support for serial flash */
 #define CONFIG_BFIN_SPI
-#define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_HZ	30000000
 
 #define CONFIG_ENV_IS_IN_SPI_FLASH
@@ -86,7 +85,6 @@
 #define CONFIG_BFIN_SERIAL
 #define CONFIG_BOOTARGS		"root=/dev/mtdblock0 rw"
 #define CONFIG_BOOTCOMMAND	"run sfboot"
-#define CONFIG_BOOTDELAY	5
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"sfboot=sf probe 1;" \
 		"sf read 0x1000000 0x20000 0x300000;" \

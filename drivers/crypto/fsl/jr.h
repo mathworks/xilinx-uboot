@@ -23,6 +23,9 @@
 #define MCFGR_PS_SHIFT          16
 #define MCFGR_AWCACHE_SHIFT	8
 #define MCFGR_AWCACHE_MASK	(0xf << MCFGR_AWCACHE_SHIFT)
+#define MCFGR_ARCACHE_SHIFT	12
+#define MCFGR_ARCACHE_MASK	(0xf << MCFGR_ARCACHE_SHIFT)
+
 #define JR_INTMASK	  0x00000001
 #define JRCR_RESET                  0x01
 #define JRINT_ERR_HALT_INPROGRESS   0x4
@@ -72,6 +75,8 @@ struct jobring {
 	int write_idx;
 	/* Size of the rings. */
 	int size;
+	/* Op ring size aligned to cache line size */
+	int op_size;
 	/* The ip and output rings have to be accessed by SEC. So the
 	 * pointers will ahve to point to the housekeeping region provided
 	 * by SEC
@@ -85,6 +90,9 @@ struct jobring {
 	/* This ring can be on the stack */
 	struct jr_info info[JR_SIZE];
 	struct op_ring *output_ring;
+	/* Offset in CCSR to the SEC engine to which this JR belongs */
+	uint32_t sec_offset;
+
 };
 
 struct result {

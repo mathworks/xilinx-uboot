@@ -415,7 +415,11 @@ static void reconfig_usbd(struct dwc2_udc *dev)
 		|0<<7		/* Ulpi DDR sel*/
 		|0<<6		/* 0: high speed utmi+, 1: full speed serial*/
 		|0<<4		/* 0: utmi+, 1:ulpi*/
+#ifdef CONFIG_USB_GADGET_DWC2_OTG_PHY_BUS_WIDTH_8
+		|0<<3		/* phy i/f  0:8bit, 1:16bit*/
+#else
 		|1<<3		/* phy i/f  0:8bit, 1:16bit*/
+#endif
 		|0x7<<0;	/* HS/FS Timeout**/
 
 	if (dev->pdata->usb_gusbcfg)
@@ -557,8 +561,8 @@ static int dwc2_ep_enable(struct usb_ep *_ep,
 	}
 
 	/* hardware _could_ do smaller, but driver doesn't */
-	if ((desc->bmAttributes == USB_ENDPOINT_XFER_BULK
-	     && le16_to_cpu(get_unaligned(&desc->wMaxPacketSize)) !=
+	if ((desc->bmAttributes == USB_ENDPOINT_XFER_BULK &&
+	     le16_to_cpu(get_unaligned(&desc->wMaxPacketSize)) >
 	     ep_maxpacket(ep)) || !get_unaligned(&desc->wMaxPacketSize)) {
 
 		debug("%s: bad %s maxpacket\n", __func__, _ep->name);

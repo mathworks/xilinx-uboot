@@ -123,7 +123,7 @@
 char *target;
 char *depfile;
 char *cmdline;
-int is_spl_build = 0; /* hack for U-boot */
+int is_spl_build = 0; /* hack for U-Boot */
 
 static void usage(void)
 {
@@ -296,7 +296,11 @@ static void do_config_file(const char *filename)
 		perror(filename);
 		exit(2);
 	}
-	fstat(fd, &st);
+	if (fstat(fd, &st) < 0) {
+		fprintf(stderr, "fixdep: error fstat'ing config file: ");
+		perror(filename);
+		exit(2);
+	}
 	if (st.st_size == 0) {
 		close(fd);
 		return;
@@ -459,7 +463,7 @@ int main(int argc, char *argv[])
 	target = argv[2];
 	cmdline = argv[3];
 
-	/* hack for U-boot */
+	/* hack for U-Boot */
 	if (!strncmp(target, "spl/", 4) || !strncmp(target, "tpl/", 4))
 		is_spl_build = 1;
 

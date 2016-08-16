@@ -31,7 +31,6 @@
 #endif
 #endif
 
-#define CONFIG_BOOTDELAY	2	/* autoboot after 2 seconds	*/
 
 #define CONFIG_BAUDRATE		115200
 
@@ -80,7 +79,6 @@
 #define PHYS_FLASH_1		0xbec00000 /* Flash Bank #1 */
 #define PHYS_FLASH_2		0xbfc00000 /* Flash Bank #2 */
 
-/* The following #defines are needed to get flash environment right */
 #define	CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE
 #define	CONFIG_SYS_MONITOR_LEN		(192 << 10)
 
@@ -103,9 +101,7 @@
 
 #define CONFIG_NR_DRAM_BANKS	2
 
-
 #define CONFIG_MEMSIZE_IN_BYTES
-
 
 /*---USB -------------------------------------------*/
 #if 0
@@ -147,13 +143,6 @@
 #define CONFIG_SYS_ATA_ALT_OFFSET      0x0100
 
 #endif
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CONFIG_SYS_DCACHE_SIZE		16384
-#define CONFIG_SYS_ICACHE_SIZE		16384
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
 
 /*
  * BOOTP options
@@ -163,15 +152,10 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 
-#undef CONFIG_CMD_FAT
 #undef CONFIG_CMD_IDE
 #undef CONFIG_CMD_BEDBUG
 

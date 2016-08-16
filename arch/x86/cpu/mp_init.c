@@ -11,10 +11,12 @@
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
+#include <qfw.h>
 #include <asm/atomic.h>
 #include <asm/cpu.h>
 #include <asm/interrupt.h>
 #include <asm/lapic.h>
+#include <asm/microcode.h>
 #include <asm/mp.h>
 #include <asm/msr.h>
 #include <asm/mtrr.h>
@@ -22,6 +24,8 @@
 #include <asm/sipi.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
+#include <dm/lists.h>
+#include <dm/root.h>
 #include <linux/linkage.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -104,7 +108,7 @@ static void ap_do_flight_plan(struct udevice *cpu)
 	}
 }
 
-static int find_cpu_by_apid_id(int apic_id, struct udevice **devp)
+static int find_cpu_by_apic_id(int apic_id, struct udevice **devp)
 {
 	struct udevice *dev;
 
@@ -137,7 +141,7 @@ static void ap_init(unsigned int cpu_index)
 	enable_lapic();
 
 	apic_id = lapicid();
-	ret = find_cpu_by_apid_id(apic_id, &dev);
+	ret = find_cpu_by_apic_id(apic_id, &dev);
 	if (ret) {
 		debug("Unknown CPU apic_id %x\n", apic_id);
 		goto done;
@@ -192,7 +196,7 @@ static int save_bsp_msrs(char *start, int size)
 	msr_count = 2 * num_var_mtrrs + NUM_FIXED_MTRRS + 1;
 
 	if ((msr_count * sizeof(struct saved_msr)) > size) {
-		printf("Cannot mirror all %d msrs.\n", msr_count);
+		printf("Cannot mirror all %d msrs\n", msr_count);
 		return -ENOSPC;
 	}
 
@@ -210,7 +214,7 @@ static int save_bsp_msrs(char *start, int size)
 	return msr_count;
 }
 
-static int load_sipi_vector(atomic_t **ap_countp)
+static int load_sipi_vector(atomic_t **ap_countp, int num_cpus)
 {
 	struct sipi_params_16bit *params16;
 	struct sipi_params *params;
@@ -239,13 +243,15 @@ static int load_sipi_vector(atomic_t **ap_countp)
 	params->idt_ptr = (uint32_t)x86_get_idt();
 
 	params->stack_size = CONFIG_AP_STACK_SIZE;
-	size = params->stack_size * CONFIG_MAX_CPUS;
-	stack = memalign(size, 4096);
+	size = params->stack_size * num_cpus;
+	stack = memalign(4096, size);
 	if (!stack)
 		return -ENOMEM;
 	params->stack_top = (u32)(stack + size);
-
-	params->microcode_ptr = 0;
+#if !defined(CONFIG_QEMU) && !defined(CONFIG_HAVE_FSP)
+	params->microcode_ptr = ucode_base;
+	debug("Microcode at %x\n", params->microcode_ptr);
+#endif
 	params->msr_table_ptr = (u32)msr_save;
 	ret = save_bsp_msrs(msr_save, sizeof(msr_save));
 	if (ret < 0)
@@ -280,21 +286,25 @@ static int check_cpu_devices(int expected_cpus)
 }
 
 /* Returns 1 for timeout. 0 on success */
-static int apic_wait_timeout(int total_delay, int delay_step)
+static int apic_wait_timeout(int total_delay, const char *msg)
 {
 	int total = 0;
-	int timeout = 0;
 
+	if (!(lapic_read(LAPIC_ICR) & LAPIC_ICR_BUSY))
+		return 0;
+
+	debug("Waiting for %s...", msg);
 	while (lapic_read(LAPIC_ICR) & LAPIC_ICR_BUSY) {
-		udelay(delay_step);
-		total += delay_step;
+		udelay(50);
+		total += 50;
 		if (total >= total_delay) {
-			timeout = 1;
-			break;
+			debug("timed out: aborting\n");
+			return -ETIMEDOUT;
 		}
 	}
+	debug("done\n");
 
-	return timeout;
+	return 0;
 }
 
 static int start_aps(int ap_count, atomic_t *num_aps)
@@ -317,73 +327,42 @@ static int start_aps(int ap_count, atomic_t *num_aps)
 
 	debug("Attempting to start %d APs\n", ap_count);
 
-	if ((lapic_read(LAPIC_ICR) & LAPIC_ICR_BUSY)) {
-		debug("Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000, 50)) {
-			debug("timed out. Aborting.\n");
-			return -1;
-		} else {
-			debug("done.\n");
-		}
-	}
+	if (apic_wait_timeout(1000, "ICR not to be busy"))
+		return -ETIMEDOUT;
 
 	/* Send INIT IPI to all but self */
 	lapic_write(LAPIC_ICR2, SET_LAPIC_DEST_FIELD(0));
 	lapic_write(LAPIC_ICR, LAPIC_DEST_ALLBUT | LAPIC_INT_ASSERT |
 		    LAPIC_DM_INIT);
-	debug("Waiting for 10ms after sending INIT.\n");
+	debug("Waiting for 10ms after sending INIT\n");
 	mdelay(10);
 
 	/* Send 1st SIPI */
-	if ((lapic_read(LAPIC_ICR) & LAPIC_ICR_BUSY)) {
-		debug("Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000, 50)) {
-			debug("timed out. Aborting.\n");
-			return -1;
-		} else {
-			debug("done.\n");
-		}
-	}
+	if (apic_wait_timeout(1000, "ICR not to be busy"))
+		return -ETIMEDOUT;
 
 	lapic_write(LAPIC_ICR2, SET_LAPIC_DEST_FIELD(0));
 	lapic_write(LAPIC_ICR, LAPIC_DEST_ALLBUT | LAPIC_INT_ASSERT |
 		    LAPIC_DM_STARTUP | sipi_vector);
-	debug("Waiting for 1st SIPI to complete...");
-	if (apic_wait_timeout(10000, 50)) {
-		debug("timed out.\n");
-		return -1;
-	} else {
-		debug("done.\n");
-	}
+	if (apic_wait_timeout(10000, "first SIPI to complete"))
+		return -ETIMEDOUT;
 
 	/* Wait for CPUs to check in up to 200 us */
 	wait_for_aps(num_aps, ap_count, 200, 15);
 
 	/* Send 2nd SIPI */
-	if ((lapic_read(LAPIC_ICR) & LAPIC_ICR_BUSY)) {
-		debug("Waiting for ICR not to be busy...");
-		if (apic_wait_timeout(1000, 50)) {
-			debug("timed out. Aborting.\n");
-			return -1;
-		} else {
-			debug("done.\n");
-		}
-	}
+	if (apic_wait_timeout(1000, "ICR not to be busy"))
+		return -ETIMEDOUT;
 
 	lapic_write(LAPIC_ICR2, SET_LAPIC_DEST_FIELD(0));
 	lapic_write(LAPIC_ICR, LAPIC_DEST_ALLBUT | LAPIC_INT_ASSERT |
 		    LAPIC_DM_STARTUP | sipi_vector);
-	debug("Waiting for 2nd SIPI to complete...");
-	if (apic_wait_timeout(10000, 50)) {
-		debug("timed out.\n");
-		return -1;
-	} else {
-		debug("done.\n");
-	}
+	if (apic_wait_timeout(10000, "second SIPI to complete"))
+		return -ETIMEDOUT;
 
 	/* Wait for CPUs to check in */
 	if (wait_for_aps(num_aps, ap_count, 10000, 50)) {
-		debug("Not all APs checked in: %d/%d.\n",
+		debug("Not all APs checked in: %d/%d\n",
 		      atomic_read(num_aps), ap_count);
 		return -1;
 	}
@@ -407,7 +386,7 @@ static int bsp_do_flight_plan(struct udevice *cpu, struct mp_params *mp_params)
 			/* Wait for the APs to check in */
 			if (wait_for_aps(&rec->cpus_entered, num_aps,
 					 timeout_us, step_us)) {
-				debug("MP record %d timeout.\n", i);
+				debug("MP record %d timeout\n", i);
 				ret = -1;
 			}
 		}
@@ -427,12 +406,10 @@ static int init_bsp(struct udevice **devp)
 	int ret;
 
 	cpu_get_name(processor_name);
-	debug("CPU: %s.\n", processor_name);
-
-	lapic_setup();
+	debug("CPU: %s\n", processor_name);
 
 	apic_id = lapicid();
-	ret = find_cpu_by_apid_id(apic_id, devp);
+	ret = find_cpu_by_apic_id(apic_id, devp);
 	if (ret) {
 		printf("Cannot find boot CPU, APIC ID %d\n", apic_id);
 		return ret;
@@ -440,6 +417,69 @@ static int init_bsp(struct udevice **devp)
 
 	return 0;
 }
+
+#ifdef CONFIG_QFW
+static int qemu_cpu_fixup(void)
+{
+	int ret;
+	int cpu_num;
+	int cpu_online;
+	struct udevice *dev, *pdev;
+	struct cpu_platdata *plat;
+	char *cpu;
+
+	/* first we need to find '/cpus' */
+	for (device_find_first_child(dm_root(), &pdev);
+	     pdev;
+	     device_find_next_child(&pdev)) {
+		if (!strcmp(pdev->name, "cpus"))
+			break;
+	}
+	if (!pdev) {
+		printf("unable to find cpus device\n");
+		return -ENODEV;
+	}
+
+	/* calculate cpus that are already bound */
+	cpu_num = 0;
+	for (uclass_find_first_device(UCLASS_CPU, &dev);
+	     dev;
+	     uclass_find_next_device(&dev)) {
+		cpu_num++;
+	}
+
+	/* get actual cpu number */
+	cpu_online = qemu_fwcfg_online_cpus();
+	if (cpu_online < 0) {
+		printf("unable to get online cpu number: %d\n", cpu_online);
+		return cpu_online;
+	}
+
+	/* bind addtional cpus */
+	dev = NULL;
+	for (; cpu_num < cpu_online; cpu_num++) {
+		/*
+		 * allocate device name here as device_bind_driver() does
+		 * not copy device name, 8 bytes are enough for
+		 * sizeof("cpu@") + 3 digits cpu number + '\0'
+		 */
+		cpu = malloc(8);
+		if (!cpu) {
+			printf("unable to allocate device name\n");
+			return -ENOMEM;
+		}
+		sprintf(cpu, "cpu@%d", cpu_num);
+		ret = device_bind_driver(pdev, "cpu_qemu", cpu, &dev);
+		if (ret) {
+			printf("binding cpu@%d failed: %d\n", cpu_num, ret);
+			return ret;
+		}
+		plat = dev_get_parent_platdata(dev);
+		plat->cpu_id = cpu_num;
+	}
+	return 0;
+}
+#endif
 
 int mp_init(struct mp_params *p)
 {
@@ -453,6 +493,12 @@ int mp_init(struct mp_params *p)
 	ret = uclass_get(UCLASS_CPU, &uc);
 	if (ret)
 		return ret;
+
+#ifdef CONFIG_QFW
+	ret = qemu_cpu_fixup();
+	if (ret)
+		return ret;
+#endif
 
 	ret = init_bsp(&cpu);
 	if (ret) {
@@ -483,7 +529,7 @@ int mp_init(struct mp_params *p)
 	mp_info.records = p->flight_plan;
 
 	/* Load the SIPI vector */
-	ret = load_sipi_vector(&ap_count);
+	ret = load_sipi_vector(&ap_count, num_cpus);
 	if (ap_count == NULL)
 		return -1;
 
@@ -515,12 +561,16 @@ int mp_init(struct mp_params *p)
 
 int mp_init_cpu(struct udevice *cpu, void *unused)
 {
+	struct cpu_platdata *plat = dev_get_parent_platdata(cpu);
+
 	/*
 	 * Multiple APs are brought up simultaneously and they may get the same
 	 * seq num in the uclass_resolve_seq() during device_probe(). To avoid
 	 * this, set req_seq to the reg number in the device tree in advance.
 	 */
 	cpu->req_seq = fdtdec_get_int(gd->fdt_blob, cpu->of_offset, "reg", -1);
+	plat->ucode_version = microcode_read_rev();
+	plat->device_id = gd->arch.x86_device;
 
 	return device_probe(cpu);
 }

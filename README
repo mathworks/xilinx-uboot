@@ -460,7 +460,7 @@ The following options need to be configured:
 
 		CONFIG_SYS_CPC_REINIT_F
 		This CONFIG is defined when the CPC is configured as SRAM at the
-		time of U-boot entry and is required to be re-initialized.
+		time of U-Boot entry and is required to be re-initialized.
 
 		CONFIG_DEEP_SLEEP
 		Indicates this SoC supports deep sleep feature. If deep sleep is
@@ -890,32 +890,6 @@ The following options need to be configured:
 		'Sane' compilers will generate smaller code if
 		CONFIG_PRE_CON_BUF_SZ is a power of 2
 
-- Safe printf() functions
-		Define CONFIG_SYS_VSNPRINTF to compile in safe versions of
-		the printf() functions. These are defined in
-		include/vsprintf.h and include snprintf(), vsnprintf() and
-		so on. Code size increase is approximately 300-500 bytes.
-		If this option is not given then these functions will
-		silently discard their buffer size argument - this means
-		you are not getting any overflow checking in this case.
-
-- Boot Delay:	CONFIG_BOOTDELAY - in seconds
-		Delay before automatically booting the default image;
-		set to -1 to disable autoboot.
-		set to -2 to autoboot with no delay and not check for abort
-		(even when CONFIG_ZERO_BOOTDELAY_CHECK is defined).
-
-		See doc/README.autoboot for these options that
-		work with CONFIG_BOOTDELAY. None are required.
-		CONFIG_BOOT_RETRY_TIME
-		CONFIG_BOOT_RETRY_MIN
-		CONFIG_AUTOBOOT_KEYED
-		CONFIG_AUTOBOOT_PROMPT
-		CONFIG_AUTOBOOT_DELAY_STR
-		CONFIG_AUTOBOOT_STOP_STR
-		CONFIG_ZERO_BOOTDELAY_CHECK
-		CONFIG_RESET_TO_RETRY
-
 - Autoboot Command:
 		CONFIG_BOOTCOMMAND
 		Only needed when CONFIG_BOOTDELAY is enabled;
@@ -1012,6 +986,7 @@ The following options need to be configured:
 		CONFIG_CMD_ECHO		  echo arguments
 		CONFIG_CMD_EDITENV	  edit env variable
 		CONFIG_CMD_EEPROM	* EEPROM read/write support
+		CONFIG_CMD_EEPROM_LAYOUT* EEPROM layout aware commands
 		CONFIG_CMD_ELF		* bootelf, bootvx
 		CONFIG_CMD_ENV_CALLBACK	* display details about env callbacks
 		CONFIG_CMD_ENV_FLAGS	* display details about env flags
@@ -1032,7 +1007,6 @@ The following options need to be configured:
 		CONFIG_CMD_GO		* the 'go' command (exec code)
 		CONFIG_CMD_GREPENV	* search environment
 		CONFIG_CMD_HASH		* calculate hash / digest
-		CONFIG_CMD_HWFLOW	* RTS/CTS hw flow control
 		CONFIG_CMD_I2C		* I2C serial bus support
 		CONFIG_CMD_IDE		* IDE harddisk support
 		CONFIG_CMD_IMI		  iminfo
@@ -1076,7 +1050,7 @@ The following options need to be configured:
 		CONFIG_CMD_RUN		  run command in env variable
 		CONFIG_CMD_SANDBOX	* sb command to access sandbox features
 		CONFIG_CMD_SAVES	* save S record dump
-		CONFIG_CMD_SCSI		* SCSI Support
+		CONFIG_SCSI		* SCSI Support
 		CONFIG_CMD_SDRAM	* print SDRAM configuration information
 					  (requires CONFIG_CMD_I2C)
 		CONFIG_CMD_SETGETDCR	  Support for DCR Register access
@@ -1120,6 +1094,14 @@ The following options need to be configured:
 
 
 		XXX - this list needs to get updated!
+
+- Removal of commands
+		If no commands are needed to boot, you can disable
+		CONFIG_CMDLINE to remove them. In this case, the command line
+		will not be available, and when U-Boot wants to execute the
+		boot command (on start-up) it will call board_run_command()
+		instead. This can reduce image size significantly for very
+		simple boot procedures.
 
 - Regular expression support:
 		CONFIG_REGEX
@@ -1259,7 +1241,7 @@ The following options need to be configured:
 		CONFIG_MTD_PARTITIONS  Memory Technology Device partition table.
 
 		If IDE or SCSI support is enabled (CONFIG_CMD_IDE or
-		CONFIG_CMD_SCSI) you must configure support for at
+		CONFIG_SCSI) you must configure support for at
 		least one non-MTD partition type as well.
 
 - IDE Reset method:
@@ -1434,6 +1416,17 @@ The following options need to be configured:
 
 			CONFIG_TPM_TIS_I2C_BURST_LIMITATION
 			Define the burst count bytes upper limit
+
+		CONFIG_TPM_ST33ZP24
+		Support for STMicroelectronics TPM devices. Requires DM_TPM support.
+
+			CONFIG_TPM_ST33ZP24_I2C
+			Support for STMicroelectronics ST33ZP24 I2C devices.
+			Requires TPM_ST33ZP24 and I2C.
+
+			CONFIG_TPM_ST33ZP24_SPI
+			Support for STMicroelectronics ST33ZP24 SPI devices.
+			Requires TPM_ST33ZP24 and SPI.
 
 		CONFIG_TPM_ATMEL_TWI
 		Support for Atmel TWI TPM device. Requires I2C support.
@@ -1796,7 +1789,7 @@ CBFS (Coreboot Filesystem) support
 
 		The DIU driver will look for the 'video-mode' environment
 		variable, and if defined, enable the DIU as a console during
-		boot.  See the documentation file README.video for a
+		boot.  See the documentation file doc/README.video for a
 		description of this variable.
 
 - LCD Support:	CONFIG_LCD
@@ -1910,7 +1903,7 @@ CBFS (Coreboot Filesystem) support
 
 		If this option is set, then U-Boot will prevent the environment
 		variable "splashimage" from being set to a problematic address
-		(see README.displaying-bmps).
+		(see doc/README.displaying-bmps).
 		This option is useful for targets where, due to alignment
 		restrictions, an improperly aligned BMP image will cause a data
 		abort. If you think you will not have problems with unaligned
@@ -2906,6 +2899,14 @@ CBFS (Coreboot Filesystem) support
 		Enable editing and History functions for interactive
 		command line input operations
 
+- Command Line PS1/PS2 support:
+		CONFIG_CMDLINE_PS_SUPPORT
+
+		Enable support for changing the command prompt string
+		at run-time. Only static string is supported so far.
+		The string is obtained from environment variables PS1
+		and PS2.
+
 - Default Environment:
 		CONFIG_EXTRA_ENV_SETTINGS
 
@@ -2964,7 +2965,7 @@ CBFS (Coreboot Filesystem) support
 - Parallel Flash support:
 		CONFIG_SYS_NO_FLASH
 
-		Traditionally U-boot was run on systems with parallel NOR
+		Traditionally U-Boot was run on systems with parallel NOR
 		flash. This option is used to disable support for parallel NOR
 		flash. This option should be defined if the board does not have
 		parallel flash.
@@ -3086,20 +3087,6 @@ CBFS (Coreboot Filesystem) support
 		on U-Boot.  Using the reset button or running bmode normal
 		will set it back to normal.  This command currently
 		supports i.MX53 and i.MX6.
-
-- Signing support:
-		CONFIG_RSA
-
-		This enables the RSA algorithm used for FIT image verification
-		in U-Boot. See doc/uImage.FIT/signature.txt for more information.
-
-		The Modular Exponentiation algorithm in RSA is implemented using
-		driver model. So CONFIG_DM needs to be enabled by default for this
-		library to function.
-
-		The signing part is build into mkimage regardless of this
-		option. The software based modular exponentiation is built into
-		mkimage irrespective of this option.
 
 - bootcount support:
 		CONFIG_BOOTCOUNT_LIMIT
@@ -3300,32 +3287,13 @@ FIT uImage format:
 		enabled per default for backward compatibility.
 
 - FIT image support:
-		CONFIG_FIT
-		Enable support for the FIT uImage format.
-
-		CONFIG_FIT_BEST_MATCH
-		When no configuration is explicitly selected, default to the
-		one whose fdt's compatibility field best matches that of
-		U-Boot itself. A match is considered "best" if it matches the
-		most specific compatibility entry of U-Boot's fdt's root node.
-		The order of entries in the configuration's fdt is ignored.
-
-		CONFIG_FIT_SIGNATURE
-		This option enables signature verification of FIT uImages,
-		using a hash signed and verified using RSA. If
-		CONFIG_SHA_PROG_HW_ACCEL is defined, i.e support for progressive
-		hashing is available using hardware, RSA library will use it.
-		See doc/uImage.FIT/signature.txt for more details.
-
-		WARNING: When relying on signed FIT images with required
-		signature check the legacy image format is default
-		disabled. If a board need legacy image format support
-		enable this through CONFIG_IMAGE_FORMAT_LEGACY
-
 		CONFIG_FIT_DISABLE_SHA256
 		Supporting SHA256 hashes has quite an impact on binary size.
 		For constrained systems sha256 hash support can be disabled
 		with this option.
+
+		TODO(sjg@chromium.org): Adjust this option to be positive,
+		and move it to Kconfig
 
 - Standalone program support:
 		CONFIG_STANDALONE_LOAD_ADDR
@@ -3505,6 +3473,10 @@ FIT uImage format:
 		An example is the LPC32XX MLC NAND driver, which will
 		consider that a completely unreadable NAND block is bad,
 		and thus should be skipped silently.
+
+		CONFIG_SPL_ABORT_ON_RAW_IMAGE
+		When defined, SPL will proceed to another boot method
+		if the image it has loaded does not have a signature.
 
 		CONFIG_SPL_RELOC_STACK
 		Adress of the start of the stack SPL will use after
@@ -3713,23 +3685,6 @@ FIT uImage format:
 		CONFIG_SPL_PAD_TO must be either 0, meaning to append the SPL
 		payload without any padding, or >= CONFIG_SPL_MAX_SIZE.
 
-Modem Support:
---------------
-
-[so far only for SMDK2400 boards]
-
-- Modem support enable:
-		CONFIG_MODEM_SUPPORT
-
-- RTS/CTS Flow control enable:
-		CONFIG_HWFLOW
-
-- Modem debug support:
-		CONFIG_MODEM_SUPPORT_DEBUG
-
-		Enables debugging stuff (char screen[1024], dbg())
-		for modem support. Useful only with BDI2000.
-
 - Interrupt support (PPC):
 
 		There are common interrupt_init() and timer_interrupt()
@@ -3743,22 +3698,6 @@ Modem Support:
 		/ other_activity_monitor it works automatically from
 		general timer_interrupt().
 
-- General:
-
-		In the target system modem support is enabled when a
-		specific key (key combination) is pressed during
-		power-on. Otherwise U-Boot will boot normally
-		(autoboot). The key_pressed() function is called from
-		board_init(). Currently key_pressed() is a dummy
-		function, returning 1 and thus enabling modem
-		initialization.
-
-		If there are no modem init strings in the
-		environment, U-Boot proceed to autoboot; the
-		previous output (banner, info printfs) will be
-		suppressed, though.
-
-		See also: doc/README.Modem
 
 Board initialization settings:
 ------------------------------
@@ -4094,16 +4033,6 @@ Configuration Settings:
 - CONFIG_ENV_ACCESS_IGNORE_FORCE
 	If defined, don't allow the -f switch to env set override variable
 	access flags.
-
-- CONFIG_SYS_GENERIC_BOARD
-	This selects the architecture-generic board system instead of the
-	architecture-specific board files. It is intended to move boards
-	to this new framework over time. Defining this will disable the
-	arch/foo/lib/board.c file and use common/board_f.c and
-	common/board_r.c instead. To use this option your architecture
-	must support it (i.e. must select HAVE_GENERIC_BOARD in arch/Kconfig).
-	If you find problems enabling this option on your board please report
-	the problem and send patches!
 
 - CONFIG_OMAP_PLATFORM_RESET_TIME_MAX_USEC (OMAP only)
 	This is set by OMAP boards for the max time that reset should
@@ -4881,6 +4810,11 @@ Low Level (hardware related) configuration options:
 		other boot loader or by a debugger which performs
 		these initializations itself.
 
+- CONFIG_SKIP_LOWLEVEL_INIT_ONLY
+		[ARM926EJ-S only] This allows just the call to lowlevel_init()
+		to be skipped. The normal CPU15 init (such as enabling the
+		instruction cache) is still performed.
+
 - CONFIG_SPL_BUILD
 		Modifies the behaviour of start.S when compiling a loader
 		that is executed before the actual U-Boot. E.g. when
@@ -5121,14 +5055,11 @@ If the system board that you have is not listed, then you will need
 to port U-Boot to your hardware platform. To do this, follow these
 steps:
 
-1.  Add a new configuration option for your board to the toplevel
-    "boards.cfg" file, using the existing entries as examples.
-    Follow the instructions there to keep the boards in order.
-2.  Create a new directory to hold your board specific code. Add any
+1.  Create a new directory to hold your board specific code. Add any
     files you need. In your board directory, you will need at least
-    the "Makefile", a "<board>.c", "flash.c" and "u-boot.lds".
-3.  Create a new configuration file "include/configs/<board>.h" for
-    your board
+    the "Makefile" and a "<board>.c".
+2.  Create a new configuration file "include/configs/<board>.h" for
+    your board.
 3.  If you're porting U-Boot to a new CPU, then also create a new
     directory to hold your CPU specific code. Add any files you need.
 4.  Run "make <board>_defconfig" with your new name.
@@ -5438,6 +5369,12 @@ List of environment variables (most likely not complete):
   vlan		- When set to a value < 4095 the traffic over
 		  Ethernet is encapsulated/received over 802.1q
 		  VLAN tagged frames.
+
+  bootpretryperiod	- Period during which BOOTP/DHCP sends retries.
+		  Unsigned value, in milliseconds. If not set, the period will
+		  be either the default (28000), or a value based on
+		  CONFIG_NET_RETRY_COUNT, if defined. This value has
+		  precedence over the valu based on CONFIG_NET_RETRY_COUNT.
 
 The following image location variables contain the location of images
 used in booting. The "Image" column gives the role of the image and is

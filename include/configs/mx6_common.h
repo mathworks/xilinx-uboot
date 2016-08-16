@@ -1,17 +1,7 @@
 /*
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __MX6_COMMON_H
@@ -34,6 +24,8 @@
 #define CONFIG_MXC_GPT_HCLK
 
 #define CONFIG_SYS_NO_FLASH
+
+#define CONFIG_SYS_BOOTM_LEN	0x1000000
 
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
@@ -67,30 +59,17 @@
 #endif
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 
-#ifndef CONFIG_BOOTDELAY
-#define CONFIG_BOOTDELAY	3
-#endif
-
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX       1
 #define CONFIG_BAUDRATE         115200
 
 /* Filesystems and image support */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_BOOTZ
 #define CONFIG_SUPPORT_RAW_INITRD
-#define CONFIG_CMD_FS_GENERIC
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
-#define CONFIG_CMD_FAT
 
 /* Miscellaneous configurable options */
-#undef CONFIG_CMD_IMLS
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE	512
@@ -98,7 +77,6 @@
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
 #ifndef CONFIG_SYS_DCACHE_OFF
-#define CONFIG_CMD_CACHE
 #endif
 
 /* GPIO */
@@ -106,7 +84,6 @@
 
 /* MMC */
 #define CONFIG_MMC
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_BOUNCE_BUFFER
 #define CONFIG_FSL_ESDHC

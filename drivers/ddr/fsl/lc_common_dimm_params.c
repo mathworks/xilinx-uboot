@@ -1,9 +1,7 @@
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -62,8 +60,8 @@ compute_cas_latency(const unsigned int ctrl_num,
 	 * 18ns for all DDR4 speed grades.
 	 */
 	if (caslat_actual * mclk_ps > taamax) {
-		printf("The choosen cas latency %d is too large\n",
-			caslat_actual);
+		printf("The chosen cas latency %d is too large\n",
+		       caslat_actual);
 	}
 	outpdimm->lowest_common_spd_caslat = caslat_actual;
 	debug("lowest_common_spd_caslat is 0x%x\n", caslat_actual);

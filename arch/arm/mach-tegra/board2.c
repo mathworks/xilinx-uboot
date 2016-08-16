@@ -13,15 +13,9 @@
 #include <linux/sizes.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#ifdef CONFIG_LCD
-#include <asm/arch/display.h>
-#endif
 #include <asm/arch/funcmux.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/pmu.h>
-#ifdef CONFIG_PWM_TEGRA
-#include <asm/arch/pwm.h>
-#endif
 #include <asm/arch/tegra.h>
 #include <asm/arch-tegra/ap.h>
 #include <asm/arch-tegra/board.h>
@@ -34,8 +28,8 @@
 #ifdef CONFIG_TEGRA_CLOCK_SCALING
 #include <asm/arch/emc.h>
 #endif
-#ifdef CONFIG_USB_EHCI_TEGRA
 #include <asm/arch-tegra/usb.h>
+#ifdef CONFIG_USB_EHCI_TEGRA
 #include <usb.h>
 #endif
 #ifdef CONFIG_TEGRA_MMC
@@ -134,13 +128,9 @@ int board_init(void)
 	pin_mux_spi();
 #endif
 
-#ifdef CONFIG_PWM_TEGRA
-	if (pwm_init(gd->fdt_blob))
-		debug("%s: Failed to init pwm\n", __func__);
-#endif
-#ifdef CONFIG_LCD
+	/* Init is handled automatically in the driver-model case */
+#if defined(CONFIG_DM_VIDEO)
 	pin_mux_display();
-	tegra_lcd_check_next_stage(gd->fdt_blob, 0);
 #endif
 	/* boot param addr */
 	gd->bd->bi_boot_params = (NV_PA_SDRAM_BASE + 0x100);
@@ -168,12 +158,11 @@ int board_init(void)
 	pin_mux_usb();
 #endif
 
-#ifdef CONFIG_LCD
+#if defined(CONFIG_DM_VIDEO)
 	board_id = tegra_board_id();
 	err = tegra_lcd_pmic_init(board_id);
 	if (err)
 		return err;
-	tegra_lcd_check_next_stage(gd->fdt_blob, 0);
 #endif
 
 #ifdef CONFIG_TEGRA_NAND
@@ -201,6 +190,14 @@ void gpio_early_init(void) __attribute__((weak, alias("__gpio_early_init")));
 
 int board_early_init_f(void)
 {
+#if defined(CONFIG_TEGRA_DISCONNECT_UDC_ON_BOOT)
+#define USBCMD_FS2 (1 << 15)
+	{
+		struct usb_ctlr *usbctlr = (struct usb_ctlr *)0x7d000000;
+		writel(USBCMD_FS2, &usbctlr->usb_cmd);
+	}
+#endif
+
 	/* Do any special system timer/TSC setup */
 #if defined(CONFIG_TEGRA_SUPPORT_NON_SECURE)
 	if (!tegra_cpu_is_non_secure())
@@ -213,9 +210,6 @@ int board_early_init_f(void)
 	/* Initialize periph GPIOs */
 	gpio_early_init();
 	gpio_early_init_uart();
-#ifdef CONFIG_LCD
-	tegra_lcd_early_init(gd->fdt_blob);
-#endif
 
 	return 0;
 }
@@ -223,10 +217,6 @@ int board_early_init_f(void)
 
 int board_late_init(void)
 {
-#ifdef CONFIG_LCD
-	/* Make sure we finish initing the LCD */
-	tegra_lcd_check_next_stage(gd->fdt_blob, 1);
-#endif
 #if defined(CONFIG_TEGRA_SUPPORT_NON_SECURE)
 	if (tegra_cpu_is_non_secure()) {
 		printf("CPU is in NS mode\n");
@@ -414,16 +404,22 @@ ulong board_get_usable_ram_top(ulong total_size)
  */
 int ft_system_setup(void *blob, bd_t *bd)
 {
-	const char *gpu_path =
-#if defined(CONFIG_TEGRA124) || defined(CONFIG_TEGRA210)
-		"/gpu@0,57000000";
-#else
-		NULL;
+	const char *gpu_compats[] = {
+#if defined(CONFIG_TEGRA124)
+		"nvidia,gk20a",
 #endif
+#if defined(CONFIG_TEGRA210)
+		"nvidia,gm20b",
+#endif
+	};
+	int i, ret;
 
 	/* Enable GPU node if GPU setup has been performed */
-	if (gpu_path != NULL)
-		return tegra_gpu_enable_node(blob, gpu_path);
+	for (i = 0; i < ARRAY_SIZE(gpu_compats); i++) {
+		ret = tegra_gpu_enable_node(blob, gpu_compats[i]);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }

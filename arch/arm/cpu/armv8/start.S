@@ -21,6 +21,16 @@
 _start:
 	b	reset
 
+#ifdef CONFIG_ENABLE_ARM_SOC_BOOT0_HOOK
+/*
+ * Various SoCs need something special and SoC-specific up front in
+ * order to boot, allow them to set that in their boot0.h file and then
+ * use it here.
+ */
+#include <asm/arch/boot0.h>
+ARM_SOC_BOOT0_HOOK
+#endif
+
 	.align 3
 
 .globl	_TEXT_BASE
@@ -43,6 +53,9 @@ _bss_end_ofs:
 	.quad	__bss_end - _start
 
 reset:
+#ifdef CONFIG_SYS_RESET_SCTRL
+	bl reset_sctrl
+#endif
 	/*
 	 * Could be EL3/EL2/EL1, Initial State:
 	 * Little Endian, MMU Disabled, i/dCache Disabled
@@ -99,6 +112,39 @@ master_cpu:
 
 	bl	_main
 
+#ifdef CONFIG_SYS_RESET_SCTRL
+reset_sctrl:
+	switch_el x1, 3f, 2f, 1f
+3:
+	mrs	x0, sctlr_el3
+	b	0f
+2:
+	mrs	x0, sctlr_el2
+	b	0f
+1:
+	mrs	x0, sctlr_el1
+
+0:
+	ldr	x1, =0xfdfffffa
+	and	x0, x0, x1
+
+	switch_el x1, 6f, 5f, 4f
+6:
+	msr	sctlr_el3, x0
+	b	7f
+5:
+	msr	sctlr_el2, x0
+	b	7f
+4:
+	msr	sctlr_el1, x0
+
+7:
+	dsb	sy
+	isb
+	b	__asm_invalidate_tlb_all
+	ret
+#endif
+
 /*-----------------------------------------------------------------------*/
 
 WEAK(apply_core_errata)
@@ -132,6 +178,25 @@ apply_a57_core_errata:
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
 #endif
 
+#ifdef CONFIG_ARM_ERRATA_833471
+	mrs	x0, S3_1_c15_c2_0	/* cpuactlr_el1 */
+	/* FPSCR write flush.
+	 * Note that in some cases where a flush is unnecessary this
+	    could impact performance. */
+	orr	x0, x0, #1 << 38
+	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+#endif
+
+#ifdef CONFIG_ARM_ERRATA_829520
+	mrs	x0, S3_1_c15_c2_0	/* cpuactlr_el1 */
+	/* Disable Indirect Predictor bit will prevent this erratum
+	    from occurring
+	 * Note that in some cases where a flush is unnecessary this
+	    could impact performance. */
+	orr	x0, x0, #1 << 4
+	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+#endif
+
 #ifdef CONFIG_ARM_ERRATA_833069
 	mrs	x0, S3_1_c15_c2_0	/* cpuactlr_el1 */
 	/* Disable Enable Invalidates of BTB bit */
@@ -145,15 +210,6 @@ ENDPROC(apply_core_errata)
 
 WEAK(lowlevel_init)
 	mov	x29, lr			/* Save LR */
-
-#ifndef CONFIG_ARMV8_MULTIENTRY
-	/*
-	 * For single-entry systems the lowlevel init is very simple.
-	 */
-	ldr	x0, =GICD_BASE
-	bl	gic_init_secure
-
-#else /* CONFIG_ARMV8_MULTIENTRY is set */
 
 #if defined(CONFIG_GICV2) || defined(CONFIG_GICV3)
 	branch_if_slave x0, 1f
@@ -170,6 +226,7 @@ WEAK(lowlevel_init)
 #endif
 #endif
 
+#ifdef CONFIG_ARMV8_MULTIENTRY
 	branch_if_master x0, x1, 2f
 
 	/*
@@ -201,12 +258,10 @@ ENDPROC(lowlevel_init)
 
 WEAK(smp_kick_all_cpus)
 	/* Kick secondary cpus up by SGI 0 interrupt */
-	mov	x29, lr			/* Save LR */
 #if defined(CONFIG_GICV2) || defined(CONFIG_GICV3)
 	ldr	x0, =GICD_BASE
-	bl	gic_kick_secondary_cpus
+	b	gic_kick_secondary_cpus
 #endif
-	mov	lr, x29			/* Restore LR */
 	ret
 ENDPROC(smp_kick_all_cpus)
 

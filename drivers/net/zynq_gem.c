@@ -19,6 +19,7 @@
 #include <asm/io.h>
 #include <phy.h>
 #include <miiphy.h>
+#include <wait_bit.h>
 #include <watchdog.h>
 #include <asm/system.h>
 #include <asm/arch/hardware.h>
@@ -178,6 +179,7 @@ struct zynq_gem_priv {
 	struct zynq_gem_regs *iobase;
 	phy_interface_t interface;
 	struct phy_device *phydev;
+	int phy_of_handle;
 	struct mii_dev *bus;
 };
 
@@ -351,14 +353,17 @@ static int zynq_phy_init(struct udevice *dev)
 	priv->phydev->supported = supported | ADVERTISED_Pause |
 				  ADVERTISED_Asym_Pause;
 	priv->phydev->advertising = priv->phydev->supported;
-	phy_config(priv->phydev);
 
-	return 0;
+	if (priv->phy_of_handle > 0)
+		priv->phydev->dev->of_offset = priv->phy_of_handle;
+
+	return phy_config(priv->phydev);
 }
 
 static int zynq_gem_init(struct udevice *dev)
 {
 	u32 i, nwconfig;
+	int ret;
 	unsigned long clk_rate = 0;
 	struct zynq_gem_priv *priv = dev_get_priv(dev);
 	struct zynq_gem_regs *regs = priv->iobase;
@@ -426,7 +431,9 @@ static int zynq_gem_init(struct udevice *dev)
 		priv->init++;
 	}
 
-	phy_startup(priv->phydev);
+	ret = phy_startup(priv->phydev);
+	if (ret)
+		return ret;
 
 	if (!priv->phydev->link) {
 		printf("%s: No link.\n", priv->phydev->dev->name);
@@ -471,38 +478,6 @@ static int zynq_gem_init(struct udevice *dev)
 	return 0;
 }
 
-static int wait_for_bit(const char *func, u32 *reg, const u32 mask,
-			bool set, unsigned int timeout)
-{
-	u32 val;
-	unsigned long start = get_timer(0);
-
-	while (1) {
-		val = readl(reg);
-
-		if (!set)
-			val = ~val;
-
-		if ((val & mask) == mask)
-			return 0;
-
-		if (get_timer(start) > timeout)
-			break;
-
-		if (ctrlc()) {
-			puts("Abort\n");
-			return -EINTR;
-		}
-
-		udelay(1);
-	}
-
-	debug("%s: Timeout (reg=%p mask=%08x wait_set=%i)\n",
-	      func, reg, mask, set);
-
-	return -ETIMEDOUT;
-}
-
 static int zynq_gem_send(struct udevice *dev, void *ptr, int len)
 {
 	u32 addr, size;
@@ -544,7 +519,7 @@ static int zynq_gem_send(struct udevice *dev, void *ptr, int len)
 		printf("TX buffers exhausted in mid frame\n");
 
 	return wait_for_bit(__func__, &regs->txsr, ZYNQ_GEM_TSR_DONE,
-			    true, 20000);
+			    true, 20000, true);
 }
 
 /* Do not check frame_recd flag in rx_status register 0x20 - just poll BD */
@@ -609,6 +584,23 @@ static void zynq_gem_halt(struct udevice *dev)
 
 	clrsetbits_le32(&regs->nwctrl, ZYNQ_GEM_NWCTRL_RXEN_MASK |
 						ZYNQ_GEM_NWCTRL_TXEN_MASK, 0);
+}
+
+__weak int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
+{
+	return -ENOSYS;
+}
+
+static int zynq_gem_read_rom_mac(struct udevice *dev)
+{
+	int retval;
+	struct eth_pdata *pdata = dev_get_platdata(dev);
+
+	retval = zynq_board_read_rom_ethaddr(pdata->enetaddr);
+	if (retval == -ENOSYS)
+		retval = 0;
+
+	return retval;
 }
 
 static int zynq_gem_miiphy_read(struct mii_dev *bus, int addr,
@@ -682,13 +674,13 @@ static const struct eth_ops zynq_gem_ops = {
 	.free_pkt		= zynq_gem_free_pkt,
 	.stop			= zynq_gem_halt,
 	.write_hwaddr		= zynq_gem_setup_mac,
+	.read_rom_hwaddr	= zynq_gem_read_rom_mac,
 };
 
 static int zynq_gem_ofdata_to_platdata(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct zynq_gem_priv *priv = dev_get_priv(dev);
-	int offset = 0;
 	const char *phy_mode;
 
 	pdata->iobase = (phys_addr_t)dev_get_addr(dev);
@@ -697,10 +689,11 @@ static int zynq_gem_ofdata_to_platdata(struct udevice *dev)
 	priv->emio = 0;
 	priv->phyaddr = -1;
 
-	offset = fdtdec_lookup_phandle(gd->fdt_blob, dev->of_offset,
-				       "phy-handle");
-	if (offset > 0)
-		priv->phyaddr = fdtdec_get_int(gd->fdt_blob, offset, "reg", -1);
+	priv->phy_of_handle = fdtdec_lookup_phandle(gd->fdt_blob,
+					dev->of_offset, "phy-handle");
+	if (priv->phy_of_handle > 0)
+		priv->phyaddr = fdtdec_get_int(gd->fdt_blob,
+					priv->phy_of_handle, "reg", -1);
 
 	phy_mode = fdt_getprop(gd->fdt_blob, dev->of_offset, "phy-mode", NULL);
 	if (phy_mode)

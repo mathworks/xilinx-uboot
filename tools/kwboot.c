@@ -9,10 +9,14 @@
  *   2008. Chapter 24.2 "BootROM Firmware".
  */
 
+#include "kwbimage.h"
+#include "mkimage.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <image.h>
 #include <libgen.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -21,8 +25,6 @@
 #include <termios.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-
-#include "kwbimage.h"
 
 #ifdef __GNUC__
 #define PACKED __attribute((packed))
@@ -74,6 +76,7 @@ static int kwboot_verbose;
 
 static int msg_req_delay = KWBOOT_MSG_REQ_DELAY;
 static int msg_rsp_timeo = KWBOOT_MSG_RSP_TIMEO;
+static int blk_rsp_timeo = KWBOOT_BLK_RSP_TIMEO;
 
 static void
 kwboot_printv(const char *fmt, ...)
@@ -378,7 +381,7 @@ kwboot_xm_sendblock(int fd, struct kwboot_block *block)
 			break;
 
 		do {
-			rc = kwboot_tty_recv(fd, &c, 1, KWBOOT_BLK_RSP_TIMEO);
+			rc = kwboot_tty_recv(fd, &c, 1, blk_rsp_timeo);
 			if (rc)
 				break;
 
@@ -652,6 +655,14 @@ kwboot_img_patch_hdr(void *img, size_t size)
 
 	hdr->blockid = IBR_HDR_UART_ID;
 
+	/*
+	 * Subtract mkimage header size from destination address
+	 * as this header is not expected by the Marvell BootROM.
+	 * This way, the execution address is identical to the
+	 * one the image is compiled for (TEXT_BASE).
+	 */
+	hdr->destaddr = hdr->destaddr - sizeof(struct image_header);
+
 	if (image_ver == 0) {
 		struct main_hdr_v0 *hdr_v0 = img;
 
@@ -674,7 +685,7 @@ static void
 kwboot_usage(FILE *stream, char *progname)
 {
 	fprintf(stream,
-		"Usage: %s [-d | -a | -q <req-delay> | -s <resp-timeo> | -b <image> | -D <image> ] [ -t ] [-B <baud> ] <TTY>\n",
+		"Usage: %s [OPTIONS] [-b <image> | -D <image> ] [-B <baud> ] <TTY>\n",
 		progname);
 	fprintf(stream, "\n");
 	fprintf(stream,
@@ -686,6 +697,8 @@ kwboot_usage(FILE *stream, char *progname)
 	fprintf(stream, "  -a: use timings for Armada XP\n");
 	fprintf(stream, "  -q <req-delay>:  use specific request-delay\n");
 	fprintf(stream, "  -s <resp-timeo>: use specific response-timeout\n");
+	fprintf(stream,
+		"  -o <block-timeo>: use specific xmodem block timeout\n");
 	fprintf(stream, "\n");
 	fprintf(stream, "  -t: mini terminal\n");
 	fprintf(stream, "\n");
@@ -718,7 +731,7 @@ main(int argc, char **argv)
 	kwboot_verbose = isatty(STDOUT_FILENO);
 
 	do {
-		int c = getopt(argc, argv, "hb:ptaB:dD:q:s:");
+		int c = getopt(argc, argv, "hb:ptaB:dD:q:s:o:");
 		if (c < 0)
 			break;
 
@@ -756,6 +769,10 @@ main(int argc, char **argv)
 
 		case 's':
 			msg_rsp_timeo = atoi(optarg);
+			break;
+
+		case 'o':
+			blk_rsp_timeo = atoi(optarg);
 			break;
 
 		case 'B':

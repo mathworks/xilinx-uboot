@@ -17,7 +17,6 @@
  */
 #define CONFIG_OMAP4430		1	/* which is in a 4430 */
 #define CONFIG_MISC_INIT_R
-#define CONFIG_ARCH_CPU_INIT
 #define CONFIG_DISPLAY_CPUINFO		1
 #define CONFIG_DISPLAY_BOARDINFO	1
 
@@ -82,6 +81,33 @@
 /*
  * Environment setup
  */
+#define BOOTENV_DEV_LEGACY_MMC(devtypeu, devtypel, instance) \
+	"bootcmd_" #devtypel #instance "=" \
+	"setenv mmcdev " #instance"; "\
+	"setenv bootpart " #instance":2 ; "\
+	"run mmcboot\0"
+
+#define BOOTENV_DEV_NAME_LEGACY_MMC(devtypeu, devtypel, instance) \
+	#devtypel #instance " "
+
+#define BOOTENV_DEV_NAME_NAND(devtypeu, devtypel, instance) \
+	#devtypel #instance " "
+
+#define BOOT_TARGET_DEVICES(func) \
+	func(MMC, mmc, 0) \
+	func(LEGACY_MMC, legacy_mmc, 0) \
+	func(MMC, mmc, 1) \
+	func(LEGACY_MMC, legacy_mmc, 1) \
+	func(PXE, pxe, na) \
+	func(DHCP, dhcp, na)
+
+#define CONFIG_BOOTCOMMAND \
+	"run findfdt; " \
+	"run envboot; " \
+	"run distro_bootcmd"
+
+#include <config_distro_bootcmd.h>
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	DEFAULT_MMC_TI_ARGS \
@@ -92,17 +118,14 @@
 	"bootfile=zImage\0" \
 	"usbtty=cdc_acm\0" \
 	"vram=16M\0" \
-	"loadbootscript=load mmc ${mmcdev} ${loadaddr} boot.scr\0" \
-	"bootscript=echo Running bootscript from mmc${mmcdev} ...; " \
-		"source ${loadaddr}\0" \
-	"loadbootenv=load mmc ${mmcdev} ${loadaddr} uEnv.txt\0" \
-	"importbootenv=echo Importing environment from mmc${mmcdev} ...; " \
-		"env import -t ${loadaddr} ${filesize}\0" \
 	"loadimage=load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootfile}\0" \
 	"loaduimage=load mmc ${mmcdev} ${loadaddr} uImage\0" \
 	"mmcboot=echo Booting from mmc${mmcdev} ...; " \
 		"run args_mmc; " \
-		"bootz ${loadaddr} - ${fdtaddr}\0" \
+		"if run loadimage; then " \
+			"run loadfdt; " \
+			"bootz ${loadaddr} - ${fdtaddr}; " \
+		"fi;\0" \
 	"uimageboot=echo Booting from mmc${mmcdev} ...; " \
 		"run args_mmc; " \
 		"bootm ${loadaddr}\0" \
@@ -120,30 +143,7 @@
 		"if test $fdtfile = undefined; then " \
 			"echo WARNING: Could not determine device tree to use; fi; \0" \
 	"loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}/${fdtfile}\0" \
-
-#define CONFIG_BOOTCOMMAND \
-	"run findfdt; " \
-	"mmc dev ${mmcdev}; if mmc rescan; then " \
-		"echo SD/MMC found on device ${mmcdev};" \
-		"if run loadbootscript; then " \
-			"run bootscript; " \
-		"else " \
-			"if run loadbootenv; then " \
-				"run importbootenv; " \
-			"fi;" \
-			"if test -n ${uenvcmd}; then " \
-				"echo Running uenvcmd ...;" \
-				"run uenvcmd;" \
-			"fi;" \
-		"fi;" \
-		"if run loadimage; then " \
-			"run loadfdt;" \
-			"run mmcboot; " \
-		"fi; " \
-		"if run loaduimage; then " \
-			"run uimageboot;" \
-		"fi; " \
-	"fi"
+	BOOTENV
 
 /*
  * Defines for SPL

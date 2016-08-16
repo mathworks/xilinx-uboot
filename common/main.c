@@ -20,19 +20,6 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 __weak void show_boot_progress(int val) {}
 
-static void modem_init(void)
-{
-#ifdef CONFIG_MODEM_SUPPORT
-	debug("DEBUG: main_loop:   gd->do_mdm_init=%lu\n", gd->do_mdm_init);
-	if (gd->do_mdm_init) {
-		char *str = getenv("mdm_cmd");
-
-		setenv("preboot", str);  /* set or delete definition */
-		mdm_init(); /* wait for modem connection */
-	}
-#endif  /* CONFIG_MODEM_SUPPORT */
-}
-
 static void run_preboot_environment_command(void)
 {
 #ifdef CONFIG_PREBOOT
@@ -60,13 +47,6 @@ void main_loop(void)
 
 	bootstage_mark_name(BOOTSTAGE_ID_MAIN_LOOP, "main_loop");
 
-#ifndef CONFIG_SYS_GENERIC_BOARD
-	puts("Warning: Your board does not use generic board. Please read\n");
-	puts("doc/README.generic-board and take action. Boards not\n");
-	puts("upgraded by the late 2014 may break or be removed.\n");
-#endif
-
-	modem_init();
 #ifdef CONFIG_VERSION_VARIABLE
 	setenv("ver", version_string);  /* set version variable */
 #endif /* CONFIG_VERSION_VARIABLE */
@@ -86,4 +66,5 @@ void main_loop(void)
 	autoboot_command(s);
 
 	cli_loop();
+	panic("No CLI available");
 }

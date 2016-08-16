@@ -10,11 +10,10 @@
 #include <pci.h>
 #include <asm/pci.h>
 #include <asm/pirq_routing.h>
-#include <asm/tables.h>
 
 static bool irq_already_routed[16];
 
-static u8 pirq_get_next_free_irq(u8 *pirq, u16 bitmap)
+static u8 pirq_get_next_free_irq(struct udevice *dev, u8 *pirq, u16 bitmap)
 {
 	int i, link;
 	u8 irq = 0;
@@ -33,7 +32,7 @@ static u8 pirq_get_next_free_irq(u8 *pirq, u16 bitmap)
 			continue;
 
 		for (link = 0; link < CONFIG_MAX_PIRQ_LINKS; link++) {
-			if (pirq_check_irq_routed(link, irq)) {
+			if (pirq_check_irq_routed(dev, link, irq)) {
 				irq_already_routed[irq] = true;
 				break;
 			}
@@ -52,7 +51,7 @@ static u8 pirq_get_next_free_irq(u8 *pirq, u16 bitmap)
 	return irq;
 }
 
-void pirq_route_irqs(struct irq_info *irq, int num)
+void pirq_route_irqs(struct udevice *dev, struct irq_info *irq, int num)
 {
 	unsigned char irq_slot[MAX_INTX_ENTRIES];
 	unsigned char pirq[CONFIG_MAX_PIRQ_LINKS];
@@ -80,11 +79,11 @@ void pirq_route_irqs(struct irq_info *irq, int num)
 			}
 
 			/* translate link value to link number */
-			link = pirq_translate_link(link);
+			link = pirq_translate_link(dev, link);
 
 			/* yet not routed */
 			if (!pirq[link]) {
-				irq = pirq_get_next_free_irq(pirq, bitmap);
+				irq = pirq_get_next_free_irq(dev, pirq, bitmap);
 				pirq[link] = irq;
 			} else {
 				irq = pirq[link];
@@ -94,7 +93,7 @@ void pirq_route_irqs(struct irq_info *irq, int num)
 			irq_slot[intx] = irq;
 
 			/* Assign IRQ in the interrupt router */
-			pirq_assign_irq(link, irq);
+			pirq_assign_irq(dev, link, irq);
 		}
 
 		/* Bus, device, slots IRQs for {A,B,C,D} */
@@ -110,9 +109,6 @@ void pirq_route_irqs(struct irq_info *irq, int num)
 u32 copy_pirq_routing_table(u32 addr, struct irq_routing_table *rt)
 {
 	struct irq_routing_table *rom_rt;
-
-	/* Fix up the table checksum */
-	rt->checksum = table_compute_checksum(rt, rt->size);
 
 	/* Align the table to be 16 byte aligned */
 	addr = ALIGN(addr, 16);

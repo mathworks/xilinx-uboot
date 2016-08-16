@@ -43,18 +43,18 @@ obj-$(CONFIG_USB_EHCI_MX7) += ehci-mx6.o
 obj-$(CONFIG_USB_EHCI_OMAP) += ehci-omap.o
 obj-$(CONFIG_USB_EHCI_PPC4XX) += ehci-ppc4xx.o
 obj-$(CONFIG_USB_EHCI_MARVELL) += ehci-marvell.o
+obj-$(CONFIG_USB_EHCI_MSM) += ehci-msm.o
 obj-$(CONFIG_USB_EHCI_PCI) += ehci-pci.o
 obj-$(CONFIG_USB_EHCI_SPEAR) += ehci-spear.o
 obj-$(CONFIG_USB_EHCI_SUNXI) += ehci-sunxi.o
 obj-$(CONFIG_USB_EHCI_TEGRA) += ehci-tegra.o
-obj-$(CONFIG_USB_EHCI_UNIPHIER) += ehci-uniphier.o
 obj-$(CONFIG_USB_EHCI_VCT) += ehci-vct.o
 obj-$(CONFIG_USB_EHCI_VF) += ehci-vf.o
 obj-$(CONFIG_USB_EHCI_RMOBILE) += ehci-rmobile.o
 obj-$(CONFIG_USB_EHCI_ZYNQ) += ehci-zynq.o
 
 # xhci
-obj-$(CONFIG_USB_XHCI) += xhci.o xhci-mem.o xhci-ring.o
+obj-$(CONFIG_USB_XHCI_HCD) += xhci.o xhci-mem.o xhci-ring.o
 obj-$(CONFIG_USB_XHCI_DWC3) += xhci-dwc3.o
 obj-$(CONFIG_USB_XHCI_ZYNQMP) += xhci-zynqmp.o
 obj-$(CONFIG_USB_XHCI_KEYSTONE) += xhci-keystone.o

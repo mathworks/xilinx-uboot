@@ -19,7 +19,12 @@
 #include <configs/ti_omap3_common.h>
 #include <asm/mach-types.h>
 
-#undef CONFIG_BOOTDELAY
+/* SRAM starts at 0x40200000 and ends at 0x4020FFFF (64KB) */
+#undef CONFIG_SPL_MAX_SIZE
+#undef CONFIG_SPL_TEXT_BASE
+
+#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - CONFIG_SPL_TEXT_BASE)
+#define CONFIG_SPL_TEXT_BASE		0x40200000
 
 /*
  * Display CPU and Board information
@@ -43,7 +48,7 @@
 #else
 #error "status LED not defined for this machine."
 #endif
-#define RED_LED_DEV				0
+#define RED_LED_DEV			0
 #define STATUS_LED_BIT			RED_LED_GPIO
 #define STATUS_LED_STATE		STATUS_LED_ON
 #define STATUS_LED_PERIOD		(CONFIG_SYS_HZ / 2)
@@ -56,7 +61,7 @@
 #define CONFIG_OMAP3_GPIO_6		/* GPIO160..191 is in GPIO bank 6 */
 
 /* USB */
-#define CONFIG_USB_MUSB_UDC			1
+#define CONFIG_USB_MUSB_UDC		1
 #define CONFIG_USB_OMAP3		1
 #define CONFIG_TWL4030_USB		1
 
@@ -71,21 +76,11 @@
 #define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
 #define CONFIG_USBD_PRODUCT_NAME	"IGEP"
 
-#define CONFIG_CMD_CACHE
 #ifdef CONFIG_BOOT_ONENAND
 #define CONFIG_CMD_ONENAND	/* ONENAND support		*/
 #endif
-#if (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0020) || \
-    (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0032)
-#endif
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_PING
-
-/*#undef CONFIG_ENV_IS_NOWHERE*/
 
 #ifndef CONFIG_SPL_BUILD
-
-#include <config_distro_defaults.h>
 
 /* Environment */
 #define ENV_DEVICE_SETTINGS \
@@ -102,7 +97,6 @@
 	func(MMC, mmc, 0)
 
 #include <config_distro_bootcmd.h>
-
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	ENV_DEVICE_SETTINGS \
@@ -138,7 +132,7 @@
 #if defined(CONFIG_CMD_NET)
 #define CONFIG_SMC911X
 #define CONFIG_SMC911X_32_BIT
-#define CONFIG_SMC911X_BASE	0x2C000000
+#define CONFIG_SMC911X_BASE		0x2C000000
 #endif /* (CONFIG_CMD_NET) */
 
 /* OneNAND boot config */

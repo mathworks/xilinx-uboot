@@ -27,12 +27,31 @@ static struct phy_driver KSZ804_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
+#define MII_KSZPHY_OMSO		0x16
+#define KSZPHY_OMSO_B_CAST_OFF	(1 << 9)
+
+static int ksz_genconfig_bcastoff(struct phy_device *phydev)
+{
+	int ret;
+
+	ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZPHY_OMSO);
+	if (ret < 0)
+		return ret;
+
+	ret = phy_write(phydev, MDIO_DEVAD_NONE, MII_KSZPHY_OMSO,
+			ret | KSZPHY_OMSO_B_CAST_OFF);
+	if (ret < 0)
+		return ret;
+
+	return genphy_config(phydev);
+}
+
 static struct phy_driver KSZ8031_driver = {
 	.name = "Micrel KSZ8021/KSZ8031",
 	.uid = 0x221550,
 	.mask = 0xfffff0,
 	.features = PHY_BASIC_FEATURES,
-	.config = &genphy_config,
+	.config = &ksz_genconfig_bcastoff,
 	.startup = &genphy_startup,
 	.shutdown = &genphy_shutdown,
 };
@@ -70,7 +89,7 @@ static struct phy_driver KSZ8081_driver = {
 	.uid = 0x221560,
 	.mask = 0xfffff0,
 	.features = PHY_BASIC_FEATURES,
-	.config = &genphy_config,
+	.config = &ksz_genconfig_bcastoff,
 	.startup = &genphy_startup,
 	.shutdown = &genphy_shutdown,
 };
@@ -162,7 +181,12 @@ static struct phy_driver KS8721_driver = {
 static int ksz90xx_startup(struct phy_device *phydev)
 {
 	unsigned phy_ctl;
-	genphy_update_link(phydev);
+	int ret;
+
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
 	phy_ctl = phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZ90xx_PHY_CTL);
 
 	if (phy_ctl & MIIM_KSZ90xx_PHYCTL_DUPLEX)
@@ -211,7 +235,7 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 {
 	struct udevice *dev = phydev->dev;
 	struct phy_driver *drv = phydev->drv;
-	const int ps_to_regval = 200;
+	const int ps_to_regval = 60;
 	int val[4];
 	int i, changed = 0, offset, max;
 	u16 regval = 0;
@@ -260,7 +284,8 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 #define CTRL1000_CONFIG_MASTER		(1 << 11)
 #define CTRL1000_MANUAL_CONFIG		(1 << 12)
 
-#ifdef CONFIG_DM_ETH
+#if defined(CONFIG_DM_ETH) && (defined(CONFIG_PHY_MICREL_KSZ9021) || \
+			       defined(CONFIG_PHY_MICREL_KSZ9031))
 static const struct ksz90x1_reg_field ksz9021_clk_grp[] = {
 	{ "txen-skew-ps", 4, 0, 0x7 }, { "txc-skew-ps", 4, 4, 0x7 },
 	{ "rxdv-skew-ps", 4, 8, 0x7 }, { "rxc-skew-ps", 4, 12, 0x7 },
@@ -366,7 +391,8 @@ static struct phy_driver ksz9021_driver = {
 #define MII_KSZ9031_MMD_ACCES_CTRL	0x0d
 #define MII_KSZ9031_MMD_REG_DATA	0x0e
 
-#ifdef CONFIG_DM_ETH
+#if defined(CONFIG_DM_ETH) && (defined(CONFIG_PHY_MICREL_KSZ9021) || \
+			       defined(CONFIG_PHY_MICREL_KSZ9031))
 static const struct ksz90x1_reg_field ksz9031_ctl_grp[] =
 	{ { "txen-skew-ps", 4, 0, 0x7 }, { "rxdv-skew-ps", 4, 4, 0x7 } };
 static const struct ksz90x1_reg_field ksz9031_clk_grp[] =
@@ -461,6 +487,31 @@ static struct phy_driver ksz9031_driver = {
 	.readext = &ksz9031_phy_extread,
 };
 
+int ksz886x_config(struct phy_device *phydev)
+{
+	/* we are connected directly to the switch without
+	 * dedicated PHY. */
+	phydev->link = 1;
+	phydev->duplex = DUPLEX_FULL;
+	phydev->speed = SPEED_100;
+	return 0;
+}
+
+static int ksz886x_startup(struct phy_device *phydev)
+{
+	return 0;
+}
+
+static struct phy_driver ksz886x_driver = {
+	.name = "Micrel KSZ886x Switch",
+	.uid  = 0x00221430,
+	.mask = 0xfffff0,
+	.features = PHY_BASIC_FEATURES,
+	.config = &ksz886x_config,
+	.startup = &ksz886x_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 int phy_micrel_init(void)
 {
 	phy_register(&KSZ804_driver);
@@ -474,5 +525,6 @@ int phy_micrel_init(void)
 #endif
 	phy_register(&ksz9031_driver);
 	phy_register(&ksz8895_driver);
+	phy_register(&ksz886x_driver);
 	return 0;
 }

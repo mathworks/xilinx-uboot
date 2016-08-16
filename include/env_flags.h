@@ -57,8 +57,8 @@ enum env_flags_varaccess {
 	"gatewayip:i," \
 	"netmask:i," \
 	"serverip:i," \
-	"nvlan:i," \
-	"vlan:i," \
+	"nvlan:d," \
+	"vlan:d," \
 	"dnsip:i,"
 #else
 #define ETHADDR_FLAGS
@@ -143,7 +143,7 @@ int env_flags_validate_varaccess(const char *name, int check_mask);
 /*
  * Validate the parameters passed to "env set" for type compliance
  */
-int env_flags_validate_env_set_params(int argc, char * const argv[]);
+int env_flags_validate_env_set_params(char *name, char *const val[], int count);
 
 #else /* !USE_HOSTCC */
 

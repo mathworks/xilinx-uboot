@@ -339,7 +339,7 @@ static int sunxi_mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 		cmdval |= SUNXI_MMC_CMD_CHK_RESPONSE_CRC;
 
 	if (data) {
-		if ((u32) data->dest & 0x3) {
+		if ((u32)(long)data->dest & 0x3) {
 			error = -1;
 			goto out;
 		}
@@ -454,7 +454,7 @@ int sunxi_mmc_has_egon_boot_signature(struct mmc *mmc)
 		panic("Failed to allocate memory\n");
 
 	if (mmc_getcd(mmc) && mmc_init(mmc) == 0 &&
-	    mmc->block_dev.block_read(mmc->block_dev.dev, 16, 1, buf) == 1 &&
+	    mmc->block_dev.block_read(&mmc->block_dev, 16, 1, buf) == 1 &&
 	    strncmp(&buf[4], "eGON.BT0", 8) == 0)
 		valid_signature = 1;
 
@@ -480,6 +480,10 @@ struct mmc *sunxi_mmc_init(int sdc_no)
 
 	cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
 	cfg->host_caps = MMC_MODE_4BIT;
+#ifdef CONFIG_MACH_SUN50I
+	if (sdc_no == 2)
+		cfg->host_caps = MMC_MODE_8BIT;
+#endif
 	cfg->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 

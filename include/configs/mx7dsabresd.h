@@ -14,12 +14,19 @@
 #define CONFIG_DBG_MONITOR
 #define PHYS_SDRAM_SIZE			SZ_1G
 
+#define CONFIG_MXC_UART_BASE            UART1_IPS_BASE_ADDR
+
+/* Size of malloc() pool */
+#define CONFIG_SYS_MALLOC_LEN		(32 * SZ_1M)
+
+#define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_LATE_INIT
+
 /* Uncomment to enable secure boot support */
 /* #define CONFIG_SECURE_BOOT */
 #define CONFIG_CSF_SIZE			0x4000
 
 /* Network */
-#define CONFIG_CMD_MII
 #define CONFIG_FEC_MXC
 #define CONFIG_MII
 #define CONFIG_FEC_XCV_TYPE             RGMII
@@ -44,11 +51,7 @@
 #undef CONFIG_BOOTM_PLAN9
 #undef CONFIG_BOOTM_RTEMS
 
-#undef CONFIG_CMD_EXPORTENV
-#undef CONFIG_CMD_IMPORTENV
-
 /* I2C configs */
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
@@ -56,6 +59,28 @@
 
 #define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
+
+#ifdef CONFIG_IMX_BOOTAUX
+/* Set to QSPI1 A flash at default */
+#define CONFIG_SYS_AUXCORE_BOOTDATA 0x60000000
+
+#define UPDATE_M4_ENV \
+	"m4image=m4_qspi.bin\0" \
+	"loadm4image=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${m4image}\0" \
+	"update_m4_from_sd=" \
+		"if sf probe 0:0; then " \
+			"if run loadm4image; then " \
+				"setexpr fw_sz ${filesize} + 0xffff; " \
+				"setexpr fw_sz ${fw_sz} / 0x10000; "	\
+				"setexpr fw_sz ${fw_sz} * 0x10000; "	\
+				"sf erase 0x0 ${fw_sz}; " \
+				"sf write ${loadaddr} 0x0 ${filesize}; " \
+			"fi; " \
+		"fi\0" \
+	"m4boot=sf probe 0:0; bootaux "__stringify(CONFIG_SYS_AUXCORE_BOOTDATA)"\0"
+#else
+#define UPDATE_M4_ENV ""
+#endif
 
 #define CONFIG_MFG_ENV_SETTINGS \
 	"mfgtool_args=setenv bootargs console=${console},${baudrate} " \
@@ -76,6 +101,7 @@
 		"rootfs part 0 2\0" \
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
+	UPDATE_M4_ENV \
 	CONFIG_MFG_ENV_SETTINGS \
 	CONFIG_DFU_ENV_SETTINGS \
 	"script=boot.scr\0" \
@@ -153,7 +179,6 @@
 		   "fi; " \
 	   "else run netboot; fi"
 
-#define CONFIG_CMD_MEMTEST
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x20000000)
 
@@ -179,15 +204,39 @@
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_SIZE			SZ_8K
 #define CONFIG_ENV_IS_IN_MMC
+
+/*
+ * If want to use nand, define CONFIG_NAND_MXS and rework board
+ * to support nand, since emmc has pin conflicts with nand
+ */
+#ifdef CONFIG_NAND_MXS
+#define CONFIG_CMD_NAND
+#define CONFIG_CMD_NAND_TRIMFFS
+
+/* NAND stuff */
+#define CONFIG_SYS_MAX_NAND_DEVICE	1
+#define CONFIG_SYS_NAND_BASE		0x40000000
+#define CONFIG_SYS_NAND_5_ADDR_CYCLE
+#define CONFIG_SYS_NAND_ONFI_DETECTION
+
+/* DMA stuff, needed for GPMI/MXS NAND support */
+#define CONFIG_APBH_DMA
+#define CONFIG_APBH_DMA_BURST
+#define CONFIG_APBH_DMA_BURST8
+#endif
+
 #define CONFIG_ENV_OFFSET		(8 * SZ_64K)
+#ifdef CONFIG_NAND_MXS
+#define CONFIG_SYS_FSL_USDHC_NUM	1
+#else
 #define CONFIG_SYS_FSL_USDHC_NUM	2
+#endif
 
 #define CONFIG_SYS_MMC_ENV_DEV		0   /* USDHC1 */
 #define CONFIG_SYS_MMC_ENV_PART		0	/* user area */
 #define CONFIG_MMCROOT			"/dev/mmcblk0p2"  /* USDHC1 */
 
 /* USB Configs */
-#define CONFIG_CMD_USB
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_MX7
 #define CONFIG_USB_STORAGE
@@ -200,22 +249,11 @@
 
 #define CONFIG_IMX_THERMAL
 
-#define CONFIG_CI_UDC
 #define CONFIG_USBD_HS
-#define CONFIG_USB_GADGET_DUALSPEED
 
-#define CONFIG_USB_GADGET
-#define CONFIG_CMD_USB_MASS_STORAGE
 #define CONFIG_USB_FUNCTION_MASS_STORAGE
-#define CONFIG_USB_GADGET_DOWNLOAD
-#define CONFIG_USB_GADGET_VBUS_DRAW	2
-
-#define CONFIG_G_DNL_VENDOR_NUM		0x0525
-#define CONFIG_G_DNL_PRODUCT_NUM	0xa4a5
-#define CONFIG_G_DNL_MANUFACTURER	"FSL"
 
 /* USB Device Firmware Update support */
-#define CONFIG_CMD_DFU
 #define CONFIG_USB_FUNCTION_DFU
 #define CONFIG_DFU_MMC
 #define CONFIG_DFU_RAM
@@ -237,7 +275,6 @@
 #endif
 
 #ifdef CONFIG_FSL_QSPI
-#define CONFIG_CMD_SF
 #define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_MACRONIX
 #define CONFIG_SPI_FLASH_BAR

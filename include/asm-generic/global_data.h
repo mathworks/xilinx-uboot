@@ -48,10 +48,6 @@ typedef struct global_data {
 #ifdef CONFIG_PRE_CONSOLE_BUFFER
 	unsigned long precon_buf_idx;	/* Pre-Console buffer index */
 #endif
-#ifdef CONFIG_MODEM_SUPPORT
-	unsigned long do_mdm_init;
-	unsigned long be_quiet;
-#endif
 	unsigned long env_addr;	/* Address  of Environment struct */
 	unsigned long env_valid;	/* Checksum of Environment valid? */
 
@@ -122,6 +118,10 @@ typedef struct global_data {
 	struct membuff console_out;	/* console output */
 	struct membuff console_in;	/* console input */
 #endif
+#ifdef CONFIG_DM_VIDEO
+	ulong video_top;		/* Top of video frame buffer area */
+	ulong video_bottom;		/* Bottom of video frame buffer area */
+#endif
 } gd_t;
 #endif
 
@@ -141,5 +141,6 @@ typedef struct global_data {
 #define GD_FLG_SPL_INIT		0x00400	/* spl_init() has been called	   */
 #define GD_FLG_SKIP_RELOC	0x00800	/* Don't relocate */
 #define GD_FLG_RECORD		0x01000	/* Record console */
+#define GD_FLG_ENV_DEFAULT	0x02000 /* Default variable flag */
 
 #endif /* __ASM_GENERIC_GBL_DATA_H */

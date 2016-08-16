@@ -37,8 +37,6 @@
 #define CONFIG_SYS_PCIE1_ADDR			(CONFIG_SYS_IMMR + 0x2400000)
 #define CONFIG_SYS_PCIE2_ADDR			(CONFIG_SYS_IMMR + 0x2500000)
 #define CONFIG_SYS_PCIE3_ADDR			(CONFIG_SYS_IMMR + 0x2600000)
-#define CONFIG_SYS_FSL_SEC_ADDR			(CONFIG_SYS_IMMR + 0x700000)
-#define CONFIG_SYS_FSL_JR0_ADDR			(CONFIG_SYS_IMMR + 0x710000)
 #define CONFIG_SYS_SEC_MON_ADDR			(CONFIG_SYS_IMMR + 0xe90000)
 #define CONFIG_SYS_SFP_ADDR			(CONFIG_SYS_IMMR + 0xe80200)
 
@@ -62,7 +60,11 @@
 #define CONFIG_SYS_PCIE2_PHYS_ADDR		0x4800000000ULL
 #define CONFIG_SYS_PCIE3_PHYS_ADDR		0x5000000000ULL
 /* LUT registers */
+#ifdef CONFIG_LS1012A
+#define PCIE_LUT_BASE				0xC0000
+#else
 #define PCIE_LUT_BASE				0x10000
+#endif
 #define PCIE_LUT_LCTRL0				0x7F8
 #define PCIE_LUT_DBG				0x7FC
 
@@ -157,6 +159,13 @@ struct sys_info {
 #define CONFIG_SYS_FSL_FM1_DTSEC1_ADDR		\
 		(CONFIG_SYS_IMMR + CONFIG_SYS_FSL_FM1_DTSEC1_OFFSET)
 
+#define CONFIG_SYS_FSL_SEC_OFFSET		0x700000ull
+#define CONFIG_SYS_FSL_JR0_OFFSET		0x710000ull
+#define CONFIG_SYS_FSL_SEC_ADDR \
+	(CONFIG_SYS_IMMR + CONFIG_SYS_FSL_SEC_OFFSET)
+#define CONFIG_SYS_FSL_JR0_ADDR \
+	(CONFIG_SYS_IMMR + CONFIG_SYS_FSL_JR0_OFFSET)
+
 /* Device Configuration and Pin Control */
 struct ccsr_gur {
 	u32     porsr1;         /* POR status 1 */
@@ -218,6 +227,9 @@ struct ccsr_gur {
 #define FSL_CHASSIS2_RCWSR0_MEM_PLL_RAT_MASK	0x3f
 #define FSL_CHASSIS2_RCWSR4_SRDS1_PRTCL_MASK	0xffff0000
 #define FSL_CHASSIS2_RCWSR4_SRDS1_PRTCL_SHIFT	16
+#define RCW_SB_EN_REG_INDEX	7
+#define RCW_SB_EN_MASK		0x00200000
+
 	u8      res_140[0x200-0x140];
 	u32     scratchrw[4];  /* Scratch Read/Write */
 	u8      res_210[0x300-0x210];
@@ -451,7 +463,8 @@ struct ccsr_serdes {
 		u32	res_0c;	/* 0x00c */
 		u32	pllcr3;
 		u32	pllcr4;
-		u8	res_18[0x20-0x18];
+		u32	pllcr5; /* 0x018 SerDes PLL1 Control 5 */
+		u8	res_1c[0x20-0x1c];
 	} bank[2];
 	u8	res_40[0x90-0x40];
 	u32	srdstcalcr;	/* 0x90 TX Calibration Control */
@@ -459,25 +472,25 @@ struct ccsr_serdes {
 	u32	srdsrcalcr;	/* 0xa0 RX Calibration Control */
 	u8	res_a4[0xb0-0xa4];
 	u32	srdsgr0;	/* 0xb0 General Register 0 */
-	u8	res_b4[0xe0-0xb4];
-	u32	srdspccr0;	/* 0xe0 Protocol Converter Config 0 */
-	u32	srdspccr1;	/* 0xe4 Protocol Converter Config 1 */
-	u32	srdspccr2;	/* 0xe8 Protocol Converter Config 2 */
-	u32	srdspccr3;	/* 0xec Protocol Converter Config 3 */
-	u32	srdspccr4;	/* 0xf0 Protocol Converter Config 4 */
-	u8	res_f4[0x100-0xf4];
+	u8	res_b4[0x100-0xb4];
 	struct {
-		u32	lnpssr;	/* 0x100, 0x120, ..., 0x1e0 */
+		u32	lnpssr0;	/* 0x100, 0x120, 0x140, 0x160 */
 		u8	res_104[0x120-0x104];
-	} srdslnpssr[4];
-	u8	res_180[0x300-0x180];
-	u32	srdspexeqcr;
-	u32	srdspexeqpcr[11];
-	u8	res_330[0x400-0x330];
-	u32	srdspexapcr;
-	u8	res_404[0x440-0x404];
-	u32	srdspexbpcr;
-	u8	res_444[0x800-0x444];
+	} lnpssr[4];	/* Lane A, B, C, D */
+	u8	res_180[0x200-0x180];
+	u32	srdspccr0;	/* 0x200 Protocol Configuration 0 */
+	u32	srdspccr1;	/* 0x204 Protocol Configuration 1 */
+	u32	srdspccr2;	/* 0x208 Protocol Configuration 2 */
+	u32	srdspccr3;	/* 0x20c Protocol Configuration 3 */
+	u32	srdspccr4;	/* 0x210 Protocol Configuration 4 */
+	u32	srdspccr5;	/* 0x214 Protocol Configuration 5 */
+	u32	srdspccr6;	/* 0x218 Protocol Configuration 6 */
+	u32	srdspccr7;	/* 0x21c Protocol Configuration 7 */
+	u32	srdspccr8;	/* 0x220 Protocol Configuration 8 */
+	u32	srdspccr9;	/* 0x224 Protocol Configuration 9 */
+	u32	srdspccra;	/* 0x228 Protocol Configuration A */
+	u32	srdspccrb;	/* 0x22c Protocol Configuration B */
+	u8	res_230[0x800-0x230];
 	struct {
 		u32	gcr0;	/* 0x800 General Control Register 0 */
 		u32	gcr1;	/* 0x804 General Control Register 1 */
@@ -490,8 +503,34 @@ struct ccsr_serdes {
 		u32	ttlcr0;	/* 0x820 Transition Tracking Loop Ctrl 0 */
 		u8	res_824[0x83c-0x824];
 		u32	tcsr3;
-	} lane[4];	/* Lane A, B, C, D, E, F, G, H */
-	u8	res_a00[0x1000-0xa00];	/* from 0xa00 to 0xfff */
+	} lane[4];	/* Lane A, B, C, D */
+	u8	res_900[0x1000-0x900];	/* from 0x900 to 0xfff */
+	struct {
+		u32	srdspexcr0;	/* 0x1000, 0x1040, 0x1080 */
+		u8	res_1004[0x1040-0x1004];
+	} pcie[3];
+	u8	res_10c0[0x1800-0x10c0];
+	struct {
+		u8	res_1800[0x1804-0x1800];
+		u32	srdssgmiicr1;	/* 0x1804 SGMII Protocol Control 1 */
+		u8	res_1808[0x180c-0x1808];
+		u32	srdssgmiicr3;	/* 0x180c SGMII Protocol Control 3 */
+	} sgmii[4];	/* Lane A, B, C, D */
+	u8	res_1840[0x1880-0x1840];
+	struct {
+		u8	res_1880[0x1884-0x1880];
+		u32	srdsqsgmiicr1;	/* 0x1884 QSGMII Protocol Control 1 */
+		u8	res_1888[0x188c-0x1888];
+		u32	srdsqsgmiicr3;	/* 0x188c QSGMII Protocol Control 3 */
+	} qsgmii[2];	/* Lane A, B */
+	u8	res_18a0[0x1980-0x18a0];
+	struct {
+		u8	res_1980[0x1984-0x1980];
+		u32	srdsxficr1;	/* 0x1984 XFI Protocol Control 1 */
+		u8	res_1988[0x198c-0x1988];
+		u32	srdsxficr3;	/* 0x198c XFI Protocol Control 3 */
+	} xfi[2];	/* Lane A, B */
+	u8	res_19a0[0x2000-0x19a0];	/* from 0x19a0 to 0x1fff */
 };
 
 #define CCI400_CTRLORD_TERM_BARRIER	0x00000008
@@ -556,5 +595,7 @@ struct ccsr_cci400 {
 
 #define SCR0_CLIENTPD_MASK		0x00000001
 #define SCR0_USFCFG_MASK		0x00000400
+
+uint get_svr(void);
 
 #endif	/* __ARCH_FSL_LSCH2_IMMAP_H__*/

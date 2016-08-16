@@ -12,6 +12,8 @@
 
 #include <asm/hardware.h>
 
+#define CONFIG_SYS_CACHELINE_SIZE	32
+
 #define CONFIG_SYS_TEXT_BASE		0x26f00000
 
 /* ARM asynchronous clock */
@@ -28,14 +30,10 @@
 #define CONFIG_DISPLAY_CPUINFO
 
 #define CONFIG_ENV_VARS_UBOOT_CONFIG
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_OF_LIBFDT		/* Device Tree support */
-
 
 /* general purpose I/O */
 #define CONFIG_AT91_GPIO
 
-#define CONFIG_BOOTDELAY		3
 
 /*
  * BOOTP options
@@ -48,8 +46,6 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 
 #ifdef CONFIG_SYS_USE_MMC
 
@@ -115,7 +111,6 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(4 * 1024 * 1024)

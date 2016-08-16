@@ -137,6 +137,8 @@ struct sunxi_ccm_reg {
 	u32 apb1_reset_cfg;	/* 0x2d0 APB1 Reset config */
 	u32 reserved24;
 	u32 apb2_reset_cfg;	/* 0x2d8 APB2 Reset config */
+	u32 reserved25[5];
+	u32 ccu_sec_switch;	/* 0x2f0 CCU Security Switch, H3 only */
 };
 
 /* apb2 bit field */
@@ -220,15 +222,30 @@ struct sunxi_ccm_reg {
 #define CCM_PLL11_CTRL_UPD		(0x1 << 30)
 #define CCM_PLL11_CTRL_EN		(0x1 << 31)
 
+#if defined(CONFIG_MACH_SUN50I)
+/* AHB1=100MHz failsafe setup from the FEL mode, usable with PMIC defaults */
+#define AHB1_ABP1_DIV_DEFAULT		0x00003190 /* AHB1=PLL6/6,APB1=AHB1/2 */
+#else
 #define AHB1_ABP1_DIV_DEFAULT		0x00003180 /* AHB1=PLL6/3,APB1=AHB1/2 */
+#endif
 
 #define AXI_GATE_OFFSET_DRAM		0
 
 /* ahb_gate0 offsets */
 #define AHB_GATE_OFFSET_USB_OHCI1	30
 #define AHB_GATE_OFFSET_USB_OHCI0	29
+#ifdef CONFIG_MACH_SUN8I_H3
+/*
+ * These are EHCI1 - EHCI3 in the datasheet (EHCI0 is for the OTG) we call
+ * them 0 - 2 like they were called on older SoCs.
+ */
+#define AHB_GATE_OFFSET_USB_EHCI2	27
+#define AHB_GATE_OFFSET_USB_EHCI1	26
+#define AHB_GATE_OFFSET_USB_EHCI0	25
+#else
 #define AHB_GATE_OFFSET_USB_EHCI1	27
 #define AHB_GATE_OFFSET_USB_EHCI0	26
+#endif
 #define AHB_GATE_OFFSET_USB0		24
 #define AHB_GATE_OFFSET_MCTL		14
 #define AHB_GATE_OFFSET_GMAC		17
@@ -261,13 +278,25 @@ struct sunxi_ccm_reg {
 #define CCM_USB_CTRL_PHY0_RST (0x1 << 0)
 #define CCM_USB_CTRL_PHY1_RST (0x1 << 1)
 #define CCM_USB_CTRL_PHY2_RST (0x1 << 2)
+#define CCM_USB_CTRL_PHY3_RST (0x1 << 3)
 /* There is no global phy clk gate on sun6i, define as 0 */
 #define CCM_USB_CTRL_PHYGATE 0
 #define CCM_USB_CTRL_PHY0_CLK (0x1 << 8)
 #define CCM_USB_CTRL_PHY1_CLK (0x1 << 9)
 #define CCM_USB_CTRL_PHY2_CLK (0x1 << 10)
+#define CCM_USB_CTRL_PHY3_CLK (0x1 << 11)
+#ifdef CONFIG_MACH_SUN8I_H3
+/*
+ * These are OHCI1 - OHCI3 in the datasheet (OHCI0 is for the OTG) we call
+ * them 0 - 2 like they were called on older SoCs.
+ */
+#define CCM_USB_CTRL_OHCI0_CLK (0x1 << 17)
+#define CCM_USB_CTRL_OHCI1_CLK (0x1 << 18)
+#define CCM_USB_CTRL_OHCI2_CLK (0x1 << 19)
+#else
 #define CCM_USB_CTRL_OHCI0_CLK (0x1 << 16)
 #define CCM_USB_CTRL_OHCI1_CLK (0x1 << 17)
+#endif
 
 #define CCM_GMAC_CTRL_TX_CLK_SRC_MII	0x0
 #define CCM_GMAC_CTRL_TX_CLK_SRC_EXT_RGMII 0x1
@@ -326,10 +355,12 @@ struct sunxi_ccm_reg {
 #define CCM_HDMI_CTRL_DDC_GATE		(0x1 << 30)
 #define CCM_HDMI_CTRL_GATE		(0x1 << 31)
 
-#ifndef CONFIG_MACH_SUN8I
-#define MBUS_CLK_DEFAULT		0x81000001 /* PLL6 / 2 */
-#else
+#if defined(CONFIG_MACH_SUN50I)
+#define MBUS_CLK_DEFAULT		0x81000002 /* PLL6x2 / 3 */
+#elif defined(CONFIG_MACH_SUN8I)
 #define MBUS_CLK_DEFAULT		0x81000003 /* PLL6 / 4 */
+#else
+#define MBUS_CLK_DEFAULT		0x81000001 /* PLL6 / 2 */
 #endif
 #define MBUS_CLK_GATE			(0x1 << 31)
 
@@ -374,6 +405,11 @@ struct sunxi_ccm_reg {
 #define CCM_DE_CTRL_PLL9		(4 << 24)
 #define CCM_DE_CTRL_PLL10		(5 << 24)
 #define CCM_DE_CTRL_GATE		(1 << 31)
+
+/* CCU security switch, H3 only */
+#define CCM_SEC_SWITCH_MBUS_NONSEC	(1 << 2)
+#define CCM_SEC_SWITCH_BUS_NONSEC	(1 << 1)
+#define CCM_SEC_SWITCH_PLL_NONSEC	(1 << 0)
 
 #ifndef __ASSEMBLY__
 void clock_set_pll1(unsigned int hz);

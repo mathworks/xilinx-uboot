@@ -28,7 +28,7 @@
 #include <power/pfuze100_pmic.h>
 #include "../common/pfuze.h"
 #include <usb.h>
-#include <usb/ehci-fsl.h>
+#include <usb/ehci-ci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -57,7 +57,7 @@ DECLARE_GLOBAL_DATA_PTR;
 			PAD_CTL_DSE_80ohm | PAD_CTL_HYS |	\
 			PAD_CTL_SRE_FAST)
 
-#define ETH_PHY_RESET	IMX_GPIO_NR(4, 21)
+#define ETH_PHY_POWER	IMX_GPIO_NR(4, 21)
 
 int dram_init(void)
 {
@@ -154,10 +154,9 @@ static void setup_iomux_fec(void)
 {
 	imx_iomux_v3_setup_multiple_pads(fec_pads, ARRAY_SIZE(fec_pads));
 
-	/* Reset LAN8720 PHY */
-	gpio_direction_output(ETH_PHY_RESET , 0);
-	udelay(1000);
-	gpio_set_value(ETH_PHY_RESET, 1);
+	/* Power up LAN8720 PHY */
+	gpio_direction_output(ETH_PHY_POWER , 1);
+	udelay(15000);
 }
 
 #define USDHC1_CD_GPIO	IMX_GPIO_NR(4, 7)
@@ -169,6 +168,11 @@ static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC2_BASE_ADDR, 0, 4},
 	{USDHC3_BASE_ADDR, 0, 4},
 };
+
+int board_mmc_get_env_dev(int devno)
+{
+	return devno;
+}
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -197,7 +201,7 @@ int board_mmc_init(bd_t *bis)
 
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    USDHC1
 	 * mmc1                    USDHC2
 	 * mmc2                    USDHC3
@@ -226,14 +230,14 @@ int board_mmc_init(bd_t *bis)
 			printf("Warning: you configured more USDHC controllers"
 				"(%d) than supported by the board\n", i + 1);
 			return -EINVAL;
-			}
+		}
 
-			ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
-			if (ret) {
-				printf("Warning: failed to initialize "
-					"mmc dev %d\n", i);
-				return ret;
-			}
+		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
+		if (ret) {
+			printf("Warning: failed to initialize "
+				"mmc dev %d\n", i);
+			return ret;
+		}
 	}
 
 	return 0;

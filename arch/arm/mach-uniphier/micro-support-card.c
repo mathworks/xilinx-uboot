@@ -7,7 +7,8 @@
 #include <common.h>
 #include <linux/ctype.h>
 #include <linux/io.h>
-#include <mach/micro-support-card.h>
+
+#include "micro-support-card.h"
 
 #define MICRO_SUPPORT_CARD_BASE		0x43f00000
 #define SMC911X_BASE			((MICRO_SUPPORT_CARD_BASE) + 0x00000)
@@ -24,12 +25,12 @@
  */
 void support_card_reset_deassert(void)
 {
-	writel(0, MICRO_SUPPORT_CARD_RESET);
+	writel(0x00010000, MICRO_SUPPORT_CARD_RESET);
 }
 
 void support_card_reset(void)
 {
-	writel(3, MICRO_SUPPORT_CARD_RESET);
+	writel(0x00020003, MICRO_SUPPORT_CARD_RESET);
 }
 
 static int support_card_show_revision(void)
@@ -70,7 +71,6 @@ int board_eth_init(bd_t *bis)
 #if !defined(CONFIG_SYS_NO_FLASH)
 
 #include <mtd/cfi_flash.h>
-#include <mach/sbc-regs.h>
 
 struct memory_bank {
 	phys_addr_t base;
@@ -142,7 +142,8 @@ static void detect_num_flash_banks(void)
 								memory_bank;
 
 			debug("flash bank found: base = 0x%lx, size = 0x%lx\n",
-			      memory_bank->base, memory_bank->size);
+			      (unsigned long)memory_bank->base,
+			      (unsigned long)memory_bank->size);
 			cfi_flash_num_flash_banks++;
 		}
 	}

@@ -39,6 +39,10 @@ struct arch_global_data {
 #if !(defined(CONFIG_SYS_ICACHE_OFF) && defined(CONFIG_SYS_DCACHE_OFF))
 	unsigned long tlb_addr;
 	unsigned long tlb_size;
+#if defined(CONFIG_ARM64)
+	unsigned long tlb_fillptr;
+	unsigned long tlb_emerg;
+#endif
 #endif
 
 #ifdef CONFIG_OMAP_COMMON

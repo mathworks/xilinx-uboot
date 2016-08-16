@@ -6,7 +6,6 @@
  */
 
 #include <common.h>
-#include <netdev.h>
 #include <power/as3722.h>
 
 #include <asm/arch/gpio.h>
@@ -32,6 +31,9 @@ void pinmux_init(void)
 
 	pinmux_config_drvgrp_table(jetson_tk1_drvgrps,
 				   ARRAY_SIZE(jetson_tk1_drvgrps));
+
+	pinmux_config_mipipadctrlgrp_table(jetson_tk1_mipipadctrlgrps,
+					ARRAY_SIZE(jetson_tk1_mipipadctrlgrps));
 }
 
 #ifdef CONFIG_PCI_TEGRA
@@ -58,24 +60,6 @@ int tegra_pcie_board_init(void)
 		return err;
 	}
 
-	err = as3722_gpio_configure(pmic, 1, AS3722_GPIO_OUTPUT_VDDH |
-					     AS3722_GPIO_INVERT);
-	if (err < 0) {
-		error("failed to configure GPIO#1 as output: %d\n", err);
-		return err;
-	}
-
-	err = as3722_gpio_direction_output(pmic, 2, 1);
-	if (err < 0) {
-		error("failed to set GPIO#2 high: %d\n", err);
-		return err;
-	}
-
 	return 0;
-}
-
-int board_eth_init(bd_t *bis)
-{
-	return pci_eth_init(bis);
 }
 #endif /* PCI */

@@ -47,6 +47,9 @@ enum cpu_attrib {
 	CPU_ATTR_DRAM_CS3 = 0x07,
 	CPU_ATTR_NANDFLASH = 0x2f,
 	CPU_ATTR_SPIFLASH = 0x1e,
+	CPU_ATTR_SPI0_CS0 = 0x1e,
+	CPU_ATTR_SPI0_CS1 = 0x5e,
+	CPU_ATTR_SPI1_CS2 = 0x9a,
 	CPU_ATTR_BOOTROM = 0x1d,
 	CPU_ATTR_PCIE_IO = 0xe0,
 	CPU_ATTR_PCIE_MEM = 0xe8,
@@ -58,6 +61,7 @@ enum cpu_attrib {
 
 enum {
 	MVEBU_SOC_AXP,
+	MVEBU_SOC_A375,
 	MVEBU_SOC_A38X,
 	MVEBU_SOC_UNKNOWN,
 };
@@ -86,7 +90,11 @@ struct mbus_win {
  * Ref: Datasheet sec:A.28
  */
 struct mvebu_system_registers {
+#if defined(CONFIG_ARMADA_375)
+	u8 pad1[0x54];
+#else
 	u8 pad1[0x60];
+#endif
 	u32 rstoutn_mask; /* 0x60 */
 	u32 sys_soft_rst; /* 0x64 */
 };
@@ -106,6 +114,14 @@ struct kwgpio_registers {
 	u32 irq_level;
 };
 
+struct sar_freq_modes {
+	u8 val;
+	u8 ffc;		/* Fabric Frequency Configuration */
+	u32 p_clk;
+	u32 nb_clk;
+	u32 d_clk;
+};
+
 /* Needed for dynamic (board-specific) mbus configuration */
 extern struct mvebu_mbus_state mbus_state;
 
@@ -123,6 +139,8 @@ void return_to_bootrom(void);
 
 int mv_sdh_init(unsigned long regbase, u32 max_clk, u32 min_clk, u32 quirks);
 
+void get_sar_freq(struct sar_freq_modes *sar_freq);
+
 /*
  * Highspeed SERDES PHY config init, ported from bin_hdr
  * to mainline U-Boot
@@ -135,5 +153,18 @@ int serdes_phy_config(void);
  * drivers/ddr/marvell
  */
 int ddr3_init(void);
+
+struct mvebu_lcd_info {
+	u32 fb_base;
+	int x_res;
+	int y_res;
+	int x_fp;		/* frontporch */
+	int y_fp;
+	int x_bp;		/* backporch */
+	int y_bp;
+};
+
+int mvebu_lcd_register_init(struct mvebu_lcd_info *lcd_info);
+
 #endif /* __ASSEMBLY__ */
 #endif /* _MVEBU_CPU_H */

@@ -14,6 +14,11 @@
 #ifndef __CONFIG_TI_OMAP3_COMMON_H__
 #define __CONFIG_TI_OMAP3_COMMON_H__
 
+/*
+ * High Level Configuration Options
+ */
+
+#define CONFIG_SYS_CACHELINE_SIZE	64
 
 #include <asm/arch/cpu.h>
 #include <asm/arch/omap.h>
@@ -71,9 +76,7 @@
 #define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
 					 (64 << 20))
 
-
 #ifdef CONFIG_NAND
-#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SYS_NAND_BASE		0x30000000
 #endif

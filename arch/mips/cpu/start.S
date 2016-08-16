@@ -56,10 +56,8 @@
 
 	.set noreorder
 
-	.globl _start
-	.text
-_start:
-	/* U-boot entry point */
+ENTRY(_start)
+	/* U-Boot entry point */
 	b	reset
 	 nop
 
@@ -117,7 +115,7 @@ reset:
 
 	/* Clear watch registers */
 	MTC0	zero, CP0_WATCHLO
-	MTC0	zero, CP0_WATCHHI
+	mtc0	zero, CP0_WATCHHI
 
 	/* WP(Watch Pending), SW0/1 should be cleared */
 	mtc0	zero, CP0_CAUSE
@@ -163,15 +161,17 @@ reset:
 #endif
 
 	/* Set up temporary stack */
-	PTR_LI	t0, -16
+	li	t0, -16
 	PTR_LI	t1, CONFIG_SYS_INIT_SP_ADDR
 	and	sp, t1, t0		# force 16 byte alignment
-	PTR_SUB	sp, sp, GD_SIZE		# reserve space for gd
+	PTR_SUBU \
+		sp, sp, GD_SIZE		# reserve space for gd
 	and	sp, sp, t0		# force 16 byte alignment
 	move	k0, sp			# save gd pointer
 #ifdef CONFIG_SYS_MALLOC_F_LEN
-	PTR_LI	t2, CONFIG_SYS_MALLOC_F_LEN
-	PTR_SUB	sp, sp, t2		# reserve space for early malloc
+	li	t2, CONFIG_SYS_MALLOC_F_LEN
+	PTR_SUBU \
+		sp, sp, t2		# reserve space for early malloc
 	and	sp, sp, t0		# force 16 byte alignment
 #endif
 	move	fp, sp
@@ -179,18 +179,20 @@ reset:
 	/* Clear gd */
 	move	t0, k0
 1:
-	sw	zero, 0(t0)
+	PTR_S	zero, 0(t0)
 	blt	t0, t1, 1b
-	 PTR_ADDI t0, 4
+	 PTR_ADDIU t0, PTRSIZE
 
 #ifdef CONFIG_SYS_MALLOC_F_LEN
-	PTR_ADDU t0, k0, GD_MALLOC_BASE	# gd->malloc_base offset
-	sw	sp, 0(t0)
+	PTR_S	sp, GD_MALLOC_BASE(k0)	# gd->malloc_base offset
 #endif
 
+	move	a0, zero		# a0 <-- boot_flags = 0
 	PTR_LA	t9, board_init_f
 	jr	t9
 	 move	ra, zero
+
+	END(_start)
 
 /*
  * void relocate_code (addr_sp, gd, addr_moni)
@@ -202,9 +204,7 @@ reset:
  * a1 = gd
  * a2 = destination address
  */
-	.globl	relocate_code
-	.ent	relocate_code
-relocate_code:
+ENTRY(relocate_code)
 	move	sp, a0			# set new stack pointer
 	move	fp, sp
 
@@ -226,11 +226,11 @@ relocate_code:
 	 * t2 = source end address
 	 */
 1:
-	lw	t3, 0(t0)
-	sw	t3, 0(t1)
-	PTR_ADDU t0, 4
+	PTR_L	t3, 0(t0)
+	PTR_S	t3, 0(t1)
+	PTR_ADDU t0, PTRSIZE
 	blt	t0, t2, 1b
-	 PTR_ADDU t1, 4
+	 PTR_ADDU t1, PTRSIZE
 
 	/* If caches were enabled, we would have to flush them here. */
 	PTR_SUB	a1, t1, s2		# a1 <-- size
@@ -239,7 +239,7 @@ relocate_code:
 	 move	a0, s2			# a0 <-- destination address
 
 	/* Jump to where we've relocated ourselves */
-	PTR_ADDI t0, s2, in_ram - _start
+	PTR_ADDIU t0, s2, in_ram - _start
 	jr	t0
 	 nop
 
@@ -259,7 +259,7 @@ in_ram:
 	PTR_L	t3, -(1 * PTRSIZE)(t0)	# t3 <-- num_got_entries
 	PTR_L	t8, -(2 * PTRSIZE)(t0)	# t8 <-- _GLOBAL_OFFSET_TABLE_
 	PTR_ADD	t8, s1			# t8 now holds relocated _G_O_T_
-	PTR_ADDI t8, t8, 2 * PTRSIZE	# skipping first two entries
+	PTR_ADDIU t8, t8, 2 * PTRSIZE	# skipping first two entries
 	PTR_LI	t2, 2
 1:
 	PTR_L	t1, 0(t8)
@@ -267,16 +267,16 @@ in_ram:
 	 PTR_ADD t1, s1
 	PTR_S	t1, 0(t8)
 2:
-	PTR_ADDI t2, 1
+	PTR_ADDIU t2, 1
 	blt	t2, t3, 1b
-	 PTR_ADDI t8, PTRSIZE
+	 PTR_ADDIU t8, PTRSIZE
 
 	/* Update dynamic relocations */
 	PTR_L	t1, -(4 * PTRSIZE)(t0)	# t1 <-- __rel_dyn_start
 	PTR_L	t2, -(5 * PTRSIZE)(t0)	# t2 <-- __rel_dyn_end
 
 	b	2f			# skip first reserved entry
-	 PTR_ADDI t1, 2 * PTRSIZE
+	 PTR_ADDIU t1, 2 * PTRSIZE
 
 1:
 	lw	t8, -4(t1)		# t8 <-- relocation info
@@ -295,7 +295,7 @@ in_ram:
 
 2:
 	blt	t1, t2, 1b
-	 PTR_ADDI t1, 2 * PTRSIZE	# each rel.dyn entry is 2*PTRSIZE bytes
+	 PTR_ADDIU t1, 2 * PTRSIZE	# each rel.dyn entry is 2*PTRSIZE bytes
 
 	/*
 	 * Clear BSS
@@ -309,7 +309,7 @@ in_ram:
 1:
 	PTR_S	zero, 0(t1)
 	blt	t1, t2, 1b
-	 PTR_ADDI t1, PTRSIZE
+	 PTR_ADDIU t1, PTRSIZE
 
 	move	a0, s0			# a0 <-- gd
 	move	a1, s2
@@ -317,4 +317,4 @@ in_ram:
 	jr	t9
 	 move	ra, zero
 
-	.end	relocate_code
+	END(relocate_code)

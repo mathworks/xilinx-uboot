@@ -115,7 +115,7 @@ int serial_init(void)
 /* Called after relocation */
 void serial_initialize(void)
 {
-	serial_find_console_or_panic();
+	serial_init();
 }
 
 static void _serial_putc(struct udevice *dev, char ch)
@@ -123,11 +123,12 @@ static void _serial_putc(struct udevice *dev, char ch)
 	struct dm_serial_ops *ops = serial_get_ops(dev);
 	int err;
 
+	if (ch == '\n')
+		_serial_putc(dev, '\r');
+
 	do {
 		err = ops->putc(dev, ch);
 	} while (err == -EAGAIN);
-	if (ch == '\n')
-		_serial_putc(dev, '\r');
 }
 
 static void _serial_puts(struct udevice *dev, const char *str)
@@ -204,7 +205,7 @@ void serial_stdio_init(void)
 {
 }
 
-#ifdef CONFIG_DM_STDIO
+#if defined(CONFIG_DM_STDIO) && CONFIG_IS_ENABLED(SERIAL_PRESENT)
 static void serial_stub_putc(struct stdio_dev *sdev, const char ch)
 {
 	_serial_putc(sdev->priv, ch);
@@ -287,6 +288,7 @@ static int on_baudrate(const char *name, const char *value, enum env_op op,
 }
 U_BOOT_ENV_CALLBACK(baudrate, on_baudrate);
 
+#if CONFIG_IS_ENABLED(SERIAL_PRESENT)
 static int serial_post_probe(struct udevice *dev)
 {
 	struct dm_serial_ops *ops = serial_get_ops(dev);
@@ -356,3 +358,4 @@ UCLASS_DRIVER(serial) = {
 	.pre_remove	= serial_pre_remove,
 	.per_device_auto_alloc_size = sizeof(struct serial_dev_priv),
 };
+#endif

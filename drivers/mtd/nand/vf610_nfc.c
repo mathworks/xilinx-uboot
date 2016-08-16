@@ -12,10 +12,7 @@
  *
  * Based on original driver mpc5121_nfc.c.
  *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Limitations:
  * - Untested on MPC5125 and M54418.
@@ -149,7 +146,6 @@ enum vf610_nfc_alt_buf {
 };
 
 struct vf610_nfc {
-	struct mtd_info *mtd;
 	struct nand_chip chip;
 	void __iomem *regs;
 	uint buf_offset;
@@ -158,8 +154,7 @@ struct vf610_nfc {
 	enum vf610_nfc_alt_buf alt_buf;
 };
 
-#define mtd_to_nfc(_mtd) \
-	(struct vf610_nfc *)((struct nand_chip *)_mtd->priv)->priv
+#define mtd_to_nfc(_mtd) nand_get_controller_data(mtd_to_nand(_mtd))
 
 #if defined(CONFIG_SYS_NAND_VF610_NFC_45_ECC_BYTES)
 #define ECC_HW_MODE ECC_45_BYTE
@@ -611,7 +606,7 @@ static int vf610_nfc_read_page(struct mtd_info *mtd, struct nand_chip *chip,
  * ECC will be calculated automatically
  */
 static int vf610_nfc_write_page(struct mtd_info *mtd, struct nand_chip *chip,
-			       const uint8_t *buf, int oob_required)
+			       const uint8_t *buf, int oob_required, int page)
 {
 	struct vf610_nfc *nfc = mtd_to_nfc(mtd);
 
@@ -633,7 +628,7 @@ struct vf610_nfc_config {
 
 static int vf610_nfc_nand_init(int devnum, void __iomem *addr)
 {
-	struct mtd_info *mtd = &nand_info[devnum];
+	struct mtd_info *mtd;
 	struct nand_chip *chip;
 	struct vf610_nfc *nfc;
 	int err = 0;
@@ -656,8 +651,8 @@ static int vf610_nfc_nand_init(int devnum, void __iomem *addr)
 	chip = &nfc->chip;
 	nfc->regs = addr;
 
-	mtd->priv = chip;
-	chip->priv = nfc;
+	mtd = nand_to_mtd(chip);
+	nand_set_controller_data(chip, nfc);
 
 	if (cfg.width == 16)
 		chip->options |= NAND_BUSWIDTH_16;
@@ -756,7 +751,7 @@ static int vf610_nfc_nand_init(int devnum, void __iomem *addr)
 	if (err)
 		return err;
 
-	err = nand_register(devnum);
+	err = nand_register(devnum, mtd);
 	if (err)
 		return err;
 

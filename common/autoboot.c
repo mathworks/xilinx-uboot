@@ -182,15 +182,10 @@ static int passwd_abort(uint64_t etime)
  * Watch for 'delay' seconds for autoboot stop or autoboot delay string.
  * returns: 0 -  no key string, allow autoboot 1 - got key string, abort
  */
-static int abortboot_keyed(int bootdelay)
+static int __abortboot(int bootdelay)
 {
 	int abort;
 	uint64_t etime = endtick(bootdelay);
-
-#ifndef CONFIG_ZERO_BOOTDELAY_CHECK
-	if (bootdelay == 0)
-		return 0;
-#endif
 
 #  ifdef CONFIG_AUTOBOOT_PROMPT
 	/*
@@ -204,11 +199,6 @@ static int abortboot_keyed(int bootdelay)
 	if (!abort)
 		debug_bootkeys("key timeout\n");
 
-#ifdef CONFIG_SILENT_CONSOLE
-	if (abort)
-		gd->flags &= ~GD_FLG_SILENT;
-#endif
-
 	return abort;
 }
 
@@ -218,7 +208,7 @@ static int abortboot_keyed(int bootdelay)
 static int menukey;
 #endif
 
-static int abortboot_normal(int bootdelay)
+static int __abortboot(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
@@ -226,23 +216,17 @@ static int abortboot_normal(int bootdelay)
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
-	if (bootdelay >= 0)
-		printf("Hit any key to stop autoboot: %2d ", bootdelay);
+	printf("Hit any key to stop autoboot: %2d ", bootdelay);
 #endif
 
-#if defined CONFIG_ZERO_BOOTDELAY_CHECK
 	/*
 	 * Check if key already pressed
-	 * Don't check if bootdelay < 0
 	 */
-	if (bootdelay >= 0) {
-		if (tstc()) {	/* we got a key press	*/
-			(void) getc();  /* consume input	*/
-			puts("\b\b\b 0");
-			abort = 1;	/* don't auto boot	*/
-		}
+	if (tstc()) {	/* we got a key press	*/
+		(void) getc();  /* consume input	*/
+		puts("\b\b\b 0");
+		abort = 1;	/* don't auto boot	*/
 	}
-#endif
 
 	while ((bootdelay > 0) && (!abort)) {
 		--bootdelay;
@@ -267,6 +251,17 @@ static int abortboot_normal(int bootdelay)
 
 	putc('\n');
 
+	return abort;
+}
+# endif	/* CONFIG_AUTOBOOT_KEYED */
+
+static int abortboot(int bootdelay)
+{
+	int abort = 0;
+
+	if (bootdelay >= 0)
+		abort = __abortboot(bootdelay);
+
 #ifdef CONFIG_SILENT_CONSOLE
 	if (abort)
 		gd->flags &= ~GD_FLG_SILENT;
@@ -274,20 +269,10 @@ static int abortboot_normal(int bootdelay)
 
 	return abort;
 }
-# endif	/* CONFIG_AUTOBOOT_KEYED */
-
-static int abortboot(int bootdelay)
-{
-#ifdef CONFIG_AUTOBOOT_KEYED
-	return abortboot_keyed(bootdelay);
-#else
-	return abortboot_normal(bootdelay);
-#endif
-}
 
 static void process_fdt_options(const void *blob)
 {
-#if defined(CONFIG_OF_CONTROL)
+#if defined(CONFIG_OF_CONTROL) && defined(CONFIG_SYS_TEXT_BASE)
 	ulong addr;
 
 	/* Add an env variable to point to a kernel payload, if available */
@@ -299,7 +284,7 @@ static void process_fdt_options(const void *blob)
 	addr = fdtdec_get_config_int(gd->fdt_blob, "rootdisk-offset", 0);
 	if (addr)
 		setenv_addr("rootaddr", (void *)(CONFIG_SYS_TEXT_BASE + addr));
-#endif /* CONFIG_OF_CONTROL */
+#endif /* CONFIG_OF_CONTROL && CONFIG_SYS_TEXT_BASE */
 }
 
 const char *bootdelay_process(void)

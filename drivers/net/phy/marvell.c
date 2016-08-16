@@ -103,7 +103,7 @@ static int m88e1011s_config(struct phy_device *phydev)
 /* Parse the 88E1011's status register for speed and duplex
  * information
  */
-static uint m88e1xxx_parse_status(struct phy_device *phydev)
+static int m88e1xxx_parse_status(struct phy_device *phydev)
 {
 	unsigned int speed;
 	unsigned int mii_reg;
@@ -120,7 +120,7 @@ static uint m88e1xxx_parse_status(struct phy_device *phydev)
 			if (i > PHY_AUTONEGOTIATE_TIMEOUT) {
 				puts(" TIMEOUT !\n");
 				phydev->link = 0;
-				break;
+				return -ETIMEDOUT;
 			}
 
 			if ((i++ % 1000) == 0)
@@ -162,17 +162,19 @@ static uint m88e1xxx_parse_status(struct phy_device *phydev)
 
 static int m88e1011s_startup(struct phy_device *phydev)
 {
-	genphy_update_link(phydev);
-	m88e1xxx_parse_status(phydev);
+	int ret;
 
-	return 0;
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return m88e1xxx_parse_status(phydev);
 }
 
 /* Marvell 88E1111S */
 static int m88e1111s_config(struct phy_device *phydev)
 {
 	int reg;
-	int timeout;
 
 	if ((phydev->interface == PHY_INTERFACE_MODE_RGMII) ||
 			(phydev->interface == PHY_INTERFACE_MODE_RGMII_ID) ||
@@ -236,16 +238,7 @@ static int m88e1111s_config(struct phy_device *phydev)
 			MIIM_88E1111_PHY_EXT_SR, reg);
 
 		/* soft reset */
-		timeout = 1000;
-		phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
-		udelay(1000);
-		reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-		while ((reg & BMCR_RESET) && --timeout) {
-			udelay(1000);
-			reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-		}
-		if (!timeout)
-			printf("%s: phy soft reset timeout\n", __func__);
+		phy_reset(phydev);
 
 		reg = phy_read(phydev, MDIO_DEVAD_NONE,
 			MIIM_88E1111_PHY_EXT_SR);
@@ -258,20 +251,10 @@ static int m88e1111s_config(struct phy_device *phydev)
 	}
 
 	/* soft reset */
-	timeout = 1000;
-	phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
-	udelay(1000);
-	reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-	while ((reg & BMCR_RESET) && --timeout) {
-		udelay(1000);
-		reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-	}
-	if (!timeout)
-		printf("%s: phy soft reset timeout\n", __func__);
+	phy_reset(phydev);
 
 	genphy_config_aneg(phydev);
-
-	phy_reset(phydev);
+	genphy_restart_aneg(phydev);
 
 	return 0;
 }
@@ -369,22 +352,21 @@ static int m88e1118_config(struct phy_device *phydev)
 	/* Change Page Number */
 	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1118_PHY_PAGE, 0x0000);
 
-	genphy_config_aneg(phydev);
-
-	phy_reset(phydev);
-
-	return 0;
+	return genphy_config_aneg(phydev);
 }
 
 static int m88e1118_startup(struct phy_device *phydev)
 {
+	int ret;
+
 	/* Change Page Number */
 	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1118_PHY_PAGE, 0x0000);
 
-	genphy_update_link(phydev);
-	m88e1xxx_parse_status(phydev);
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
 
-	return 0;
+	return m88e1xxx_parse_status(phydev);
 }
 
 /* Marvell 88E1121R */
@@ -441,12 +423,15 @@ static int m88e1145_config(struct phy_device *phydev)
 
 static int m88e1145_startup(struct phy_device *phydev)
 {
-	genphy_update_link(phydev);
+	int ret;
+
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
 	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1145_PHY_LED_CONTROL,
 			MIIM_88E1145_PHY_LED_DIRECT);
-	m88e1xxx_parse_status(phydev);
-
-	return 0;
+	return m88e1xxx_parse_status(phydev);
 }
 
 /* Marvell 88E1149S */
@@ -491,10 +476,7 @@ static int m88e1310_config(struct phy_device *phydev)
 	/* Ensure to return to page 0 */
 	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_PAGE, 0x0000);
 
-	genphy_config_aneg(phydev);
-	phy_reset(phydev);
-
-	return 0;
+	return genphy_config_aneg(phydev);
 }
 
 static struct phy_driver M88E1011S_driver = {

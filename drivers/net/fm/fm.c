@@ -10,7 +10,7 @@
 #include <asm/errno.h>
 
 #include "fm.h"
-#include "../../qe/qe.h"		/* For struct qe_firmware */
+#include <fsl_qe.h>		/* For struct qe_firmware */
 
 #ifdef CONFIG_SYS_QE_FMAN_FW_IN_NAND
 #include <nand.h>
@@ -360,7 +360,7 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 	size_t fw_length = CONFIG_SYS_QE_FMAN_FW_LENGTH;
 	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
 
-	rc = nand_read(&nand_info[0], (loff_t)CONFIG_SYS_FMAN_FW_ADDR,
+	rc = nand_read(nand_info[0], (loff_t)CONFIG_SYS_FMAN_FW_ADDR,
 		       &fw_length, (u_char *)addr);
 	if (rc == -EUCLEAN) {
 		printf("NAND read of FMAN firmware at offset 0x%x failed %d\n",
@@ -395,7 +395,8 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		printf("\nMMC read: dev # %u, block # %u, count %u ...\n",
 				dev, blk, cnt);
 		mmc_init(mmc);
-		(void)mmc->block_dev.block_read(dev, blk, cnt, addr);
+		(void)mmc->block_dev.block_read(&mmc->block_dev, blk, cnt,
+						addr);
 		/* flush cache after read */
 		flush_cache((ulong)addr, cnt * 512);
 	}

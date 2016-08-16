@@ -34,6 +34,8 @@ enum pirq_config {
  *		IRQ N is available to be routed
  * @lb_bdf:	irq router's PCI bus/device/function number encoding
  * @ibase:	IBASE register block base address
+ * @actl_8bit:	ACTL register width is 8-bit (for ICH series chipset)
+ * @actl_addr:	ACTL register offset
  */
 struct irq_router {
 	int config;
@@ -41,6 +43,8 @@ struct irq_router {
 	u16 irq_mask;
 	u32 bdf;
 	u32 ibase;
+	bool actl_8bit;
+	int actl_addr;
 };
 
 struct pirq_routing {
@@ -56,23 +60,10 @@ struct pirq_routing {
 #define PIRQ_BITMAP		0xdef8
 
 /**
- * cpu_irq_init() - Initialize CPU IRQ routing
+ * irq_router_common_init() - Perform common x86 interrupt init
  *
- * This initializes some platform-specific registers related to IRQ routing,
- * like configuring internal PCI devices to use which PCI interrupt pin,
- * and which PCI interrupt pin is mapped to which PIRQ line. Note on some
- * platforms, such IRQ routing might be hard-coded thus cannot configure.
+ * This creates the PIRQ routing table and routes the IRQs
  */
-void cpu_irq_init(void);
-
-/**
- * pirq_init() - Initialize platform PIRQ routing
- *
- * This initializes the PIRQ routing on the platform and configures all PCI
- * devices' interrupt line register to a working IRQ number on the 8259 PIC.
- *
- * @return 0 if OK, -ve on error
- */
-int pirq_init(void);
+int irq_router_common_init(struct udevice *dev);
 
 #endif /* _ARCH_IRQ_H_ */

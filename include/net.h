@@ -86,11 +86,13 @@ enum eth_state_t {
  * @iobase: The base address of the hardware registers
  * @enetaddr: The Ethernet MAC address that is loaded from EEPROM or env
  * @phy_interface: PHY interface to use - see PHY_INTERFACE_MODE_...
+ * @max_speed: Maximum speed of Ethernet connection supported by MAC
  */
 struct eth_pdata {
 	phys_addr_t iobase;
 	unsigned char enetaddr[6];
 	int phy_interface;
+	int max_speed;
 };
 
 enum eth_recv_flags {
@@ -181,8 +183,7 @@ int eth_unregister(struct eth_device *dev);/* Remove network device */
 
 extern struct eth_device *eth_current;
 
-static inline __attribute__((always_inline))
-struct eth_device *eth_get_dev(void)
+static __always_inline struct eth_device *eth_get_dev(void)
 {
 	return eth_current;
 }
@@ -200,14 +201,14 @@ static inline unsigned char *eth_get_ethaddr(void)
 /* Used only when NetConsole is enabled */
 int eth_is_active(struct eth_device *dev); /* Test device for active state */
 /* Set active state */
-static inline __attribute__((always_inline)) int eth_init_state_only(void)
+static __always_inline int eth_init_state_only(void)
 {
 	eth_get_dev()->state = ETH_STATE_ACTIVE;
 
 	return 0;
 }
 /* Set passive state */
-static inline __attribute__((always_inline)) void eth_halt_state_only(void)
+static __always_inline void eth_halt_state_only(void)
 {
 	eth_get_dev()->state = ETH_STATE_PASSIVE;
 }
@@ -236,6 +237,23 @@ void eth_parse_enetaddr(const char *addr, uchar *enetaddr);
 int eth_getenv_enetaddr(const char *name, uchar *enetaddr);
 int eth_setenv_enetaddr(const char *name, const uchar *enetaddr);
 
+/**
+ * eth_setenv_enetaddr_by_index() - set the MAC address envrionment variable
+ *
+ * This sets up an environment variable with the given MAC address (@enetaddr).
+ * The environment variable to be set is defined by <@base_name><@index>addr.
+ * If @index is 0 it is omitted. For common Ethernet this means ethaddr,
+ * eth1addr, etc.
+ *
+ * @base_name:  Base name for variable, typically "eth"
+ * @index:      Index of interface being updated (>=0)
+ * @enetaddr:   Pointer to MAC address to put into the variable
+ * @return 0 if OK, other value on error
+ */
+int eth_setenv_enetaddr_by_index(const char *base_name, int index,
+				 uchar *enetaddr);
+
+
 /*
  * Get the hardware address for an ethernet interface .
  * Args:
@@ -251,7 +269,7 @@ int eth_getenv_enetaddr_by_index(const char *base_name, int index,
 int eth_init(void);			/* Initialize the device */
 int eth_send(void *packet, int length);	   /* Send a packet */
 
-#ifdef CONFIG_API
+#if defined(CONFIG_API) || defined(CONFIG_EFI_LOADER)
 int eth_receive(void *packet, int length); /* Receive a packet*/
 extern void (*push_packet)(void *packet, int length);
 #endif
@@ -319,6 +337,8 @@ struct vlan_ethernet_hdr {
 #define PROT_ARP	0x0806		/* IP ARP protocol		*/
 #define PROT_RARP	0x8035		/* IP ARP protocol		*/
 #define PROT_VLAN	0x8100		/* IEEE 802.1q protocol		*/
+#define PROT_IPV6	0x86dd		/* IPv6 over bluebook		*/
+#define PROT_PPP_SES	0x8864		/* PPPoE session messages	*/
 
 #define IPPROTO_ICMP	 1	/* Internet Control Message Protocol	*/
 #define IPPROTO_UDP	17	/* User Datagram Protocol		*/
@@ -445,20 +465,14 @@ struct icmp_hdr {
 #define IP_ICMP_HDR_SIZE	(IP_HDR_SIZE + ICMP_HDR_SIZE)
 
 /*
- * Maximum packet size; used to allocate packet storage.
- * TFTP packets can be 524 bytes + IP header + ethernet header.
- * Lets be conservative, and go for 38 * 16.  (Must also be
- * a multiple of 32 bytes).
- */
-/*
- * AS.HARNOIS : Better to set PKTSIZE to maximum size because
- * traffic type is not always controlled
- * maximum packet size =  1518
+ * Maximum packet size; used to allocate packet storage. Use
+ * the maxium Ethernet frame size as specified by the Ethernet
+ * standard including the 802.1Q tag (VLAN tagging).
+ * maximum packet size =  1522
  * maximum packet size and multiple of 32 bytes =  1536
  */
-#define PKTSIZE			1518
+#define PKTSIZE			1522
 #define PKTSIZE_ALIGN		1536
-/*#define PKTSIZE		608*/
 
 /*
  * Maximum receive ring size; that is, the number of packets
@@ -657,7 +671,7 @@ int nc_input_packet(uchar *pkt, struct in_addr src_ip, unsigned dest_port,
 	unsigned src_port, unsigned len);
 #endif
 
-static inline __attribute__((always_inline)) int eth_is_on_demand_init(void)
+static __always_inline int eth_is_on_demand_init(void)
 {
 #ifdef CONFIG_NETCONSOLE
 	extern enum proto_t net_loop_last_protocol;

@@ -7,22 +7,7 @@
  *
  * This file is part of the Inventra Controller Driver for Linux.
  *
- * The Inventra Controller Driver for Linux is free software; you
- * can redistribute it and/or modify it under the terms of the GNU
- * General Public License version 2 as published by the Free Software
- * Foundation.
- *
- * The Inventra Controller Driver for Linux is distributed in
- * the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
- * License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with The Inventra Controller Driver for Linux ; if not,
- * write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA  02111-1307  USA
- *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 #ifndef __UBOOT__
 #include <linux/module.h>
@@ -38,8 +23,10 @@
 #include <linux/usb/musb-omap.h>
 #else
 #include <common.h>
+#include <asm/omap_common.h>
 #include <asm/omap_musb.h>
 #include <twl4030.h>
+#include <twl6030.h>
 #include "linux-compat.h"
 #endif
 
@@ -449,6 +436,17 @@ static int omap2430_musb_enable(struct musb *musb)
 				__PRETTY_FUNCTION__);
 	}
 #endif
+
+#ifdef CONFIG_TWL6030_POWER
+	twl6030_usb_device_settings();
+#endif
+
+#ifdef CONFIG_OMAP4430
+	u32 *usbotghs_control = (u32 *)((*ctrl)->control_usbotghs_ctrl);
+	*usbotghs_control = USBOTGHS_CONTROL_AVALID |
+		USBOTGHS_CONTROL_VBUSVALID | USBOTGHS_CONTROL_IDDIG;
+#endif
+
 	return 0;
 #endif
 }

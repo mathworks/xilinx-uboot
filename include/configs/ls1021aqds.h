@@ -42,7 +42,7 @@ unsigned long get_board_sys_clk(void);
 unsigned long get_board_ddr_clk(void);
 #endif
 
-#ifdef CONFIG_QSPI_BOOT
+#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 #define CONFIG_SYS_CLK_FREQ		100000000
 #define CONFIG_DDR_CLK_FREQ		100000000
 #define CONFIG_QIXIS_I2C_ACCESS
@@ -56,7 +56,13 @@ unsigned long get_board_ddr_clk(void);
 #endif
 
 #ifdef CONFIG_SD_BOOT
-#define CONFIG_SYS_FSL_PBL_RCW	board/freescale/ls1021aqds/ls102xa_rcw_sd.cfg
+#ifdef CONFIG_SD_BOOT_QSPI
+#define CONFIG_SYS_FSL_PBL_RCW	\
+	board/freescale/ls1021aqds/ls102xa_rcw_sd_qspi.cfg
+#else
+#define CONFIG_SYS_FSL_PBL_RCW	\
+	board/freescale/ls1021aqds/ls102xa_rcw_sd_ifc.cfg
+#endif
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_LDSCRIPT	"arch/$(ARCH)/cpu/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
@@ -87,6 +93,9 @@ unsigned long get_board_ddr_clk(void);
 
 #ifdef CONFIG_QSPI_BOOT
 #define CONFIG_SYS_TEXT_BASE		0x40010000
+#endif
+
+#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 #define CONFIG_SYS_NO_FLASH
 #endif
 
@@ -162,7 +171,7 @@ unsigned long get_board_ddr_clk(void);
 /*
  * IFC Definitions
  */
-#ifndef CONFIG_QSPI_BOOT
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 #define CONFIG_FSL_IFC
 #define CONFIG_SYS_FLASH_BASE		0x60000000
 #define CONFIG_SYS_FLASH_BASE_PHYS	CONFIG_SYS_FLASH_BASE
@@ -371,12 +380,13 @@ unsigned long get_board_ddr_clk(void);
  * Serial Port
  */
 #ifdef CONFIG_LPUART
-#define CONFIG_FSL_LPUART
 #define CONFIG_LPUART_32B_REG
 #else
 #define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
+#ifndef CONFIG_DM_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
+#endif
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 #endif
 
@@ -385,7 +395,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * I2C
  */
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
@@ -403,15 +412,13 @@ unsigned long get_board_ddr_clk(void);
  * MMC
  */
 #define CONFIG_MMC
-#define CONFIG_CMD_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_GENERIC_MMC
 
-#define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
 
 /* SPI */
-#ifdef CONFIG_QSPI_BOOT
+#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 /* QSPI */
 #define QSPI0_AMBA_BASE			0x40000000
 #define FSL_QSPI_FLASH_SIZE		(1 << 24)
@@ -421,7 +428,6 @@ unsigned long get_board_ddr_clk(void);
 
 /* DM SPI */
 #if defined(CONFIG_FSL_DSPI) || defined(CONFIG_FSL_QSPI)
-#define CONFIG_CMD_SF
 #define CONFIG_DM_SPI_FLASH
 #define CONFIG_SPI_FLASH_DATAFLASH
 #endif
@@ -444,16 +450,12 @@ unsigned long get_board_ddr_clk(void);
 
 #ifdef CONFIG_HAS_FSL_XHCI_USB
 #define CONFIG_USB_XHCI_FSL
-#define CONFIG_USB_XHCI_DWC3
-#define CONFIG_USB_XHCI
 #define CONFIG_USB_MAX_CONTROLLER_COUNT		1
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS	2
 #endif
 
 #if defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_XHCI_USB)
-#define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
-#define CONFIG_CMD_EXT2
 #endif
 
 /*
@@ -468,6 +470,7 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_VGA_AS_SINGLE_DEVICE
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV
 
 #define CONFIG_FSL_DIU_CH7301
 #define CONFIG_SYS_I2C_DVI_BUS_NUM	0
@@ -523,8 +526,8 @@ unsigned long get_board_ddr_clk(void);
 
 /* PCIe */
 #define CONFIG_PCI		/* Enable PCI/PCIE */
-#define CONFIG_PCIE1		/* PCIE controler 1 */
-#define CONFIG_PCIE2		/* PCIE controler 2 */
+#define CONFIG_PCIE1		/* PCIE controller 1 */
+#define CONFIG_PCIE2		/* PCIE controller 2 */
 #define CONFIG_PCIE_LAYERSCAPE	/* Use common FSL Layerscape PCIe code */
 #define FSL_PCIE_COMPAT "fsl,ls1021a-pcie"
 
@@ -549,10 +552,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_CMD_PCI
 #endif
 
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_MII
-
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_CMDLINE_EDITING
 
@@ -568,7 +567,6 @@ unsigned long get_board_ddr_clk(void);
 
 #define CONFIG_FSL_DEVICE_DISABLE
 
-#define CONFIG_BOOTDELAY		3
 
 #define CONFIG_SYS_QE_FW_ADDR     0x600c0000
 
@@ -590,8 +588,6 @@ unsigned long get_board_ddr_clk(void);
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE		\
@@ -599,9 +595,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_MAXARGS		16	/* max number of command args */
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
-#define CONFIG_CMD_GREPENV
-#define CONFIG_CMD_MEMINFO
-#define CONFIG_CMD_MEMTEST
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		0x9fffffff
 
@@ -652,20 +645,15 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_ENV_SECT_SIZE		0x20000 /* 128K (one sector) */
 #endif
 
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-#define CONFIG_OF_STDOUT_VIA_ALIAS
-#define CONFIG_CMD_BOOTZ
-
 #define CONFIG_MISC_INIT_R
 
 /* Hash command with SHA acceleration supported in hardware */
+#ifdef CONFIG_FSL_CAAM
 #define CONFIG_CMD_HASH
 #define CONFIG_SHA_HW_ACCEL
-
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_CMD_BLOB
-#include <asm/fsl_secure_boot.h>
 #endif
+
+#include <asm/fsl_secure_boot.h>
+#define CONFIG_SYS_BOOTM_LEN	(64 << 20) /* Increase max gunzip size */
 
 #endif

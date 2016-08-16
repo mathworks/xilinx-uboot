@@ -39,6 +39,30 @@ int device_bind(struct udevice *parent, const struct driver *drv,
 		struct udevice **devp);
 
 /**
+ * device_bind_with_driver_data() - Create a device and bind it to a driver
+ *
+ * Called to set up a new device attached to a driver, in the case where the
+ * driver was matched to the device by means of a match table that provides
+ * driver_data.
+ *
+ * Once bound a device exists but is not yet active until device_probe() is
+ * called.
+ *
+ * @parent: Pointer to device's parent, under which this driver will exist
+ * @drv: Device's driver
+ * @name: Name of device (e.g. device tree node name)
+ * @driver_data: The driver_data field from the driver's match table.
+ * @of_offset: Offset of device tree node for this device. This is -1 for
+ * devices which don't use device tree.
+ * @devp: if non-NULL, returns a pointer to the bound device
+ * @return 0 if OK, -ve on error
+ */
+int device_bind_with_driver_data(struct udevice *parent,
+				 const struct driver *drv, const char *name,
+				 ulong driver_data, int of_offset,
+				 struct udevice **devp);
+
+/**
  * device_bind_by_name: Create a device and bind it to a driver
  *
  * This is a helper function used to bind devices which do not use device
@@ -64,19 +88,6 @@ int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
  * @return 0 if OK, -ve on error
  */
 int device_probe(struct udevice *dev);
-
-/**
- * device_probe() - Probe a child device, activating it
- *
- * Activate a device so that it is ready for use. All its parents are probed
- * first. The child is provided with parent data if parent_priv is not NULL.
- *
- * @dev: Pointer to device to probe
- * @parent_priv: Pointer to parent data. If non-NULL then this is provided to
- * the child.
- * @return 0 if OK, -ve on error
- */
-int device_probe_child(struct udevice *dev, void *parent_priv);
 
 /**
  * device_remove() - Remove a device, de-activating it

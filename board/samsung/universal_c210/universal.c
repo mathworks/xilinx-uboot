@@ -355,10 +355,10 @@ int exynos_init(void)
 	}
 
 	/* Request soft I2C gpios */
-	sprintf(buf, "soft_i2c_scl");
+	strcpy(buf, "soft_i2c_scl");
 	gpio_request(CONFIG_SOFT_I2C_GPIO_SCL, buf);
 
-	sprintf(buf, "soft_i2c_sda");
+	strcpy(buf, "soft_i2c_sda");
 	gpio_request(CONFIG_SOFT_I2C_GPIO_SDA, buf);
 
 	check_hw_revision();
@@ -367,6 +367,7 @@ int exynos_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_LCD
 void exynos_lcd_misc_init(vidinfo_t *vid)
 {
 #ifdef CONFIG_TIZEN
@@ -379,3 +380,4 @@ void exynos_lcd_misc_init(vidinfo_t *vid)
 
 	setenv("lcdinfo", "lcd=ld9040");
 }
+#endif

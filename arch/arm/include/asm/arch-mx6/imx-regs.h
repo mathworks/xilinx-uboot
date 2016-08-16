@@ -162,6 +162,7 @@
 #endif
 #define UART1_BASE                  (ATZ1_BASE_ADDR + 0x20000)
 #define ESAI1_BASE_ADDR             (ATZ1_BASE_ADDR + 0x24000)
+#define UART8_BASE                  (ATZ1_BASE_ADDR + 0x24000)
 #define SSI1_BASE_ADDR              (ATZ1_BASE_ADDR + 0x28000)
 #define SSI2_BASE_ADDR              (ATZ1_BASE_ADDR + 0x2C000)
 #define SSI3_BASE_ADDR              (ATZ1_BASE_ADDR + 0x30000)
@@ -226,8 +227,13 @@
 #define CAAM_BASE_ADDR              (ATZ2_BASE_ADDR)
 #define ARM_BASE_ADDR		    (ATZ2_BASE_ADDR + 0x40000)
 
-#define CONFIG_SYS_FSL_SEC_ADDR     CAAM_BASE_ADDR
-#define CONFIG_SYS_FSL_JR0_ADDR     (CAAM_BASE_ADDR + 0x1000)
+#define CONFIG_SYS_FSL_SEC_OFFSET   0
+#define CONFIG_SYS_FSL_SEC_ADDR     (CAAM_BASE_ADDR + \
+				     CONFIG_SYS_FSL_SEC_OFFSET)
+#define CONFIG_SYS_FSL_JR0_OFFSET   0x1000
+#define CONFIG_SYS_FSL_JR0_ADDR     (CAAM_BASE_ADDR + \
+				     CONFIG_SYS_FSL_JR0_OFFSET)
+#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC	1
 
 #define USB_PL301_BASE_ADDR         (AIPS2_OFF_BASE_ADDR + 0x0000)
 #define USB_BASE_ADDR               (AIPS2_OFF_BASE_ADDR + 0x4000)
@@ -273,6 +279,7 @@
 #define IP2APB_TZASC1_BASE_ADDR     (AIPS2_OFF_BASE_ADDR + 0x50000)
 #ifdef CONFIG_MX6UL
 #define QSPI0_BASE_ADDR             (AIPS2_OFF_BASE_ADDR + 0x60000)
+#define UART6_BASE_ADDR             (AIPS2_OFF_BASE_ADDR + 0x7C000)
 #elif defined(CONFIG_MX6SX)
 #define SAI1_BASE_ADDR              (AIPS2_OFF_BASE_ADDR + 0x54000)
 #define AUDMUX_BASE_ADDR            (AIPS2_OFF_BASE_ADDR + 0x58000)
@@ -356,6 +363,30 @@ extern void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 #define SRC_SCR_CORE_3_ENABLE_OFFSET    24
 #define SRC_SCR_CORE_3_ENABLE_MASK      (1<<SRC_SCR_CORE_3_ENABLE_OFFSET)
 
+struct rdc_regs {
+	u32	vir;		/* Version information */
+	u32	reserved1[8];
+	u32	stat;		/* Status */
+	u32	intctrl;	/* Interrupt and Control */
+	u32	intstat;	/* Interrupt Status */
+	u32	reserved2[116];
+	u32	mda[32];	/* Master Domain Assignment */
+	u32	reserved3[96];
+	u32	pdap[104];	/* Peripheral Domain Access Permissions */
+	u32	reserved4[88];
+	struct {
+		u32 mrsa;	/* Memory Region Start Address */
+		u32 mrea;	/* Memory Region End Address */
+		u32 mrc;	/* Memory Region Control */
+		u32 mrvs;	/* Memory Region Violation Status */
+	} mem_region[55];
+};
+
+struct rdc_sema_regs {
+	u8	gate[64];	/* Gate */
+	u16	rstgt;		/* Reset Gate */
+};
+
 /* WEIM registers */
 struct weim {
 	u32 cs0gcr1;
@@ -413,6 +444,11 @@ struct src {
 	u32     gpr9;
 	u32     gpr10;
 };
+
+#define SRC_SCR_M4_ENABLE_OFFSET                22
+#define SRC_SCR_M4_ENABLE_MASK                  (1 << 22)
+#define SRC_SCR_M4C_NON_SCLR_RST_OFFSET         4
+#define SRC_SCR_M4C_NON_SCLR_RST_MASK           (1 << 4)
 
 /* GPR1 bitfields */
 #define IOMUXC_GPR1_APP_CLK_REQ_N		BIT(30)
@@ -715,39 +751,22 @@ struct fuse_bank1_regs {
 	u32	rsvd7[3];
 };
 
-#if (defined(CONFIG_MX6SX) || defined(CONFIG_MX6UL))
 struct fuse_bank4_regs {
 	u32 sjc_resp_low;
 	u32 rsvd0[3];
 	u32 sjc_resp_high;
 	u32 rsvd1[3];
-	u32 mac_addr_low;
+	u32 mac_addr0;
 	u32 rsvd2[3];
-	u32 mac_addr_high;
+	u32 mac_addr1;
 	u32 rsvd3[3];
-	u32 mac_addr2;
+	u32 mac_addr2; /*For i.MX6SX and i.MX6UL*/
 	u32 rsvd4[7];
 	u32 gp1;
 	u32 rsvd5[3];
 	u32 gp2;
 	u32 rsvd6[3];
 };
-#else
-struct fuse_bank4_regs {
-	u32	sjc_resp_low;
-	u32     rsvd0[3];
-	u32     sjc_resp_high;
-	u32     rsvd1[3];
-	u32	mac_addr_low;
-	u32     rsvd2[3];
-	u32     mac_addr_high;
-	u32	rsvd3[0xb];
-	u32	gp1;
-	u32	rsvd4[3];
-	u32	gp2;
-	u32	rsvd5[3];
-};
-#endif
 
 struct aipstz_regs {
 	u32	mprot0;

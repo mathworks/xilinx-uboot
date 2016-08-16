@@ -150,32 +150,6 @@ void at91_mck_init(u32 mckr)
 		;
 }
 
-void at91_periph_clk_enable(int id)
-{
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-	u32 regval;
-
-	if (id > AT91_PMC_PCR_PID_MASK)
-		return;
-
-	regval = AT91_PMC_PCR_EN | AT91_PMC_PCR_CMD_WRITE | id;
-
-	writel(regval, &pmc->pcr);
-}
-
-void at91_periph_clk_disable(int id)
-{
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-	u32 regval;
-
-	if (id > AT91_PMC_PCR_PID_MASK)
-		return;
-
-	regval = AT91_PMC_PCR_CMD_WRITE | id;
-
-	writel(regval, &pmc->pcr);
-}
-
 int at91_enable_periph_generated_clk(u32 id, u32 clk_source, u32 div)
 {
 	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
@@ -187,6 +161,11 @@ int at91_enable_periph_generated_clk(u32 id, u32 clk_source, u32 div)
 
 	if (div > 0xff)
 		return -EINVAL;
+
+	if (clk_source == GCK_CSS_UPLL_CLK) {
+		if (at91_upll_clk_enable())
+			return -ENODEV;
+	}
 
 	writel(id, &pmc->pcr);
 	regval = readl(&pmc->pcr);
@@ -256,6 +235,12 @@ u32 at91_get_periph_generated_clk(u32 id)
 		break;
 	case AT91_PMC_PCR_GCKCSS_PLLA_CLK:
 		freq = gd->arch.plla_rate_hz;
+		break;
+	case AT91_PMC_PCR_GCKCSS_UPLL_CLK:
+		freq = AT91_UTMI_PLL_CLK_FREQ;
+		break;
+	case AT91_PMC_PCR_GCKCSS_MCK_CLK:
+		freq = gd->arch.mck_rate_hz;
 		break;
 	default:
 		printf("Improper GCK clock source selection!\n");

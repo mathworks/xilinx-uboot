@@ -62,4 +62,9 @@ static inline u32 clk_get_divisor(ulong input_rate, uint output_rate)
  */
 void *rockchip_get_cru(void);
 
+struct rk3288_cru;
+struct rk3288_grf;
+
+void rkclk_configure_cpu(struct rk3288_cru *cru, struct rk3288_grf *grf);
+
 #endif

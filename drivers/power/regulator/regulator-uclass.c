@@ -178,7 +178,7 @@ static void regulator_show(struct udevice *dev, int ret)
 		printf("; set %d uA", uc_pdata->min_uA);
 	printf("; enabling");
 	if (ret)
-		printf(" (ret: %d)\n", ret);
+		printf(" (ret: %d)", ret);
 	printf("\n");
 }
 
@@ -325,7 +325,7 @@ int regulators_enable_boot_on(bool verbose)
 	if (ret)
 		return ret;
 	for (uclass_first_device(UCLASS_REGULATOR, &dev);
-	     dev && !ret;
+	     dev;
 	     uclass_next_device(&dev)) {
 		ret = regulator_autoset(dev);
 		if (ret == -EMEDIUMTYPE) {
@@ -334,6 +334,8 @@ int regulators_enable_boot_on(bool verbose)
 		}
 		if (verbose)
 			regulator_show(dev, ret);
+		if (ret == -ENOSYS)
+			ret = 0;
 	}
 
 	return ret;

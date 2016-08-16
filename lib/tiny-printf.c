@@ -13,8 +13,16 @@
 #include <stdarg.h>
 #include <serial.h>
 
-static char *bf;
-static char zs;
+/*
+ * This code in here may execute before the DRAM is initialised, so
+ * we should make sure that it doesn't touch BSS, which some boards
+ * put in DRAM.
+ */
+static char *bf __attribute__ ((section(".data")));
+static char zs __attribute__ ((section(".data")));
+
+/* Current position in sprintf() output string */
+static char *outstr __attribute__ ((section(".data")));
 
 static void out(char c)
 {
@@ -40,7 +48,7 @@ static void div_out(unsigned int *num, unsigned int div)
 		out_dgt(dgt);
 }
 
-int vprintf(const char *fmt, va_list va)
+int _vprintf(const char *fmt, va_list va, void (*putc)(const char ch))
 {
 	char ch;
 	char *p;
@@ -52,8 +60,8 @@ int vprintf(const char *fmt, va_list va)
 		if (ch != '%') {
 			putc(ch);
 		} else {
-			char lz = 0;
-			char w = 0;
+			bool lz = false;
+			int width = 0;
 
 			ch = *(fmt++);
 			if (ch == '0') {
@@ -62,9 +70,9 @@ int vprintf(const char *fmt, va_list va)
 			}
 
 			if (ch >= '0' && ch <= '9') {
-				w = 0;
+				width = 0;
 				while (ch >= '0' && ch <= '9') {
-					w = (w * 10) + ch - '0';
+					width = (width * 10) + ch - '0';
 					ch = *fmt++;
 				}
 			}
@@ -73,7 +81,7 @@ int vprintf(const char *fmt, va_list va)
 			zs = 0;
 
 			switch (ch) {
-			case 0:
+			case '\0':
 				goto abort;
 			case 'u':
 			case 'd':
@@ -82,13 +90,21 @@ int vprintf(const char *fmt, va_list va)
 					num = -(int)num;
 					out('-');
 				}
-				for (div = 1000000000; div; div /= 10)
-					div_out(&num, div);
+				if (!num) {
+					out_dgt(0);
+				} else {
+					for (div = 1000000000; div; div /= 10)
+						div_out(&num, div);
+				}
 				break;
 			case 'x':
 				num = va_arg(va, unsigned int);
-				for (div = 0x10000000; div; div /= 0x10)
-					div_out(&num, div);
+				if (!num) {
+					out_dgt(0);
+				} else {
+					for (div = 0x10000000; div; div /= 0x10)
+						div_out(&num, div);
+				}
 				break;
 			case 'c':
 				out((char)(va_arg(va, int)));
@@ -104,17 +120,24 @@ int vprintf(const char *fmt, va_list va)
 
 			*bf = 0;
 			bf = p;
-			while (*bf++ && w > 0)
-				w--;
-			while (w-- > 0)
+			while (*bf++ && width > 0)
+				width--;
+			while (width-- > 0)
 				putc(lz ? '0' : ' ');
-			while ((ch = *p++))
-				putc(ch);
+			if (p) {
+				while ((ch = *p++))
+					putc(ch);
+			}
 		}
 	}
 
 abort:
 	return 0;
+}
+
+int vprintf(const char *fmt, va_list va)
+{
+	return _vprintf(fmt, va, putc);
 }
 
 int printf(const char *fmt, ...)
@@ -123,8 +146,42 @@ int printf(const char *fmt, ...)
 	int ret;
 
 	va_start(va, fmt);
-	ret = vprintf(fmt, va);
+	ret = _vprintf(fmt, va, putc);
 	va_end(va);
+
+	return ret;
+}
+
+static void putc_outstr(char ch)
+{
+	*outstr++ = ch;
+}
+
+int sprintf(char *buf, const char *fmt, ...)
+{
+	va_list va;
+	int ret;
+
+	va_start(va, fmt);
+	outstr = buf;
+	ret = _vprintf(fmt, va, putc_outstr);
+	va_end(va);
+	*outstr = '\0';
+
+	return ret;
+}
+
+/* Note that size is ignored */
+int snprintf(char *buf, size_t size, const char *fmt, ...)
+{
+	va_list va;
+	int ret;
+
+	va_start(va, fmt);
+	outstr = buf;
+	ret = _vprintf(fmt, va, putc_outstr);
+	va_end(va);
+	*outstr = '\0';
 
 	return ret;
 }

@@ -16,6 +16,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_SYS_CACHELINE_SIZE	64
+
 /* High Level Configuration Options */
 #define CONFIG_SYS_THUMB_BUILD
 #define CONFIG_OMAP			/* in a TI OMAP core */
@@ -39,13 +41,11 @@
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <asm/arch/omap.h>
 
-
 /* Display CPU and Board information */
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_SILENT_CONSOLE
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 
 /* Clock Defines */
 #define V_OSCK				26000000 /* Clock output from T2 */
@@ -57,8 +57,6 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
-
-#define CONFIG_OF_LIBFDT
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(1024*1024)
@@ -147,10 +145,6 @@
 #define CONFIG_SYS_NAND_MAX_ECCPOS	56
 
 /* commands to include */
-#define CONFIG_CMD_EXT2			/* EXT2 Support */
-#define CONFIG_CMD_FAT			/* FAT support */
-#define CONFIG_CMD_I2C			/* I2C serial bus support */
-#define CONFIG_CMD_MMC			/* MMC support */
 #define CONFIG_CMD_MTDPARTS		/* Enable MTD parts commands */
 #define CONFIG_CMD_NAND			/* NAND support */
 #define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands */
@@ -167,7 +161,6 @@
 
 /* Environment information (this is the common part) */
 
-#define CONFIG_BOOTDELAY		0
 
 /* hang() the board on panic() */
 #define CONFIG_PANIC_HANG
@@ -279,7 +272,6 @@
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
 #define CONFIG_CMDLINE_EDITING		/* enable cmdline history */
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */

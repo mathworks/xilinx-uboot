@@ -47,18 +47,16 @@
 	status = "okay";
 };
 
-/* for U-boot only */
-/ {
-	soc {
-		u-boot,dm-pre-reloc;
-	};
+&emmc {
+	status = "okay";
 };
 
+&sd {
+	status = "okay";
+};
+
+/* for U-Boot only */
 &serial1 {
-	u-boot,dm-pre-reloc;
-};
-
-&pinctrl {
 	u-boot,dm-pre-reloc;
 };
 

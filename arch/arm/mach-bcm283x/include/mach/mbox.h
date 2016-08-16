@@ -38,7 +38,7 @@
 
 /* Raw mailbox HW */
 
-#ifdef CONFIG_BCM2836
+#ifndef CONFIG_BCM2835
 #define BCM2835_MBOX_PHYSADDR	0x3f00b880
 #else
 #define BCM2835_MBOX_PHYSADDR	0x2000b880
@@ -146,6 +146,17 @@ struct bcm2835_mbox_tag_get_mac_address {
 		struct {
 			u8 mac[6];
 			u8 pad[2];
+		} resp;
+	} body;
+};
+
+#define BCM2835_MBOX_TAG_GET_BOARD_SERIAL	0x00010004
+
+struct bcm2835_mbox_tag_get_board_serial {
+	struct bcm2835_mbox_tag_hdr tag_hdr;
+	union {
+		struct __packed {
+			u64 serial;
 		} resp;
 	} body;
 };

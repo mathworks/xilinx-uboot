@@ -10,6 +10,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
 #include <asm/arch/soc.h>
+#include <fdt_support.h>
 #include <hwconfig.h>
 #include <ahci.h>
 #include <mmc.h>
@@ -18,20 +19,23 @@
 #include <fsl_csu.h>
 #include <fsl_esdhc.h>
 #include <fsl_ifc.h>
-#include <environment.h>
 #include <fsl_sec.h>
 #include "cpld.h"
+#ifdef CONFIG_U_QE
+#include <fsl_qe.h>
+#endif
+
 
 DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
-	static const char *freq[3] = {"100.00MHZ", "156.25MHZ"};
+	static const char *freq[2] = {"100.00MHZ", "156.25MHZ"};
 #ifndef CONFIG_SD_BOOT
 	u8 cfg_rcw_src1, cfg_rcw_src2;
-	u32 cfg_rcw_src;
+	u16 cfg_rcw_src;
 #endif
-	u32 sd1refclk_sel;
+	u8 sd1refclk_sel;
 
 	printf("Board: LS1043ARDB, boot from ");
 
@@ -71,53 +75,55 @@ int dram_init(void)
 
 int board_early_init_f(void)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
-	u32 usb_pwrfault;
-
 	fsl_lsch2_early_init_f();
-
-#ifdef CONFIG_HAS_FSL_XHCI_USB
-	out_be32(&scfg->rcwpmuxcr0, 0x3333);
-	out_be32(&scfg->usbdrvvbus_selcr, SCFG_USBDRVVBUS_SELCR_USB1);
-	usb_pwrfault = (SCFG_USBPWRFAULT_DEDICATED <<
-			SCFG_USBPWRFAULT_USB3_SHIFT) |
-			(SCFG_USBPWRFAULT_DEDICATED <<
-			SCFG_USBPWRFAULT_USB2_SHIFT) |
-			(SCFG_USBPWRFAULT_SHARED <<
-			 SCFG_USBPWRFAULT_USB1_SHIFT);
-	out_be32(&scfg->usbpwrfault_selcr, usb_pwrfault);
-#endif
 
 	return 0;
 }
 
 int board_init(void)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
-
-	/*
-	 * Set CCI-400 control override register to enable barrier
-	 * transaction
-	 */
-	out_le32(&cci->ctrl_ord, CCI400_CTRLORD_EN_BARRIER);
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
 
 #ifdef CONFIG_FSL_IFC
 	init_final_memctl_regs();
-#endif
-
-#ifdef CONFIG_ENV_IS_NOWHERE
-	gd->env_addr = (ulong)&default_environment[0];
 #endif
 
 #ifdef CONFIG_LAYERSCAPE_NS_ACCESS
 	enable_layerscape_ns_access();
 #endif
 
+#ifdef CONFIG_U_QE
+	u_qe_init();
+#endif
+	/* invert AQR105 IRQ pins polarity */
+	out_be32(&scfg->intpcr, AQR105_IRQ_MASK);
+
 	return 0;
 }
 
 int config_board_mux(void)
 {
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	u32 usb_pwrfault;
+
+	if (hwconfig("qe-hdlc")) {
+		out_be32(&scfg->rcwpmuxcr0,
+			 (in_be32(&scfg->rcwpmuxcr0) & ~0xff00) | 0x6600);
+		printf("Assign to qe-hdlc clk, rcwpmuxcr0=%x\n",
+		       in_be32(&scfg->rcwpmuxcr0));
+	} else {
+#ifdef CONFIG_HAS_FSL_XHCI_USB
+		out_be32(&scfg->rcwpmuxcr0, 0x3333);
+		out_be32(&scfg->usbdrvvbus_selcr, SCFG_USBDRVVBUS_SELCR_USB1);
+		usb_pwrfault = (SCFG_USBPWRFAULT_DEDICATED <<
+				SCFG_USBPWRFAULT_USB3_SHIFT) |
+				(SCFG_USBPWRFAULT_DEDICATED <<
+				SCFG_USBPWRFAULT_USB2_SHIFT) |
+				(SCFG_USBPWRFAULT_SHARED <<
+				 SCFG_USBPWRFAULT_USB1_SHIFT);
+		out_be32(&scfg->usbpwrfault_selcr, usb_pwrfault);
+#endif
+	}
 	return 0;
 }
 
@@ -144,6 +150,16 @@ int misc_init_r(void)
 }
 #endif
 
+void fdt_del_qe(void *blob)
+{
+	int nodeoff = 0;
+
+	while ((nodeoff = fdt_node_offset_by_compatible(blob, 0,
+				"fsl,qe")) >= 0) {
+		fdt_del_node(blob, nodeoff);
+	}
+}
+
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	u64 base[CONFIG_NR_DRAM_BANKS];
@@ -161,6 +177,23 @@ int ft_board_setup(void *blob, bd_t *bd)
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_fman_ethernet(blob);
 #endif
+
+	/*
+	 * qe-hdlc and usb multi-use the pins,
+	 * when set hwconfig to qe-hdlc, delete usb node.
+	 */
+	if (hwconfig("qe-hdlc"))
+#ifdef CONFIG_HAS_FSL_XHCI_USB
+		fdt_del_node_and_alias(blob, "usb1");
+#endif
+	/*
+	 * qe just support qe-uart and qe-hdlc,
+	 * if qe-uart and qe-hdlc are not set in hwconfig,
+	 * delete qe node.
+	 */
+	if (!hwconfig("qe-uart") && !hwconfig("qe-hdlc"))
+		fdt_del_qe(blob);
+
 	return 0;
 }
 

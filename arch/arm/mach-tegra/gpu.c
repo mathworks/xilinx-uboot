@@ -1,17 +1,7 @@
 /*
  * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 /* Tegra vpr routines */
@@ -43,16 +33,17 @@ void tegra_gpu_config(void)
 
 #if defined(CONFIG_OF_LIBFDT)
 
-int tegra_gpu_enable_node(void *blob, const char *gpupath)
+int tegra_gpu_enable_node(void *blob, const char *compat)
 {
 	int offset;
 
-	if (_configured) {
-		offset = fdt_path_offset(blob, gpupath);
-		if (offset > 0) {
-			fdt_status_okay(blob, offset);
-			debug("enabled GPU node %s\n", gpupath);
-		}
+	if (!_configured)
+		return 0;
+
+	offset = fdt_node_offset_by_compatible(blob, -1, compat);
+	while (offset != -FDT_ERR_NOTFOUND) {
+		fdt_status_okay(blob, offset);
+		offset = fdt_node_offset_by_compatible(blob, offset, compat);
 	}
 
 	return 0;

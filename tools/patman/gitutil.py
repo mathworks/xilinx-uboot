@@ -44,6 +44,11 @@ def LogCmd(commit_range, git_dir=None, oneline=False, reverse=False,
         cmd.append('-n%d' % count)
     if commit_range:
         cmd.append(commit_range)
+
+    # Add this in case we have a branch with the same name as a directory.
+    # This avoids messages like this, for example:
+    #   fatal: ambiguous argument 'test': both revision and filename
+    cmd.append('--')
     return cmd
 
 def CountCommitsToBranch():
@@ -328,7 +333,7 @@ def BuildEmailList(in_list, tag=None, alias=None, raise_on_error=True):
     return result
 
 def EmailPatches(series, cover_fname, args, dry_run, raise_on_error, cc_fname,
-        self_only=False, alias=None, in_reply_to=None):
+        self_only=False, alias=None, in_reply_to=None, thread=False):
     """Email a patch series.
 
     Args:
@@ -342,6 +347,8 @@ def EmailPatches(series, cover_fname, args, dry_run, raise_on_error, cc_fname,
         self_only: True to just email to yourself as a test
         in_reply_to: If set we'll pass this to git as --in-reply-to.
             Should be a message ID that this is in reply to.
+        thread: True to add --thread to git send-email (make
+            all patches reply to cover-letter or first patch in series)
 
     Returns:
         Git command that was/would be run
@@ -400,6 +407,8 @@ def EmailPatches(series, cover_fname, args, dry_run, raise_on_error, cc_fname,
     cmd = ['git', 'send-email', '--annotate']
     if in_reply_to:
         cmd.append('--in-reply-to="%s"' % in_reply_to)
+    if thread:
+        cmd.append('--thread')
 
     cmd += to
     cmd += cc

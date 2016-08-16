@@ -29,11 +29,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define RK_I2C_FIFO_SIZE	32
 
 struct rk_i2c {
-	struct udevice *clk;
-	struct udevice *pinctrl;
+	struct clk clk;
 	struct i2c_regs *regs;
 	unsigned int speed;
-	enum periph_id id;
 };
 
 static inline void rk_i2c_get_div(int div, int *divh, int *divl)
@@ -56,7 +54,7 @@ static void rk_i2c_set_clk(struct rk_i2c *i2c, uint32_t scl_rate)
 	int div, divl, divh;
 
 	/* First get i2c rate from pclk */
-	i2c_rate = clk_get_periph_rate(i2c->clk, i2c->id);
+	i2c_rate = clk_get_rate(&i2c->clk);
 
 	div = DIV_ROUND_UP(i2c_rate, scl_rate * 8) - 2;
 	divh = 0;
@@ -352,23 +350,28 @@ int rockchip_i2c_set_bus_speed(struct udevice *bus, unsigned int speed)
 	return 0;
 }
 
-static int rockchip_i2c_probe(struct udevice *bus)
+static int rockchip_i2c_ofdata_to_platdata(struct udevice *bus)
 {
-	struct rk_i2c *i2c = dev_get_priv(bus);
+	struct rk_i2c *priv = dev_get_priv(bus);
 	int ret;
 
-	ret = uclass_get_device(UCLASS_PINCTRL, 0, &i2c->pinctrl);
-	if (ret)
+	ret = clk_get_by_index(bus, 0, &priv->clk);
+	if (ret < 0) {
+		debug("%s: Could not get clock for %s: %d\n", __func__,
+		      bus->name, ret);
 		return ret;
-	ret = uclass_get_device(UCLASS_CLK, 0, &i2c->clk);
-	if (ret)
-		return ret;
-	ret = pinctrl_get_periph_id(i2c->pinctrl, bus);
-	if (ret < 0)
-		return ret;
-	i2c->id = ret;
-	i2c->regs = (void *)dev_get_addr(bus);
-	return pinctrl_request(i2c->pinctrl, i2c->id, 0);
+	}
+
+	return 0;
+}
+
+static int rockchip_i2c_probe(struct udevice *bus)
+{
+	struct rk_i2c *priv = dev_get_priv(bus);
+
+	priv->regs = (void *)dev_get_addr(bus);
+
+	return 0;
 }
 
 static const struct dm_i2c_ops rockchip_i2c_ops = {
@@ -385,6 +388,7 @@ U_BOOT_DRIVER(i2c_rockchip) = {
 	.name	= "i2c_rockchip",
 	.id	= UCLASS_I2C,
 	.of_match = rockchip_i2c_ids,
+	.ofdata_to_platdata = rockchip_i2c_ofdata_to_platdata,
 	.probe	= rockchip_i2c_probe,
 	.priv_auto_alloc_size = sizeof(struct rk_i2c),
 	.ops	= &rockchip_i2c_ops,

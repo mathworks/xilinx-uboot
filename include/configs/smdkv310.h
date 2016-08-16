@@ -12,13 +12,10 @@
 #include "exynos4-common.h"
 
 #undef CONFIG_BOARD_COMMON
-#undef CONFIG_USB_GADGET
 #undef CONFIG_USB_GADGET_DWC2_OTG
 #undef CONFIG_USB_GADGET_DWC2_OTG_PHY
-#undef CONFIG_CMD_USB_MASS_STORAGE
 #undef CONFIG_REVISION_TAG
 #undef CONFIG_CMD_THOR_DOWNLOAD
-#undef CONFIG_CMD_DFU
 
 /* High Level Configuration Options */
 #define CONFIG_EXYNOS4210		1	/* which is a EXYNOS4210 SoC */
@@ -41,9 +38,6 @@
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 
 /* MMC SPL */
 #define CONFIG_SKIP_LOWLEVEL_INIT
@@ -92,7 +86,7 @@
 
 #define CONFIG_SYS_INIT_SP_ADDR		0x02040000
 
-/* U-boot copy size from boot Media to DRAM.*/
+/* U-Boot copy size from boot Media to DRAM.*/
 #define	COPY_BL2_SIZE		0x80000
 #define BL2_START_OFFSET	((CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)/512)
 #define BL2_SIZE_BLOC_COUNT	(COPY_BL2_SIZE/512)

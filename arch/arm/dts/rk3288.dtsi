@@ -9,6 +9,7 @@
 #include <dt-bindings/clock/rk3288-cru.h>
 #include <dt-bindings/power-domain/rk3288.h>
 #include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/video/rk3288.h>
 #include "skeleton.dtsi"
 
 / {
@@ -631,6 +632,21 @@
 		status = "disabled";
 	};
 
+	spdif: sound@ff88b0000 {
+		compatible = "rockchip,rk3288-spdif", "rockchip,rk3066-spdif";
+		reg = <0xff8b0000 0x10000>;
+		#sound-dai-cells = <0>;
+		clock-names = "hclk", "mclk";
+		clocks = <&cru HCLK_SPDIF8CH>, <&cru SCLK_SPDIF8CH>;
+		dmas = <&dmac_bus_s 3>;
+		dma-names = "tx";
+		interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spdif_tx>;
+		rockchip,grf = <&grf>;
+		status = "disabled";
+	};
+
 	i2s: i2s@ff890000 {
 		compatible = "rockchip,rk3288-i2s", "rockchip,rk3066-i2s";
 		reg = <0xff890000 0x10000>;
@@ -668,6 +684,10 @@
 				reg = <1>;
 				remote-endpoint = <&hdmi_in_vopb>;
 			};
+			vopb_out_lvds: endpoint@2 {
+				reg = <2>;
+				remote-endpoint = <&lvds_in_vopb>;
+			};
 		};
 	};
 
@@ -692,6 +712,7 @@
 		iommus = <&vopl_mmu>;
 		power-domains = <&power RK3288_PD_VIO>;
 		status = "disabled";
+		u-boot,dm-pre-reloc;
 		vopl_out: port {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -703,7 +724,10 @@
 				reg = <1>;
 				remote-endpoint = <&hdmi_in_vopl>;
 			};
-
+			vopl_out_lvds: endpoint@2 {
+				reg = <2>;
+				remote-endpoint = <&lvds_in_vopl>;
+			};
 		};
 	};
 
@@ -765,6 +789,34 @@
 				hdmi_in_vopl: endpoint@1 {
 					reg = <1>;
 					remote-endpoint = <&vopl_out_hdmi>;
+				};
+			};
+		};
+	};
+
+	lvds: lvds@ff96c000 {
+		compatible = "rockchip,rk3288-lvds";
+		reg = <0xff96c000 0x4000>;
+		clocks = <&cru PCLK_LVDS_PHY>;
+		clock-names = "pclk_lvds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcdc0_ctl>;
+		rockchip,grf = <&grf>;
+		status = "disabled";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			lvds_in: port@0 {
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				lvds_in_vopb: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vopb_out_lvds>;
+				};
+				lvds_in_vopl: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vopl_out_lvds>;
 				};
 			};
 		};
@@ -1093,6 +1145,15 @@
 			};
 		};
 
+		lcdc0 {
+			lcdc0_ctl: lcdc0-ctl {
+				rockchip,pins = <1 24 RK_FUNC_1 &pcfg_pull_none>,
+						<1 25 RK_FUNC_1 &pcfg_pull_none>,
+						<1 26 RK_FUNC_1 &pcfg_pull_none>,
+						<1 27 RK_FUNC_1 &pcfg_pull_none>;
+			};
+		};
+
 		sdmmc {
 			sdmmc_clk: sdmmc-clk {
 				rockchip,pins = <6 20 RK_FUNC_1 &pcfg_pull_none>;
@@ -1414,6 +1475,12 @@
 						<4 1 3 &pcfg_pull_none>,
 						<4 2 3 &pcfg_pull_none>,
 						<4 3 3 &pcfg_pull_none>;
+			};
+		};
+
+		spdif {
+			spdif_tx: spdif-tx {
+				rockchip,pins = <RK_GPIO6 11 RK_FUNC_1 &pcfg_pull_none>;
 			};
 		};
 	};

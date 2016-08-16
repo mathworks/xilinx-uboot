@@ -5,7 +5,7 @@
  */
 
 #include <common.h>
-#include <clk.h>
+#include <clk-uclass.h>
 #include <dm.h>
 #include <errno.h>
 #include <syscon.h>
@@ -13,14 +13,10 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/cru_rk3036.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/periph.h>
 #include <dm/lists.h>
+#include <dt-bindings/clock/rk3036-cru.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-struct rk3036_clk_plat {
-	enum rk_clk_id clk_id;
-};
 
 struct rk3036_clk_priv {
 	struct rk3036_cru *cru;
@@ -55,6 +51,23 @@ static const struct pll_div gpll_init_cfg = PLL_DIVISORS(GPLL_HZ, 2, 2, 1);
 static inline unsigned int log2(unsigned int value)
 {
 	return fls(value) - 1;
+}
+
+void *rockchip_get_cru(void)
+{
+	struct udevice *dev;
+	fdt_addr_t addr;
+	int ret;
+
+	ret = uclass_get_device(UCLASS_CLK, 0, &dev);
+	if (ret)
+		return ERR_PTR(ret);
+
+	addr = dev_get_addr(dev);
+	if (addr == FDT_ADDR_T_NONE)
+		return ERR_PTR(-EINVAL);
+
+	return (void *)addr;
 }
 
 static int rkclk_set_pll(struct rk3036_cru *cru, enum rk_clk_id clk_id,
@@ -233,19 +246,19 @@ static uint32_t rkclk_pll_get_rate(struct rk3036_cru *cru,
 }
 
 static ulong rockchip_mmc_get_clk(struct rk3036_cru *cru, uint clk_general_rate,
-				  enum periph_id periph)
+				  int periph)
 {
 	uint src_rate;
 	uint div, mux;
 	u32 con;
 
 	switch (periph) {
-	case PERIPH_ID_EMMC:
+	case HCLK_EMMC:
 		con = readl(&cru->cru_clksel_con[12]);
 		mux = (con >> EMMC_PLL_SHIFT) & EMMC_PLL_MASK;
 		div = (con >> EMMC_DIV_SHIFT) & EMMC_DIV_MASK;
 		break;
-	case PERIPH_ID_SDCARD:
+	case HCLK_SDIO:
 		con = readl(&cru->cru_clksel_con[12]);
 		mux = (con >> MMC0_PLL_SHIFT) & MMC0_PLL_MASK;
 		div = (con >> MMC0_DIV_SHIFT) & MMC0_DIV_MASK;
@@ -259,7 +272,7 @@ static ulong rockchip_mmc_get_clk(struct rk3036_cru *cru, uint clk_general_rate,
 }
 
 static ulong rockchip_mmc_set_clk(struct rk3036_cru *cru, uint clk_general_rate,
-				  enum periph_id periph, uint freq)
+				  int periph, uint freq)
 {
 	int src_clk_div;
 	int mux;
@@ -277,14 +290,14 @@ static ulong rockchip_mmc_set_clk(struct rk3036_cru *cru, uint clk_general_rate,
 	}
 
 	switch (periph) {
-	case PERIPH_ID_EMMC:
+	case HCLK_EMMC:
 		rk_clrsetreg(&cru->cru_clksel_con[12],
 			     EMMC_PLL_MASK << EMMC_PLL_SHIFT |
 			     EMMC_DIV_MASK << EMMC_DIV_SHIFT,
 			     mux << EMMC_PLL_SHIFT |
 			     (src_clk_div - 1) << EMMC_DIV_SHIFT);
 		break;
-	case PERIPH_ID_SDCARD:
+	case HCLK_SDIO:
 		rk_clrsetreg(&cru->cru_clksel_con[11],
 			     MMC0_PLL_MASK << MMC0_PLL_SHIFT |
 			     MMC0_DIV_MASK << MMC0_DIV_SHIFT,
@@ -298,31 +311,30 @@ static ulong rockchip_mmc_set_clk(struct rk3036_cru *cru, uint clk_general_rate,
 	return rockchip_mmc_get_clk(cru, clk_general_rate, periph);
 }
 
-static ulong rk3036_clk_get_rate(struct udevice *dev)
+static ulong rk3036_clk_get_rate(struct clk *clk)
 {
-	struct rk3036_clk_plat *plat = dev_get_platdata(dev);
-	struct rk3036_clk_priv *priv = dev_get_priv(dev);
+	struct rk3036_clk_priv *priv = dev_get_priv(clk->dev);
 
-	debug("%s\n", dev->name);
-	return rkclk_pll_get_rate(priv->cru, plat->clk_id);
+	switch (clk->id) {
+	case 0 ... 63:
+		return rkclk_pll_get_rate(priv->cru, clk->id);
+	default:
+		return -ENOENT;
+	}
 }
 
-static ulong rk3036_clk_set_rate(struct udevice *dev, ulong rate)
+static ulong rk3036_clk_set_rate(struct clk *clk, ulong rate)
 {
-	debug("%s\n", dev->name);
+	struct rk3036_clk_priv *priv = dev_get_priv(clk->dev);
+	ulong new_rate, gclk_rate;
 
-	return 0;
-}
-
-ulong rk3036_set_periph_rate(struct udevice *dev, int periph, ulong rate)
-{
-	struct rk3036_clk_priv *priv = dev_get_priv(dev);
-	ulong new_rate;
-
-	switch (periph) {
-	case PERIPH_ID_EMMC:
-		new_rate = rockchip_mmc_set_clk(priv->cru, clk_get_rate(dev),
-						periph, rate);
+	gclk_rate = rkclk_pll_get_rate(priv->cru, CLK_GENERAL);
+	switch (clk->id) {
+	case 0 ... 63:
+		return 0;
+	case HCLK_EMMC:
+		new_rate = rockchip_mmc_set_clk(priv->cru, gclk_rate,
+						clk->id, rate);
 		break;
 	default:
 		return -ENOENT;
@@ -334,63 +346,24 @@ ulong rk3036_set_periph_rate(struct udevice *dev, int periph, ulong rate)
 static struct clk_ops rk3036_clk_ops = {
 	.get_rate	= rk3036_clk_get_rate,
 	.set_rate	= rk3036_clk_set_rate,
-	.set_periph_rate = rk3036_set_periph_rate,
 };
 
 static int rk3036_clk_probe(struct udevice *dev)
 {
-	struct rk3036_clk_plat *plat = dev_get_platdata(dev);
 	struct rk3036_clk_priv *priv = dev_get_priv(dev);
 
-	if (plat->clk_id != CLK_OSC) {
-		struct rk3036_clk_priv *parent_priv = dev_get_priv(dev->parent);
-
-		priv->cru = parent_priv->cru;
-		return 0;
-	}
 	priv->cru = (struct rk3036_cru *)dev_get_addr(dev);
 	rkclk_init(priv->cru);
 
 	return 0;
 }
 
-static const char *const clk_name[] = {
-	"osc",
-	"apll",
-	"dpll",
-	"cpll",
-	"gpll",
-	"mpll",
-};
-
 static int rk3036_clk_bind(struct udevice *dev)
 {
-	struct rk3036_clk_plat *plat = dev_get_platdata(dev);
-	int pll, ret;
-
-	/* We only need to set up the root clock */
-	if (dev->of_offset == -1) {
-		plat->clk_id = CLK_OSC;
-		return 0;
-	}
-
-	/* Create devices for P main clocks */
-	for (pll = 1; pll < CLK_COUNT; pll++) {
-		struct udevice *child;
-		struct rk3036_clk_plat *cplat;
-
-		debug("%s %s\n", __func__, clk_name[pll]);
-		ret = device_bind_driver(dev, "clk_rk3036", clk_name[pll],
-					 &child);
-		if (ret)
-			return ret;
-
-		cplat = dev_get_platdata(child);
-		cplat->clk_id = pll;
-	}
+	int ret;
 
 	/* The reset driver does not have a device node, so bind it here */
-	ret = device_bind_driver(gd->dm_root, "rk3036_reset", "reset", &dev);
+	ret = device_bind_driver(gd->dm_root, "rk3036_sysreset", "reset", &dev);
 	if (ret)
 		debug("Warning: No RK3036 reset driver: ret=%d\n", ret);
 
@@ -407,7 +380,6 @@ U_BOOT_DRIVER(clk_rk3036) = {
 	.id		= UCLASS_CLK,
 	.of_match	= rk3036_clk_ids,
 	.priv_auto_alloc_size = sizeof(struct rk3036_clk_priv),
-	.platdata_auto_alloc_size = sizeof(struct rk3036_clk_plat),
 	.ops		= &rk3036_clk_ops,
 	.bind		= rk3036_clk_bind,
 	.probe		= rk3036_clk_probe,

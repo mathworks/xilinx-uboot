@@ -9,6 +9,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_SYS_CACHELINE_SIZE	32
+
 #include <asm/arch/imx-regs.h>
 
 #define CONFIG_VF610
@@ -34,12 +36,8 @@
 
 #define CONFIG_BOARD_EARLY_INIT_F
 
-#define CONFIG_FSL_LPUART
-#define LPUART_BASE			UART1_BASE
-
 /* Allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_SYS_UART_PORT		(1)
 #define CONFIG_BAUDRATE			115200
 
 /* NAND support */
@@ -79,14 +77,9 @@
 
 #define CONFIG_SYS_FSL_ERRATUM_ESDHC111
 
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
-#define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
 
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_MII
 #define CONFIG_FEC_MXC
 #define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
@@ -98,21 +91,18 @@
 /* QSPI Configs*/
 
 #ifdef CONFIG_FSL_QSPI
-#define CONFIG_CMD_SF
 #define FSL_QSPI_FLASH_SIZE		(1 << 24)
 #define FSL_QSPI_FLASH_NUM		2
 #define CONFIG_SYS_FSL_QSPI_LE
 #endif
 
 /* I2C Configs */
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_SPD_BUS_NUM		0
 
-#define CONFIG_BOOTDELAY		3
 
 #define CONFIG_SYS_LOAD_ADDR		0x82000000
 
@@ -226,8 +216,6 @@
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #undef CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE		\
@@ -235,7 +223,6 @@
 #define CONFIG_SYS_MAXARGS		16	/* max number of command args */
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
-#define CONFIG_CMD_MEMTEST
 #define CONFIG_SYS_MEMTEST_START	0x80010000
 #define CONFIG_SYS_MEMTEST_END		0x87C00000
 
@@ -275,8 +262,5 @@
 #define CONFIG_ENV_RANGE		(512 * 1024)
 #define CONFIG_ENV_OFFSET		0x180000
 #endif
-
-#define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_BOOTZ
 
 #endif

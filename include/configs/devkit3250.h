@@ -33,7 +33,7 @@
 #define CONFIG_SYS_MALLOC_LEN		SZ_1M
 #define CONFIG_SYS_SDRAM_BASE		EMC_DYCS0_BASE
 #define CONFIG_SYS_SDRAM_SIZE		SZ_64M
-#define CONFIG_SYS_TEXT_BASE		0x83FA0000
+#define CONFIG_SYS_TEXT_BASE		0x83F00000
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE + SZ_32K)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE - SZ_1M)
 
@@ -49,12 +49,18 @@
 #define CONFIG_BAUDRATE			115200
 
 /*
+ * DMA
+ */
+#if !defined(CONFIG_SPL_BUILD)
+#define CONFIG_DMA_LPC32XX
+#endif
+
+/*
  * I2C
  */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_LPC32XX
 #define CONFIG_SYS_I2C_SPEED		100000
-#define CONFIG_CMD_I2C
 
 /*
  * GPIO
@@ -66,7 +72,6 @@
  */
 #define CONFIG_LPC32XX_SSP
 #define CONFIG_LPC32XX_SSP_TIMEOUT	100000
-#define CONFIG_CMD_SPI
 
 /*
  * Ethernet
@@ -77,9 +82,6 @@
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_ADDR			0x1F
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 
 /*
  * NOR Flash
@@ -114,7 +116,15 @@
 #define CONFIG_SYS_NAND_PAGE_SIZE		NAND_LARGE_BLOCK_PAGE_SIZE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
 
+#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_NAND
+
+/*
+ * USB
+ */
+#define CONFIG_USB_OHCI_LPC32XX
+#define CONFIG_USB_ISP1301_I2C_ADDR		0x2d
+#define CONFIG_USB_STORAGE
 
 /*
  * U-Boot General Configurations
@@ -135,7 +145,6 @@
 /*
  * Pass open firmware flat tree
  */
-#define CONFIG_OF_LIBFDT
 
 /*
  * Environment
@@ -163,15 +172,12 @@
 /*
  * U-Boot Commands
  */
-#define CONFIG_CMD_CACHE
 
 /*
  * Boot Linux
  */
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_ZERO_BOOTDELAY_CHECK
-#define CONFIG_BOOTDELAY		1
 
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"console=ttyS0,115200n8"

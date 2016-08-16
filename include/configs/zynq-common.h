@@ -16,7 +16,6 @@
 #endif
 
 /* Cache options */
-#define CONFIG_CMD_CACHE
 #define CONFIG_SYS_CACHELINE_SIZE	32
 
 #define CONFIG_SYS_L2CACHE_OFF
@@ -44,9 +43,8 @@
 # define CONFIG_MII
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
 # define CONFIG_PHY_MARVELL
+# define CONFIG_PHY_REALTEK
 # define CONFIG_PHY_XILINX
-# define CONFIG_SYS_ENET
-# define CONFIG_BOOTP_SERVERIP
 # define CONFIG_BOOTP_BOOTPATH
 # define CONFIG_BOOTP_GATEWAY
 # define CONFIG_BOOTP_HOSTNAME
@@ -55,13 +53,11 @@
 
 /* SPI */
 #ifdef CONFIG_ZYNQ_SPI
-# define CONFIG_CMD_SF
 #endif
 
 /* QSPI */
 #ifdef CONFIG_ZYNQ_QSPI
 # define CONFIG_SF_DEFAULT_SPEED	30000000
-# define CONFIG_CMD_SF
 # define CONFIG_SF_DUAL_FLASH
 #endif
 
@@ -83,40 +79,22 @@
 #endif
 
 /* MMC */
-#if defined(CONFIG_ZYNQ_SDHCI0) || defined(CONFIG_ZYNQ_SDHCI1)
+#if defined(CONFIG_ZYNQ_SDHCI)
 # define CONFIG_MMC
 # define CONFIG_GENERIC_MMC
 # define CONFIG_SDHCI
-# define CONFIG_ZYNQ_SDHCI
-# define CONFIG_CMD_MMC
 # define CONFIG_ZYNQ_SDHCI_MAX_FREQ	52000000
 #endif
 
-#ifdef CONFIG_ZYNQ_USB
-# define CONFIG_USB_EHCI
-# define CONFIG_CMD_USB
-# define CONFIG_USB_STORAGE
-# define CONFIG_USB_EHCI_ZYNQ
-# define CONFIG_USB_ULPI_VIEWPORT
-# define CONFIG_USB_ULPI
+#ifdef CONFIG_USB_EHCI_ZYNQ
 # define CONFIG_EHCI_IS_TDI
 # define CONFIG_USB_MAX_CONTROLLER_COUNT	2
 
-# define CONFIG_CI_UDC           /* ChipIdea CI13xxx UDC */
-# define CONFIG_USB_GADGET
-# define CONFIG_USB_GADGET_DUALSPEED
-# define CONFIG_USB_GADGET_DOWNLOAD
 # define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x600000
 # define DFU_DEFAULT_POLL_TIMEOUT	300
 # define CONFIG_USB_FUNCTION_DFU
 # define CONFIG_DFU_RAM
-# define CONFIG_USB_GADGET_VBUS_DRAW	2
-# define CONFIG_G_DNL_VENDOR_NUM	0x03FD
-# define CONFIG_G_DNL_PRODUCT_NUM	0x0300
-# define CONFIG_G_DNL_MANUFACTURER	"Xilinx"
-# define CONFIG_USB_GADGET
 # define CONFIG_USB_CABLE_CHECK
-# define CONFIG_CMD_DFU
 # define CONFIG_CMD_THOR_DOWNLOAD
 # define CONFIG_THOR_RESET_OFF
 # define CONFIG_USB_FUNCTION_THOR
@@ -129,7 +107,7 @@
 	"dfu_ram=run dfu_ram_info && dfu 0 ram 0\0" \
 	"thor_ram=run dfu_ram_info && thordown 0 ram 0\0"
 
-# if defined(CONFIG_ZYNQ_SDHCI0) || defined(CONFIG_ZYNQ_SDHCI1)
+# if defined(CONFIG_ZYNQ_SDHCI)
 #  define CONFIG_DFU_MMC
 #  define DFU_ALT_INFO_MMC \
 	"dfu_mmc_info=" \
@@ -155,13 +133,8 @@
 
 #if defined(CONFIG_ZYNQ_SDHCI) || defined(CONFIG_ZYNQ_USB)
 # define CONFIG_SUPPORT_VFAT
-# define CONFIG_CMD_FAT
-# define CONFIG_CMD_EXT2
 # define CONFIG_FAT_WRITE
 # define CONFIG_DOS_PARTITION
-# define CONFIG_CMD_EXT4
-# define CONFIG_CMD_EXT4_WRITE
-# define CONFIG_CMD_FS_GENERIC
 #endif
 
 /* NAND */
@@ -180,7 +153,6 @@
 
 /* I2C */
 #if defined(CONFIG_SYS_I2C_ZYNQ)
-# define CONFIG_CMD_I2C
 # define CONFIG_SYS_I2C
 # define CONFIG_SYS_I2C_ZYNQ_SPEED		100000
 # define CONFIG_SYS_I2C_ZYNQ_SLAVE		0
@@ -224,6 +196,9 @@
 #  define CONFIG_ENV_OFFSET		0xE0000
 # endif
 #endif
+
+/* enable preboot to be loaded before CONFIG_BOOTDELAY */
+#define CONFIG_PREBOOT
 
 /* Default environment */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
@@ -332,21 +307,15 @@
 		DFU_ALT_INFO
 #endif
 
-/* Default environment */
-#define CONFIG_IPADDR	10.10.70.102
-#define CONFIG_SERVERIP	10.10.70.101
-
 /* default boot is according to the bootmode switch settings */
 #if defined(CONFIG_CMD_ZYNQ_RSA)
 #define CONFIG_BOOTCOMMAND		"run rsa_$modeboot"
 #else
 #define CONFIG_BOOTCOMMAND		"run $modeboot"
 #endif
-#define CONFIG_BOOTDELAY		3 /* -1 to Disable autoboot */
 #define CONFIG_SYS_LOAD_ADDR		0 /* default? */
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_HUSH_PARSER
 
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
@@ -375,10 +344,10 @@
 # define CONFIG_NR_DRAM_BANKS		1
 #endif
 
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x1000)
+#define CONFIG_SYS_MEMTEST_START	0
+#define CONFIG_SYS_MEMTEST_END		0x1000
 
-#define CONFIG_SYS_MALLOC_LEN		0xC00000
+#define CONFIG_SYS_MALLOC_LEN		0x1400000
 
 #define CONFIG_SYS_INIT_RAM_ADDR	0xFFFF0000
 #define CONFIG_SYS_INIT_RAM_SIZE	0x1000
@@ -395,9 +364,6 @@
 #define CONFIG_CMD_FPGA_LOADBP
 #define CONFIG_CMD_FPGA_LOADFS
 
-/* Open Firmware flat tree */
-#define CONFIG_OF_LIBFDT
-
 /* FIT support */
 #define CONFIG_IMAGE_FORMAT_LEGACY /* enable also legacy image format */
 
@@ -413,16 +379,6 @@
 #define CONFIG_SYS_LDSCRIPT  "arch/arm/mach-zynq/u-boot.lds"
 
 /* Commands */
-#ifdef CONFIG_SYS_ENET
-# define CONFIG_CMD_PING
-# define CONFIG_CMD_DHCP
-# define CONFIG_CMD_MII
-# define CONFIG_CMD_TFTPPUT
-#else
-# undef CONFIG_CMD_NET
-# undef CONFIG_CMD_NFS
-#endif
-
 #if defined(CONFIG_CMD_ZYNQ_RSA)
 # ifndef CONFIG_RSA
 #  define CONFIG_RSA
@@ -448,6 +404,7 @@
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_BOARD_INIT
+#define CONFIG_SPL_RAM_DEVICE
 
 #define CONFIG_SPL_LDSCRIPT	"arch/arm/mach-zynq/u-boot-spl.lds"
 
@@ -462,18 +419,14 @@
 #endif
 
 /* MMC support */
-#ifdef CONFIG_ZYNQ_SDHCI0
+#ifdef CONFIG_ZYNQ_SDHCI
 #define CONFIG_SPL_MMC_SUPPORT
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR 0x300 /* address 0x60000 */
 #define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS      0x200 /* 256 KB */
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
 #define CONFIG_SPL_LIBDISK_SUPPORT
 #define CONFIG_SPL_FAT_SUPPORT
-#ifdef CONFIG_OF_SEPARATE
-# define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot-dtb.img"
-#else
-# define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
-#endif
+#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
 #endif
 
 /* Disable dcache for SPL just for sure */
@@ -542,6 +495,5 @@
 #define CONFIG_SPL_BSS_MAX_SIZE		0x100000
 
 #define CONFIG_SYS_UBOOT_START	CONFIG_SYS_TEXT_BASE
-
 
 #endif /* __CONFIG_ZYNQ_COMMON_H */

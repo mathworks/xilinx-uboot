@@ -16,6 +16,7 @@
 
 	chosen {
 		stdout-path = &uart1;
+		tick-timer = &timer2;
 	};
 
 	memory {
@@ -468,6 +469,11 @@
 	status = "okay";
 	vmmc-supply = <&ldo1_reg>;
 	bus-width = <4>;
+	/*
+	 * SDCD signal is not being used here - using the fact that GPIO mode
+	 * is always hardwired.
+	 */
+	cd-gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
 };
 
 &mmc2 {
@@ -487,7 +493,7 @@
 
 	spi-max-frequency = <48000000>;
 	m25p80@0 {
-		compatible = "s25fl256s1";
+		compatible = "s25fl256s1","spi-flash";
 		spi-max-frequency = <48000000>;
 		reg = <0>;
 		spi-tx-bus-width = <1>;

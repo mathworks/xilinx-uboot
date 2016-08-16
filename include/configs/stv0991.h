@@ -45,7 +45,7 @@
 #define CONFIG_SYS_INIT_RAM_ADDR		0x00190000
 #define CONFIG_SYS_INIT_SP_OFFSET		\
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-/* U-boot Load Address */
+/* U-Boot Load Address */
 #define CONFIG_SYS_TEXT_BASE			0x00010000
 #define CONFIG_SYS_INIT_SP_ADDR			\
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
@@ -57,21 +57,16 @@
 #define CONFIG_PHY_MICREL
 
 /* Command support defines */
-#define CONFIG_CMD_PING
 #define CONFIG_PHY_RESET_DELAY			10000		/* in usec */
 
 #define CONFIG_SYS_MEMTEST_START               0x0000
 #define CONFIG_SYS_MEMTEST_END                 1024*1024
-#define CONFIG_CMD_MEMTEST
 
 /* Misc configuration */
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 
-#define CONFIG_BOOTDELAY                       3
 #define CONFIG_BOOTCOMMAND                     "go 0x40040000"
-
-#define CONFIG_OF_LIBFDT
 
 /*
 + * QSPI support
@@ -79,9 +74,7 @@
 #ifdef CONFIG_OF_CONTROL		/* QSPI is controlled via DT */
 #define CONFIG_CQSPI_DECODER		0
 #define CONFIG_CQSPI_REF_CLK		((30/4)/2)*1000*1000
-#define CONFIG_CMD_SPI
 
-#define CONFIG_CMD_SF
 #endif
 
 #endif /* __CONFIG_H */

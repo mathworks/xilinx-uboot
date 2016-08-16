@@ -6,21 +6,10 @@
  * (C) Copyright 2008-2010
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published by
- * the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 51
- * Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
- *
  * Authors: Artem Bityutskiy (Битюцкий Артём)
  *          Adrian Hunter
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -572,7 +561,7 @@ static unsigned long ubifs_findfile(struct super_block *sb, char *filename)
 	return 0;
 }
 
-int ubifs_set_blk_dev(block_dev_desc_t *rbdd, disk_partition_t *info)
+int ubifs_set_blk_dev(struct blk_desc *rbdd, disk_partition_t *info)
 {
 	if (rbdd) {
 		debug("UBIFS cannot be used with normal block devices\n");
@@ -580,7 +569,7 @@ int ubifs_set_blk_dev(block_dev_desc_t *rbdd, disk_partition_t *info)
 	}
 
 	/*
-	 * Should never happen since get_device_and_partition() already checks
+	 * Should never happen since blk_get_device_part_str() already checks
 	 * this, but better safe then sorry.
 	 */
 	if (!ubifs_is_mounted()) {

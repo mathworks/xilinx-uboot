@@ -172,15 +172,8 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MFSL
-
-#if defined(CONFIG_DCACHE) || defined(CONFIG_ICACHE)
-# define CONFIG_CMD_CACHE
-#else
-# undef CONFIG_CMD_CACHE
-#endif
 
 #if defined(FLASH)
 # define CONFIG_CMD_JFFS2
@@ -193,7 +186,6 @@
 
 #else
 #if defined(SPIFLASH)
-# define CONFIG_CMD_SF
 
 # if !defined(RAMENV)
 #  define CONFIG_CMD_SAVES
@@ -243,13 +235,9 @@
 /* default load address */
 #define	CONFIG_SYS_LOAD_ADDR	0
 
-#define	CONFIG_BOOTDELAY	-1	/* -1 disables auto-boot */
 #define	CONFIG_BOOTARGS		"root=romfs"
 #define	CONFIG_HOSTNAME		XILINX_BOARD_NAME
 #define	CONFIG_BOOTCOMMAND	"base 0;tftp 11000000 image.img;bootm"
-#define	CONFIG_IPADDR		192.168.0.3
-#define	CONFIG_SERVERIP		192.168.0.5
-#define	CONFIG_GATEWAYIP	192.168.0.1
 
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
@@ -274,11 +262,9 @@
 
 /* Enable flat device tree support */
 #define CONFIG_LMB		1
-#define CONFIG_OF_LIBFDT	1
 
 #if defined(CONFIG_XILINX_AXIEMAC)
 # define CONFIG_MII		1
-# define CONFIG_CMD_MII		1
 # define CONFIG_PHY_GIGE	1
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	1
 # define CONFIG_PHY_ATHEROS	1
@@ -293,7 +279,6 @@
 # define CONFIG_PHY_VITESSE	1
 #else
 # undef CONFIG_MII
-# undef CONFIG_CMD_MII
 #endif
 
 /* SPL part */

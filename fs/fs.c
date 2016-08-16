@@ -1,17 +1,7 @@
 /*
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <config.h>
@@ -30,11 +20,11 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static block_dev_desc_t *fs_dev_desc;
+static struct blk_desc *fs_dev_desc;
 static disk_partition_t fs_partition;
 static int fs_type = FS_TYPE_ANY;
 
-static inline int fs_probe_unsupported(block_dev_desc_t *fs_dev_desc,
+static inline int fs_probe_unsupported(struct blk_desc *fs_dev_desc,
 				      disk_partition_t *fs_partition)
 {
 	printf("** Unrecognized filesystem type **\n");
@@ -91,7 +81,7 @@ struct fstype_info {
 	 * filesystem.
 	 */
 	bool null_dev_desc_ok;
-	int (*probe)(block_dev_desc_t *fs_dev_desc,
+	int (*probe)(struct blk_desc *fs_dev_desc,
 		     disk_partition_t *fs_partition);
 	int (*ls)(const char *dirname);
 	int (*exists)(const char *filename);
@@ -223,7 +213,7 @@ int fs_set_blk_dev(const char *ifname, const char *dev_part_str, int fstype)
 	}
 #endif
 
-	part = get_device_and_partition(ifname, dev_part_str, &fs_dev_desc,
+	part = blk_get_device_part_str(ifname, dev_part_str, &fs_dev_desc,
 					&fs_partition, 1);
 	if (part < 0)
 		return -1;

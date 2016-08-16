@@ -9,6 +9,7 @@
 /dts-v1/;
 /include/ "uniphier-ph1-sld3.dtsi"
 /include/ "uniphier-ref-daughter.dtsi"
+/include/ "uniphier-support-card.dtsi"
 
 / {
 	model = "UniPhier PH1-sLD3 Reference Board";
@@ -36,6 +37,10 @@
 	};
 };
 
+&ethsc {
+	interrupts = <0 49 4>;
+};
+
 &serial0 {
 	status = "okay";
 };
@@ -49,6 +54,14 @@
 };
 
 &i2c0 {
+	status = "okay";
+};
+
+&emmc {
+	status = "okay";
+};
+
+&sd {
 	status = "okay";
 };
 
@@ -68,7 +81,7 @@
 	status = "okay";
 };
 
-/* for U-boot only */
+/* for U-Boot only */
 &serial0 {
        u-boot,dm-pre-reloc;
 };

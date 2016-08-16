@@ -222,16 +222,6 @@
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	3
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	5
 
-/* DSPI */
-#define CONFIG_FSL_DSPI
-#ifdef CONFIG_FSL_DSPI
-#define CONFIG_CMD_SF
-#define CONFIG_DM_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SF_DEFAULT_BUS		1
-#define CONFIG_SF_DEFAULT_CS		0
-#endif
-
 /*
  * Environment
  */
@@ -256,7 +246,6 @@
 /* FMan */
 #ifdef CONFIG_SYS_DPAA_FMAN
 #define CONFIG_FMAN_ENET
-#define CONFIG_CMD_MII
 #define CONFIG_PHYLIB
 #define CONFIG_PHYLIB_10G
 #define CONFIG_PHY_GIGE		/* Include GbE speed/duplex detection */
@@ -264,6 +253,7 @@
 #define CONFIG_PHY_VITESSE
 #define CONFIG_PHY_REALTEK
 #define CONFIG_PHY_AQUANTIA
+#define AQR105_IRQ_MASK			0x40000000
 
 #define RGMII_PHY1_ADDR			0x1
 #define RGMII_PHY2_ADDR			0x2
@@ -278,26 +268,42 @@
 #define CONFIG_ETHPRIME			"FM1@DTSEC3"
 #endif
 
+/* QE */
+#if !defined(CONFIG_SD_BOOT) && !defined(CONFIG_NAND_BOOT) && \
+	!defined(CONFIG_QSPI_BOOT)
+#define CONFIG_U_QE
+#endif
+#define CONFIG_SYS_QE_FW_ADDR     0x60600000
+
 /* USB */
 #define CONFIG_HAS_FSL_XHCI_USB
 #ifdef CONFIG_HAS_FSL_XHCI_USB
-#define CONFIG_USB_XHCI
 #define CONFIG_USB_XHCI_FSL
-#define CONFIG_USB_XHCI_DWC3
 #define CONFIG_USB_MAX_CONTROLLER_COUNT		3
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS	2
-#define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
-#define CONFIG_CMD_EXT2
 #endif
 
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_CMD_HASH
-#define CONFIG_SHA_HW_ACCEL
-#define CONFIG_CMD_BLOB
-/* For LS1043 (ARMv8), ESBC image Address in Header is 64 bit */
-#define CONFIG_ESBC_ADDR_64BIT
+/* SATA */
+#define CONFIG_LIBATA
+#define CONFIG_SCSI_AHCI
+#define CONFIG_CMD_SCSI
+#ifndef CONFIG_CMD_FAT
+#define CONFIG_CMD_FAT
 #endif
+#ifndef CONFIG_CMD_EXT2
+#define CONFIG_CMD_EXT2
+#endif
+#define CONFIG_DOS_PARTITION
+#define CONFIG_BOARD_LATE_INIT
+#define CONFIG_SYS_SCSI_MAX_SCSI_ID		2
+#define CONFIG_SYS_SCSI_MAX_LUN			2
+#define CONFIG_SYS_SCSI_MAX_DEVICE		(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
+						CONFIG_SYS_SCSI_MAX_LUN)
+#define SCSI_VEND_ID 0x1b4b
+#define SCSI_DEV_ID  0x9170
+#define CONFIG_SCSI_DEV_LIST {SCSI_VEND_ID, SCSI_DEV_ID}
+#define CONFIG_PCI
 
 #include <asm/fsl_secure_boot.h>
 

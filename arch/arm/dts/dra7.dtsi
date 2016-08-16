@@ -41,6 +41,7 @@
 		ethernet1 = &cpsw_emac1;
 		d_can0 = &dcan1;
 		d_can1 = &dcan2;
+		spi0 = &qspi;
 	};
 
 	timer {
@@ -1113,8 +1114,11 @@
 
 		qspi: qspi@4b300000 {
 			compatible = "ti,dra7xxx-qspi";
-			reg = <0x4b300000 0x100>;
-			reg-names = "qspi_base";
+			reg = <0x4b300000 0x100>,
+			      <0x5c000000 0x4000000>,
+			      <0x4a002558 0x4>;
+			reg-names = "qspi_base", "qspi_mmap",
+				    "qspi_ctrlmod";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			ti,hwmods = "qspi";
@@ -1407,7 +1411,7 @@
 			ti,irqs-safe-map = <0>;
 		};
 
-		mac: ethernet@4a100000 {
+		mac: ethernet@48484000 {
 			compatible = "ti,cpsw";
 			ti,hwmods = "gmac";
 			clocks = <&dpll_gmac_ck>, <&gmac_gmii_ref_clk_div>;
@@ -1422,6 +1426,7 @@
 			active_slave = <0>;
 			cpts_clock_mult = <0x80000000>;
 			cpts_clock_shift = <29>;
+			syscon = <&scm_conf>;
 			reg = <0x48484000 0x1000
 			       0x48485200 0x2E00>;
 			#address-cells = <1>;

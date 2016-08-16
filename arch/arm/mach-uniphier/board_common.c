@@ -5,11 +5,16 @@
  */
 
 #include <common.h>
-#include <mach/micro-support-card.h>
+
+#include "micro-support-card.h"
+
+void uniphier_smp_kick_all_cpus(void);
 
 int board_init(void)
 {
 	led_puts("Uboo");
-
+#ifdef CONFIG_ARM64
+	uniphier_smp_kick_all_cpus();
+#endif
 	return 0;
 }

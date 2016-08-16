@@ -30,7 +30,6 @@
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_TEGRA_MMC
-#define CONFIG_CMD_MMC
 
 /* NAND support */
 #define CONFIG_CMD_NAND
@@ -42,13 +41,9 @@
 #define CONFIG_ENV_OFFSET	(SZ_512M - SZ_128K) /* 128K sector size */
 
 /* USB Host support */
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 3
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_TEGRA
-#define CONFIG_USB_ULPI
-#define CONFIG_USB_ULPI_VIEWPORT
 #define CONFIG_USB_STORAGE
-#define CONFIG_CMD_USB
 
 /* USB networking support */
 #define CONFIG_USB_HOST_ETHER
@@ -57,13 +52,8 @@
 #define CONFIG_USB_ETHER_SMSC95XX
 
 /* General networking support */
-#define CONFIG_CMD_DHCP
 
 /* LCD support */
-#define CONFIG_LCD
-#define CONFIG_PWM_TEGRA
-#define CONFIG_VIDEO_TEGRA
-#define LCD_BPP				LCD_COLOR16
 #define CONFIG_SYS_WHITE_ON_BLACK
 #define CONFIG_CONSOLE_SCROLL_LINES	10
 

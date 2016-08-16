@@ -61,6 +61,8 @@ parser.add_option('--no-check', action='store_false', dest='check_patch',
                   help="Don't check for patch compliance")
 parser.add_option('--no-tags', action='store_false', dest='process_tags',
                   default=True, help="Don't process subject tags as aliaes")
+parser.add_option('-T', '--thread', action='store_true', dest='thread',
+                  default=False, help='Create patches as a single thread')
 
 parser.usage += """
 
@@ -115,7 +117,8 @@ elif options.full_help:
     pager = os.getenv('PAGER')
     if not pager:
         pager = 'more'
-    fname = os.path.join(os.path.dirname(sys.argv[0]), 'README')
+    fname = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),
+                         'README')
     command.Run(pager, fname)
 
 # Process commits, produce patches files, check them, email them
@@ -161,7 +164,7 @@ else:
     if its_a_go:
         cmd = gitutil.EmailPatches(series, cover_fname, args,
                 options.dry_run, not options.ignore_bad_tags, cc_file,
-                in_reply_to=options.in_reply_to)
+                in_reply_to=options.in_reply_to, thread=options.thread)
     else:
         print col.Color(col.RED, "Not sending emails due to errors/warnings")
 
