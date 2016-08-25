@@ -24,7 +24,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_DISABLE_ARCH_FIXUP_FDT
+#ifdef CONFIG_ARCH_FIXUP_FDT
 int arch_fixup_fdt(void *blob)
 {
 	bd_t *bd = gd->bd;
