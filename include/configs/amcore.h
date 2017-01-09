@@ -18,21 +18,11 @@
 #define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
-#define CONFIG_BOOTDELAY		1
 #define CONFIG_BOOTCOMMAND		"bootm ffc20000"
 
-#include <config_cmd_default.h>
 #undef CONFIG_CMD_AES
-#undef CONFIG_CMD_BOOTD
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_XIMG
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_TIMER
 #define CONFIG_CMD_DIAG
 
-#define CONFIG_SYS_PROMPT		"amcore $ "
 /* undef to save memory	*/
 #undef	CONFIG_SYS_LONGHELP
 
@@ -52,7 +42,6 @@
 
 #define CONFIG_SYS_CONSOLE_INFO_QUIET	1 /* no console @ startup	*/
 #define CONFIG_AUTO_COMPLETE		1 /* add autocompletion support	*/
-#define CONFIG_LOOPW			1 /* enable loopw command	*/
 #define CONFIG_MX_CYCLIC		1 /* enable mdc/mwc commands	*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000	/* default load address */
@@ -97,6 +86,10 @@
 					 CONFIG_SYS_MONITOR_LEN)
 #define CONFIG_ENV_SIZE			0x1000
 #define CONFIG_ENV_SECT_SIZE		0x1000
+
+#define LDS_BOARD_TEXT \
+        . = DEFINED(env_offset) ? env_offset : .; \
+        common/env_embedded.o (.text*);
 
 /* memory map space for linux boot data */
 #define CONFIG_SYS_BOOTMAPSZ		(8 << 20)

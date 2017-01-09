@@ -26,7 +26,9 @@ else
 
 obj-$(CONFIG_MP)	+= release.o
 
+ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_CMD_ERRATA) += cmd_errata.o
+endif
 obj-$(CONFIG_CPM2)	+= commproc.o
 
 obj-$(CONFIG_CPM2)	+= ether_fcc.o
@@ -113,8 +115,5 @@ obj-y	+= speed.o
 endif
 obj-y	+= tlb.o
 obj-y	+= traps.o
-
-# Stub implementations of cache management functions for USB
-obj-y += cache.o
 
 endif # not minimal

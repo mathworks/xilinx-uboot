@@ -18,13 +18,6 @@
 
 #undef CONFIG_SPL_OS_BOOT
 
-/* Enable Generic board */
-#define CONFIG_SYS_GENERIC_BOARD
-
-/* Device Tree defines */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-
 /* EEPROM related defines */
 #define CONFIG_SYS_I2C_OMAP34XX
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50
@@ -57,7 +50,6 @@
 #define CONFIG_ENV_SIZE			(16 << 10)	/* 16 KB */
 #define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
 #define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_CMD_SAVEENV
 
 /* Enhance our eMMC support / experience. */
 #define CONFIG_HSMMC2_8BIT
@@ -68,7 +60,7 @@
 #define CONFIG_SPL_SATA_BOOT_DEVICE		0
 #define CONFIG_SYS_SATA_FAT_BOOT_PARTITION	1
 
-#define CONFIG_CMD_SCSI
+#define CONFIG_SCSI
 #define CONFIG_LIBATA
 #define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
@@ -77,7 +69,6 @@
 #define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
 						CONFIG_SYS_SCSI_MAX_LUN)
 /* USB UHH support options */
-#define CONFIG_CMD_USB
 #define CONFIG_USB_HOST
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_OMAP
@@ -89,9 +80,17 @@
 #define CONFIG_OMAP_EHCI_PHY3_RESET_GPIO	83 /* HSIC3 ETH #RESET */
 
 /* Enabled commands */
-#define CONFIG_CMD_DHCP		/* DHCP Support			*/
-#define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot	*/
-#define CONFIG_CMD_PING
+
+/* EEPROM */
+#define CONFIG_CMD_EEPROM
+#define CONFIG_ENV_EEPROM_IS_ON_I2C
+#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	4
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	5
+#define CONFIG_SYS_EEPROM_SIZE			256
+
+#define CONFIG_CMD_EEPROM_LAYOUT
+#define CONFIG_EEPROM_LAYOUT_HELP_STRING "v2, v3"
 
 /* USB Networking options */
 #define CONFIG_USB_HOST_ETHER
@@ -107,14 +106,10 @@
  * Miscellaneous configurable options
  */
 #undef CONFIG_SYS_AUTOLOAD
-#undef CONFIG_SYS_PROMPT
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_BOOTCOMMAND
-#undef CONFIG_BOOTDELAY
 
-#define CONFIG_BOOTDELAY		3
 #define CONFIG_SYS_AUTOLOAD		"no"
-#define CONFIG_SYS_PROMPT		"CM-T54 # "
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \

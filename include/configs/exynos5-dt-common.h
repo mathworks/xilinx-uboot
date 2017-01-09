@@ -13,15 +13,27 @@
 #undef EXYNOS_DEVICE_SETTINGS
 #define EXYNOS_DEVICE_SETTINGS \
 		"stdin=serial,cros-ec-keyb\0" \
-		"stdout=serial,lcd\0" \
-		"stderr=serial,lcd\0"
+		"stdout=serial,vidconsole\0" \
+		"stderr=serial,vidconsole\0"
 
-#include "exynos5-common.h"
+#define CONFIG_EXYNOS5_DT
 
-/* PMIC */
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_TPS65090
+#define CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_ENV_SPI_BASE	0x12D30000
+#define FLASH_SIZE		(4 << 20)
+#define CONFIG_ENV_OFFSET	(FLASH_SIZE - CONFIG_ENV_SECT_SIZE)
+#define CONFIG_SPI_BOOTING
+
+#define CONFIG_BOARD_COMMON
+
+/* Display */
+#define CONFIG_LCD
+#ifdef CONFIG_LCD
+#define CONFIG_EXYNOS_FB
+#define CONFIG_EXYNOS_DP
+#define LCD_BPP			LCD_COLOR16
+#define CONFIG_SYS_WHITE_ON_BLACK
+#endif
 
 /* Enable keyboard */
 #define CONFIG_KEYBOARD

@@ -13,12 +13,34 @@
 
 #include <asm/types.h>
 
+#define SYS_NUM_IRQS	16
+
+/* Architecture defined exceptions */
+enum x86_exception {
+	EXC_DE = 0,
+	EXC_DB,
+	EXC_NMI,
+	EXC_BP,
+	EXC_OF,
+	EXC_BR,
+	EXC_UD,
+	EXC_NM,
+	EXC_DF,
+	EXC_CSO,
+	EXC_TS,
+	EXC_NP,
+	EXC_SS,
+	EXC_GP,
+	EXC_PF,
+	EXC_MF = 16,
+	EXC_AC,
+	EXC_MC,
+	EXC_XM,
+	EXC_VE
+};
+
 /* arch/x86/cpu/interrupts.c */
 void set_vector(u8 intnum, void *routine);
-
-/* arch/x86/lib/interrupts.c */
-void disable_irq(int irq);
-void enable_irq(int irq);
 
 /* Architecture specific functions */
 void mask_irq(int irq);
@@ -37,5 +59,7 @@ extern char exception_stack[];
  *	edge triggered interrupt
  */
 void configure_irq_trigger(int int_num, bool is_level_triggered);
+
+void *x86_get_idt(void);
 
 #endif

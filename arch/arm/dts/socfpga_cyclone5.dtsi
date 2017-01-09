@@ -25,12 +25,8 @@
 			bus-width = <4>;
 			cap-mmc-highspeed;
 			cap-sd-highspeed;
-		};
-
-		ethernet@ff702000 {
-			phy-mode = "rgmii";
-			phy-addr = <0xffffffff>; /* probe for phy addr */
-			status = "okay";
+			drvsel = <3>;
+			smplsel = <0>;
 		};
 
 		sysmgr@ffd08000 {

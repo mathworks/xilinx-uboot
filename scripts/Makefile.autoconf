@@ -6,6 +6,9 @@
 # When our migration to Kconfig is done
 # (= When we move all CONFIGs from header files to Kconfig)
 # this makefile can be deleted.
+#
+# SPDX-License-Identifier:	GPL-2.0
+#
 
 __all: include/autoconf.mk include/autoconf.mk.dep
 
@@ -58,7 +61,8 @@ quiet_cmd_autoconf = GEN     $@
 	$(CPP) $(c_flags) $2 -DDO_DEPS_ONLY -dM $(srctree)/include/common.h > $@.tmp && { \
 		sed -n -f $(srctree)/tools/scripts/define2mk.sed $@.tmp |		\
 		while read line; do							\
-			if ! grep -q "$${line%=*}=" include/config/auto.conf; then	\
+			if [ -n "${KCONFIG_IGNORE_DUPLICATES}" ] ||			\
+			   ! grep -q "$${line%=*}=" include/config/auto.conf; then	\
 				echo "$$line";						\
 			fi								\
 		done > $@;								\
@@ -106,6 +110,7 @@ include/config.h: scripts/Makefile.autoconf create_symlink FORCE
 # Otherwise, create a symbolic link to arch/$(ARCH)/include/asm/arch-$(SOC).
 PHONY += create_symlink
 create_symlink:
+ifdef CONFIG_CREATE_ARCH_SYMLINK
 ifneq ($(KBUILD_SRC),)
 	$(Q)mkdir -p include/asm
 	$(Q)if [ -d $(KBUILD_SRC)/arch/$(ARCH)/mach-$(SOC)/include/mach ]; then	\
@@ -121,6 +126,7 @@ else
 		dest=arch-$(if $(SOC),$(SOC),$(CPU));			\
 	fi;								\
 	ln -fsn $$dest arch/$(ARCH)/include/asm/arch
+endif
 endif
 
 PHONY += FORCE

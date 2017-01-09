@@ -122,7 +122,6 @@
  *----------------------------------------------------------------------*/
 #define CONFIG_SYS_I2C_PPC4XX_SPEED_0		400000
 
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 #define CONFIG_SYS_I2C_EEPROM_ADDR	(0xa8>>1)
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
@@ -194,9 +193,6 @@
 #define CONFIG_CMD_PCI
 
 #ifdef CONFIG_440EP
-    #define CONFIG_CMD_USB
-    #define CONFIG_CMD_FAT
-    #define CONFIG_CMD_EXT2
 #endif
 
 /*-----------------------------------------------------------------------

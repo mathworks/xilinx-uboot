@@ -7,7 +7,7 @@
  */
 
 /* ---
- * Version: U-boot 1.0.0 - initial release for Sentec COBRA5272 board
+ * Version: U-Boot 1.0.0 - initial release for Sentec COBRA5272 board
  * Date: 2004-03-29
  * Author: Florian Schlote
  *
@@ -104,6 +104,9 @@
 #define CONFIG_ENV_IS_IN_FLASH	1
 #endif
 
+#define LDS_BOARD_TEXT \
+        . = DEFINED(env_offset) ? env_offset : .; \
+        common/env_embedded.o (.text);
 
 /*
  * BOOTP options
@@ -113,17 +116,9 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-
-#undef CONFIG_CMD_LOADS
-#undef CONFIG_CMD_LOADB
-#undef CONFIG_CMD_MII
 
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_MII		1
@@ -154,12 +149,6 @@
 
 /*AUTOBOOT settings - booting images automatically by u-boot after power on*/
 
-#define CONFIG_BOOTDELAY	5		/* used for autoboot, delay in
-seconds u-boot will wait before starting defined (auto-)boot command, setting
-to -1 disables delay, setting to 0 will too prevent access to u-boot command
-interface: u-boot then has to reflashed */
-
-
 /* The following settings will be contained in the environment block ; if you
 want to use a neutral environment all those settings can be manually set in
 u-boot: 'set' command */
@@ -174,13 +163,10 @@ considered during boot */
 
 /* User network settings */
 
-#define CONFIG_ETHADDR 00:00:00:00:00:09	/* default ethernet MAC addr. */
 #define CONFIG_IPADDR 192.168.100.2		/* default board IP address */
 #define CONFIG_SERVERIP 192.168.100.1	/* default tftp server IP address */
 
 #endif
-
-#define CONFIG_SYS_PROMPT		"COBRA > "	/* Layout of u-boot prompt*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000		/*Defines default RAM address
 from which user programs will be started */

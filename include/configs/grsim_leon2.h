@@ -3,14 +3,16 @@
  * (C) Copyright 2003-2005
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * (C) Copyright 2007
- * Daniel Hellstrom, Gaisler Research, daniel@gaisler.com.
+ * (C) Copyright 2007, 2015
+ * Daniel Hellstrom, Cobham Gaisler, daniel@gaisler.com.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
+
+#define CONFIG_DISPLAY_BOARDINFO
 
 /*
  * High Level Configuration Options
@@ -29,9 +31,6 @@
 /* CPU / AMBA BUS configuration */
 #define CONFIG_SYS_CLK_FREQ	40000000	/* 40MHz */
 
-/* Number of SPARC register windows */
-#define CONFIG_SYS_SPARC_NWINDOWS 8
-
 /*
  * Serial console configuration
  */
@@ -46,34 +45,20 @@
 /*
  * Supported commands
  */
-#define CONFIG_CMD_BDI		/* bdinfo			*/
-#define CONFIG_CMD_CONSOLE	/* coninfo			*/
 #define CONFIG_CMD_DIAG
-#define CONFIG_CMD_ECHO		/* echo arguments		*/
-#define CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
 #define CONFIG_CMD_FPGA_LOADMK
 #define CONFIG_CMD_IRQ
-#define CONFIG_CMD_ITEST	/* Integer (and string) test	*/
-#define CONFIG_CMD_LOADB	/* loadb			*/
-#define CONFIG_CMD_LOADS	/* loads			*/
-#define CONFIG_CMD_MISC		/* Misc functions like sleep etc */
 #define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_RUN		/* run command in env variable	*/
-#define CONFIG_CMD_SETGETDCR	/* DCR support on 4xx		*/
-#define CONFIG_CMD_SOURCE	/* "source" command support	*/
-#define CONFIG_CMD_XIMG		/* Load part of Multi Image	*/
 
 /*
  * Autobooting
  */
-#define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds */
 
 #define CONFIG_PREBOOT	"echo;"	\
 	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
-/*#define CONFIG_SYS_HUSH_PARSER 0*/
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
@@ -91,7 +76,6 @@
 	"rootpath=/export/roofs\0"					\
 	"scratch=40000000\0"					\
 	"getkernel=tftpboot $(scratch) $(bootfile)\0" \
-	"ethaddr=00:00:7A:CC:00:12\0" \
 	"bootargs=console=ttyS0,38400" \
 	""
 #define CONFIG_NETMASK 255.255.255.0
@@ -203,7 +187,6 @@
 #undef CONFIG_SYS_SRAM_BASE
 #undef CONFIG_SYS_SRAM_SIZE
 
-
 /* Always Run U-Boot from SDRAM */
 #define CONFIG_SYS_RAM_BASE CONFIG_SYS_SDRAM_BASE
 #define CONFIG_SYS_RAM_SIZE CONFIG_SYS_SDRAM_SIZE
@@ -241,16 +224,6 @@
  */
 /*#define CONFIG_GRETH	1*/
 
-/* Default HARDWARE address */
-#define GRETH_HWADDR_0 0x00
-#define GRETH_HWADDR_1 0x00
-#define GRETH_HWADDR_2 0x7A
-#define GRETH_HWADDR_3 0xcc
-#define GRETH_HWADDR_4 0x00
-#define GRETH_HWADDR_5 0x12
-
-#define CONFIG_ETHADDR   00:00:7a:cc:00:12
-
 /*
  * Define CONFIG_GRETH_10MBIT to force GRETH at 10Mb/s
  */
@@ -287,8 +260,6 @@
 #define CONFIG_SYS_GRLIB_MEMCFG3  0x00136000
 
 /*** LEON2 UART 1 ***/
-#define CONFIG_SYS_LEON2_UART1_SCALER \
-	((((CONFIG_SYS_CLK_FREQ*10)/(CONFIG_BAUDRATE*8))-5)/10)
 
 /* UART1 Define to 1 or 0 */
 #define LEON2_UART1_LOOPBACK_ENABLE 0
@@ -297,9 +268,6 @@
 #define LEON2_UART1_ODDPAR_ENABLE 0
 
 /*** LEON2 UART 2 ***/
-
-#define CONFIG_SYS_LEON2_UART2_SCALER \
-	((((CONFIG_SYS_CLK_FREQ*10)/(CONFIG_BAUDRATE*8))-5)/10)
 
 /* UART2 Define to 1 or 0 */
 #define LEON2_UART2_LOOPBACK_ENABLE 0
@@ -319,6 +287,6 @@
 /* default kernel command line */
 #define CONFIG_DEFAULT_KERNEL_COMMAND_LINE "console=ttyS0,38400\0\0"
 
-#define CONFIG_IDENT_STRING "Gaisler GRSIM LEON2"
+#define CONFIG_IDENT_STRING " Gaisler GRSIM LEON2"
 
 #endif				/* __CONFIG_H */

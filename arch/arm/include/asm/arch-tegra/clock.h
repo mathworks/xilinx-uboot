@@ -16,6 +16,8 @@ enum clock_osc_freq {
 	CLOCK_OSC_FREQ_19_2,
 	CLOCK_OSC_FREQ_12_0,
 	CLOCK_OSC_FREQ_26_0,
+	CLOCK_OSC_FREQ_38_4,
+	CLOCK_OSC_FREQ_48_0,
 
 	CLOCK_OSC_FREQ_COUNT,
 };
@@ -41,6 +43,9 @@ enum {
 
 /* return the current oscillator clock frequency */
 enum clock_osc_freq clock_get_osc_freq(void);
+
+/* return the clk_m frequency */
+unsigned int clk_m_get_rate(unsigned int parent_rate);
 
 /**
  * Start PLL using the provided configuration parameters.
@@ -156,6 +161,17 @@ void reset_cmplx_set_enable(int cpu, int which, int reset);
 void clock_ll_set_source(enum periph_id periph_id, unsigned source);
 
 /**
+ * This function is similar to clock_ll_set_source() except that it can be
+ * used for clocks with more than 2 mux bits.
+ *
+ * @param periph_id	peripheral to adjust
+ * @param mux_bits	number of mux bits for the clock
+ * @param source	source clock (0-15 depending on mux_bits)
+ */
+int clock_ll_set_source_bits(enum periph_id periph_id, int mux_bits,
+			     unsigned source);
+
+/**
  * Set the source and divisor for a peripheral clock. This sets the
  * clock rate. You need to look up the datasheet to see the meaning of the
  * source parameter as it changes for each peripheral.
@@ -265,6 +281,9 @@ void clock_early_init(void);
 /* Returns a pointer to the clock source register for a peripheral */
 u32 *get_periph_source_reg(enum periph_id periph_id);
 
+/* Returns a pointer to the given 'simple' PLL */
+struct clk_pll_simple *clock_get_simple_pll(enum clock_id clkid);
+
 /**
  * Given a peripheral ID and the required source clock, this returns which
  * value should be programmed into the source mux for that peripheral.
@@ -321,5 +340,34 @@ int clock_set_rate(enum clock_id clkid, u32 n, u32 m, u32 p, u32 cpcon);
 void arch_timer_init(void);
 
 void tegra30_set_up_pllp(void);
+
+/* Number of PLL-based clocks (i.e. not OSC, MCLK or 32KHz) */
+#define CLOCK_ID_PLL_COUNT	(CLOCK_ID_COUNT - 3)
+
+struct clk_pll_info {
+	u32	m_shift:5;	/* DIVM_SHIFT */
+	u32	n_shift:5;	/* DIVN_SHIFT */
+	u32	p_shift:5;	/* DIVP_SHIFT */
+	u32	kcp_shift:5;	/* KCP/cpcon SHIFT */
+	u32	kvco_shift:5;	/* KVCO/lfcon SHIFT */
+	u32	lock_ena:6;	/* LOCK_ENABLE/EN_LOCKDET shift */
+	u32	rsvd:1;
+	u32	m_mask:10;	/* DIVM_MASK */
+	u32	n_mask:12;	/* DIVN_MASK */
+	u32	p_mask:10;	/* DIVP_MASK or VCO_MASK */
+	u32	kcp_mask:10;	/* KCP/CPCON MASK */
+	u32	kvco_mask:10;	/* KVCO/LFCON MASK */
+	u32	lock_det:6;	/* LOCK_DETECT/LOCKED shift */
+	u32	rsvd2:6;
+};
+extern struct clk_pll_info tegra_pll_info_table[CLOCK_ID_PLL_COUNT];
+
+/**
+ * Enable output clock for external peripherals
+ *
+ * @param clk_id	Clock ID to output (1, 2 or 3)
+ * @return 0 if OK. -ve on error
+ */
+int clock_external_output(int clk_id);
 
 #endif  /* _TEGRA_CLOCK_H_ */

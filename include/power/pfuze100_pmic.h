@@ -8,6 +8,11 @@
 #ifndef __PFUZE100_PMIC_H_
 #define __PFUZE100_PMIC_H_
 
+/* Device ID */
+enum {PFUZE100 = 0x10, PFUZE200 = 0x11, PFUZE3000 = 0x30};
+
+#define PFUZE100_REGULATOR_DRIVER	"pfuze100_regulator"
+
 /* PFUZE100 registers */
 enum {
 	PFUZE100_DEVICEID	= 0x00,
@@ -18,7 +23,7 @@ enum {
 	PFUZE100_SW1ABSTBY	= 0x21,
 	PFUZE100_SW1ABOFF	= 0x22,
 	PFUZE100_SW1ABMODE	= 0x23,
-	PUZE_100_SW1ABCONF	= 0x24,
+	PFUZE100_SW1ABCONF	= 0x24,
 	PFUZE100_SW1CVOL	= 0x2e,
 	PFUZE100_SW1CSTBY	= 0x2f,
 	PFUZE100_SW1COFF	= 0x30,
@@ -54,8 +59,15 @@ enum {
 	PFUZE100_VGEN5VOL	= 0x70,
 	PFUZE100_VGEN6VOL	= 0x71,
 
-	PMIC_NUM_OF_REGS	= 0x7f,
+	PFUZE100_NUM_OF_REGS	= 0x7f,
 };
+
+/* Registor offset based on VOLT register */
+#define PFUZE100_VOL_OFFSET	0
+#define PFUZE100_STBY_OFFSET	1
+#define PFUZE100_OFF_OFFSET	2
+#define PFUZE100_MODE_OFFSET	3
+#define PFUZE100_CONF_OFFSET	4
 
 /*
  * Buck Regulators
@@ -133,6 +145,9 @@ enum {
 #define SW1x_STBY_MASK    0x3f
 #define SW1x_OFF_MASK     0x3f
 
+#define SW_MODE_MASK	0xf
+#define SW_MODE_SHIFT	0
+
 #define SW1xCONF_DVSSPEED_MASK 0xc0
 #define SW1xCONF_DVSSPEED_2US  0x00
 #define SW1xCONF_DVSSPEED_4US  0x40
@@ -180,8 +195,13 @@ enum {
 #define LDOB_3_30V	15
 
 #define LDO_VOL_MASK	0xf
-#define LDO_EN		4
+#define LDO_EN		(1 << 4)
+#define LDO_MODE_SHIFT	4
+#define LDO_MODE_MASK	(1 << 4)
+#define LDO_MODE_OFF	0
+#define LDO_MODE_ON	1
 
+#define VREFDDRCON_EN	(1 << 4)
 /*
  * Boost Regulator
  */
@@ -193,11 +213,12 @@ enum {
 #define SWBST_5_15V	3
 
 #define SWBST_VOL_MASK	0x3
-#define SWBST_MODE_MASK	0x6
-#define SWBST_MODE_OFF	(2 << 0)
-#define SWBST_MODE_PFM	(2 << 1)
-#define SWBST_MODE_AUTO	(2 << 2)
-#define SWBST_MODE_APS	(2 << 3)
+#define SWBST_MODE_MASK	0xC
+#define SWBST_MODE_SHIFT 0x2
+#define SWBST_MODE_OFF	0
+#define SWBST_MODE_PFM	1
+#define SWBST_MODE_AUTO	2
+#define SWBST_MODE_APS	3
 
 /*
  * Regulator Mode Control

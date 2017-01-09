@@ -116,10 +116,6 @@
 /* include common defines/options for all arm based Keymile boards */
 #include "km/km_arm.h"
 
-#ifndef CONFIG_KM_ENV_IS_IN_SPI_NOR
-#define KM_ENV_BUS	5	/* I2C2 (Mux-Port 5)*/
-#endif
-
 #if defined(CONFIG_KM_PIGGY4_88E6352)
 /*
  * Some keymile boards like mgcoge5un & nusa1 have their PIGGY4 connected via
@@ -183,6 +179,5 @@
 #ifdef CONFIG_KM_DISABLE_PCI
 #undef  CONFIG_KIRKWOOD_PCIE_INIT
 #endif
-
 
 #endif /* _CONFIG_KM_KIRKWOOD */

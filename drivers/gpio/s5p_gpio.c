@@ -13,7 +13,6 @@
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <dm/device-internal.h>
-#include <dt-bindings/gpio/gpio.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -276,27 +275,17 @@ static int exynos_gpio_get_function(struct udevice *dev, unsigned offset)
 		return GPIOF_FUNC;
 }
 
-static int exynos_gpio_xlate(struct udevice *dev, struct gpio_desc *desc,
-			     struct fdtdec_phandle_args *args)
-{
-	desc->offset = args->args[0];
-	desc->flags = args->args[1] & GPIO_ACTIVE_LOW ? GPIOD_ACTIVE_LOW : 0;
-
-	return 0;
-}
-
 static const struct dm_gpio_ops gpio_exynos_ops = {
 	.direction_input	= exynos_gpio_direction_input,
 	.direction_output	= exynos_gpio_direction_output,
 	.get_value		= exynos_gpio_get_value,
 	.set_value		= exynos_gpio_set_value,
 	.get_function		= exynos_gpio_get_function,
-	.xlate			= exynos_gpio_xlate,
 };
 
 static int gpio_exynos_probe(struct udevice *dev)
 {
-	struct gpio_dev_priv *uc_priv = dev->uclass_priv;
+	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct exynos_bank_info *priv = dev->priv;
 	struct exynos_gpio_platdata *plat = dev->platdata;
 
@@ -327,8 +316,7 @@ static int gpio_exynos_bind(struct udevice *parent)
 	if (plat)
 		return 0;
 
-	base = (struct s5p_gpio_bank *)fdtdec_get_addr(gd->fdt_blob,
-						   parent->of_offset, "reg");
+	base = (struct s5p_gpio_bank *)dev_get_addr(parent);
 	for (node = fdt_first_subnode(blob, parent->of_offset), bank = base;
 	     node > 0;
 	     node = fdt_next_subnode(blob, node), bank++) {
@@ -342,18 +330,22 @@ static int gpio_exynos_bind(struct udevice *parent)
 		plat = calloc(1, sizeof(*plat));
 		if (!plat)
 			return -ENOMEM;
-		reg = fdtdec_get_addr(blob, node, "reg");
-		if (reg != FDT_ADDR_T_NONE)
-			bank = (struct s5p_gpio_bank *)((ulong)base + reg);
-		plat->bank = bank;
-		plat->bank_name = fdt_get_name(blob, node, NULL);
-		debug("dev at %p: %s\n", bank, plat->bank_name);
 
+		plat->bank_name = fdt_get_name(blob, node, NULL);
 		ret = device_bind(parent, parent->driver,
-					plat->bank_name, plat, -1, &dev);
+				  plat->bank_name, plat, -1, &dev);
 		if (ret)
 			return ret;
+
 		dev->of_offset = node;
+
+		reg = dev_get_addr(dev);
+		if (reg != FDT_ADDR_T_NONE)
+			bank = (struct s5p_gpio_bank *)((ulong)base + reg);
+
+		plat->bank = bank;
+
+		debug("dev at %p: %s\n", bank, plat->bank_name);
 	}
 
 	return 0;

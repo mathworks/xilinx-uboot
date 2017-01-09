@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2010 Andreas Bießmann <andreas.devel@gmail.com>
+ * (C) Copyright 2010 Andreas Bießmann <andreas@biessmann.org>
  *
  * derived from previous work
  *
@@ -14,7 +14,6 @@
 #include <netdev.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_pio.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_common.h>
 #include <asm/io.h>
 

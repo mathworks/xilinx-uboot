@@ -3,9 +3,7 @@
  *
  * Copyright (C)  2011 Renesas Solutions Corp.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <config.h>
@@ -577,7 +575,7 @@ static struct mmc_config sh_mmcif_cfg = {
 	.name		= DRIVER_NAME,
 	.ops		= &sh_mmcif_ops,
 	.host_caps	= MMC_MODE_HS | MMC_MODE_HS_52MHz | MMC_MODE_4BIT |
-			  MMC_MODE_8BIT | MMC_MODE_HC,
+			  MMC_MODE_8BIT,
 	.voltages	= MMC_VDD_32_33 | MMC_VDD_33_34,
 	.b_max		= CONFIG_SYS_MMC_MAX_BLK_COUNT,
 };

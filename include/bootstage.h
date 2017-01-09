@@ -11,7 +11,7 @@
 #ifndef _BOOTSTAGE_H
 #define _BOOTSTAGE_H
 
-/* The number of boot stage records available for the user */
+/* Define this for host tools */
 #ifndef CONFIG_BOOTSTAGE_USER_COUNT
 #define CONFIG_BOOTSTAGE_USER_COUNT	20
 #endif
@@ -168,6 +168,7 @@ enum bootstage_id {
 	BOOTSTAGE_ID_NAND_FIT_READ = 150,
 	BOOTSTAGE_ID_NAND_FIT_READ_OK,
 
+	BOOTSTAGE_ID_FIT_LOADABLE_START = 160,	/* for Loadable Images */
 	/*
 	 * These boot stages are new, higher level, and not directly related
 	 * to the old boot progress numbers. They are useful for recording
@@ -195,6 +196,9 @@ enum bootstage_id {
 
 	BOOTSTAGE_ID_ACCUM_LCD,
 	BOOTSTAGE_ID_ACCUM_SCSI,
+	BOOTSTAGE_ID_ACCUM_SPI,
+	BOOTSTAGE_ID_ACCUM_DECOMP,
+	BOOTSTAGE_ID_FPGA_INIT,
 
 	/* a few spare for the user, from here */
 	BOOTSTAGE_ID_USER,
@@ -209,7 +213,9 @@ enum bootstage_id {
  */
 ulong timer_get_boot_us(void);
 
-#if !defined(CONFIG_SPL_BUILD) && !defined(USE_HOSTCC)
+#if defined(USE_HOSTCC)
+#define show_boot_progress(val) do {} while (0)
+#else
 /*
  * Board code can implement show_boot_progress() if needed.
  *
@@ -217,8 +223,6 @@ ulong timer_get_boot_us(void);
  *		has occurred.
  */
 void show_boot_progress(int val);
-#else
-#define show_boot_progress(val) do {} while (0)
 #endif
 
 #if defined(CONFIG_BOOTSTAGE) && !defined(CONFIG_SPL_BUILD) && \

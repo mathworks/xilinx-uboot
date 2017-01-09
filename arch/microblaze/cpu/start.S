@@ -25,6 +25,7 @@ _start:
 
 	addi	r8, r0, __end
 	mts	rslr, r8
+	/* TODO: Redo this code to call board_init_f_*() */
 #if defined(CONFIG_SPL_BUILD)
 	addi	r1, r0, CONFIG_SPL_STACK_ADDR
 	mts	rshr, r1
@@ -141,6 +142,7 @@ _start:
 	ori	r12, r12, 0x1a0
 	mts	rmsr, r12
 
+	/* TODO: Redo this code to call board_init_f_*() */
 clear_bss:
 	/* clear BSS segments */
 	addi	r5, r0, __bss_start
@@ -153,6 +155,10 @@ clear_bss:
 	cmp     r6, r5, r4 /* check if we have reach the end */
 	bnei    r6, 2b
 3:	/* jumping to board_init */
+#ifdef CONFIG_DEBUG_UART
+	bralid	r15, debug_uart_init
+	nop
+#endif
 #ifndef CONFIG_SPL_BUILD
 	or	r5, r0, r0	/* flags - empty */
 	addi    r31, r0, _gd

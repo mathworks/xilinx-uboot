@@ -12,18 +12,24 @@
 #include <i2c.h>
 #include <asm/errno.h>
 #include <spl.h>
+#include <usb.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/gpio.h>
 #include <asm/emif.h>
+#include "../common/board_detect.h"
 #include "board.h"
 #include <power/pmic.h>
 #include <power/tps65218.h>
 #include <power/tps62362.h>
 #include <miiphy.h>
 #include <cpsw.h>
+#include <linux/usb/gadget.h>
+#include <dwc3-uboot.h>
+#include <dwc3-omap-uboot.h>
+#include <ti-usb-phy-uboot.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -32,48 +38,9 @@ static struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 /*
  * Read header information from EEPROM into global structure.
  */
-static int read_eeprom(struct am43xx_board_id *header)
+static inline int __maybe_unused read_eeprom(void)
 {
-	/* Check if baseboard eeprom is available */
-	if (i2c_probe(CONFIG_SYS_I2C_EEPROM_ADDR)) {
-		printf("Could not probe the EEPROM at 0x%x\n",
-		       CONFIG_SYS_I2C_EEPROM_ADDR);
-		return -ENODEV;
-	}
-
-	/* read the eeprom using i2c */
-	if (i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR, 0, 2, (uchar *)header,
-		     sizeof(struct am43xx_board_id))) {
-		printf("Could not read the EEPROM\n");
-		return -EIO;
-	}
-
-	if (header->magic != 0xEE3355AA) {
-		/*
-		 * read the eeprom using i2c again,
-		 * but use only a 1 byte address
-		 */
-		if (i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR, 0, 1, (uchar *)header,
-			     sizeof(struct am43xx_board_id))) {
-			printf("Could not read the EEPROM at 0x%x\n",
-			       CONFIG_SYS_I2C_EEPROM_ADDR);
-			return -EIO;
-		}
-
-		if (header->magic != 0xEE3355AA) {
-			printf("Incorrect magic number (0x%x) in EEPROM\n",
-			       header->magic);
-			return -EINVAL;
-		}
-	}
-
-	strncpy(am43xx_board_name, (char *)header->name, sizeof(header->name));
-	am43xx_board_name[sizeof(header->name)] = 0;
-
-	strncpy(am43xx_board_rev, (char *)header->version, sizeof(header->version));
-	am43xx_board_rev[sizeof(header->version)] = 0;
-
-	return 0;
+	return ti_i2c_eeprom_am_get(-1, CONFIG_SYS_I2C_EEPROM_ADDR);
 }
 
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
@@ -141,6 +108,29 @@ const struct dpll_params gp_evm_dpll_ddr = {
 
 static const struct dpll_params idk_dpll_ddr = {
 	400, 23, 1, -1, 2, -1, -1
+};
+
+static const u32 ext_phy_ctrl_const_base_lpddr2[] = {
+	0x00500050,
+	0x00350035,
+	0x00350035,
+	0x00350035,
+	0x00350035,
+	0x00350035,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x40001000,
+	0x08102040
 };
 
 const struct ctrl_ioregs ioregs_lpddr2 = {
@@ -313,6 +303,16 @@ static const struct emif_regs ddr3_idk_emif_regs_400Mhz = {
 	.emif_cos_config		= 0x00ffffff
 };
 
+void emif_get_ext_phy_ctrl_const_regs(const u32 **regs, u32 *size)
+{
+	if (board_is_eposevm()) {
+		*regs = ext_phy_ctrl_const_base_lpddr2;
+		*size = ARRAY_SIZE(ext_phy_ctrl_const_base_lpddr2);
+	}
+
+	return;
+}
+
 /*
  * get_sys_clk_index : returns the index of the sys_clk read from
  *			ctrl status register. This value is either
@@ -336,14 +336,17 @@ const struct dpll_params *get_dpll_ddr_params(void)
 {
 	int ind = get_sys_clk_index();
 
+	if (read_eeprom() < 0)
+		return NULL;
+
 	if (board_is_eposevm())
 		return &epos_evm_dpll_ddr[ind];
-	else if (board_is_gpevm() || board_is_sk())
+	else if (board_is_evm() || board_is_sk())
 		return &gp_evm_dpll_ddr;
 	else if (board_is_idk())
 		return &idk_dpll_ddr;
 
-	printf(" Board '%s' not supported\n", am43xx_board_name);
+	printf(" Board '%s' not supported\n", board_ti_get_name());
 	return NULL;
 }
 
@@ -474,15 +477,28 @@ void scale_vcores_idk(u32 m)
 	}
 }
 
+void gpi2c_init(void)
+{
+	/* When needed to be invoked prior to BSS initialization */
+	static bool first_time = true;
+
+	if (first_time) {
+		enable_i2c0_pin_mux();
+		i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED,
+			 CONFIG_SYS_OMAP24_I2C_SLAVE);
+		first_time = false;
+	}
+}
+
 void scale_vcores(void)
 {
 	const struct dpll_params *mpu_params;
-	struct am43xx_board_id header;
 
-	enable_i2c0_pin_mux();
-	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE);
-	if (read_eeprom(&header) < 0)
+	if (read_eeprom() < 0)
 		puts("Could not get board ID.\n");
+
+	/* Ensure I2C is initialized for PMIC configuration */
+	gpi2c_init();
 
 	/* Get the frequency */
 	mpu_params = get_dpll_mpu_params();
@@ -520,6 +536,8 @@ static void enable_vtt_regulator(void)
 
 void sdram_init(void)
 {
+	if (read_eeprom() < 0)
+		return;
 	/*
 	 * EPOS EVM has 1GB LPDDR2 connected to EMIF.
 	 * GP EMV has 1GB DDR3 connected to EMIF
@@ -535,7 +553,7 @@ void sdram_init(void)
 		enable_vtt_regulator();
 		config_ddr(0, &ioregs_ddr3, NULL, NULL,
 			   &ddr3_emif_regs_400Mhz_beta, 0);
-	} else if (board_is_gpevm()) {
+	} else if (board_is_evm()) {
 		enable_vtt_regulator();
 		config_ddr(0, &ioregs_ddr3, NULL, NULL,
 			   &ddr3_emif_regs_400Mhz, 0);
@@ -617,24 +635,114 @@ int board_init(void)
 int board_late_init(void)
 {
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-	char safe_string[HDR_NAME_LEN + 1];
-	struct am43xx_board_id header;
-
-	if (read_eeprom(&header) < 0)
-		puts("Could not get board ID.\n");
-
-	/* Now set variables based on the header. */
-	strncpy(safe_string, (char *)header.name, sizeof(header.name));
-	safe_string[sizeof(header.name)] = 0;
-	setenv("board_name", safe_string);
-
-	strncpy(safe_string, (char *)header.version, sizeof(header.version));
-	safe_string[sizeof(header.version)] = 0;
-	setenv("board_rev", safe_string);
+	set_board_info_env(NULL);
 #endif
 	return 0;
 }
 #endif
+
+#ifdef CONFIG_USB_DWC3
+static struct dwc3_device usb_otg_ss1 = {
+	.maximum_speed = USB_SPEED_HIGH,
+	.base = USB_OTG_SS1_BASE,
+	.tx_fifo_resize = false,
+	.index = 0,
+};
+
+static struct dwc3_omap_device usb_otg_ss1_glue = {
+	.base = (void *)USB_OTG_SS1_GLUE_BASE,
+	.utmi_mode = DWC3_OMAP_UTMI_MODE_SW,
+	.index = 0,
+};
+
+static struct ti_usb_phy_device usb_phy1_device = {
+	.usb2_phy_power = (void *)USB2_PHY1_POWER,
+	.index = 0,
+};
+
+static struct dwc3_device usb_otg_ss2 = {
+	.maximum_speed = USB_SPEED_HIGH,
+	.base = USB_OTG_SS2_BASE,
+	.tx_fifo_resize = false,
+	.index = 1,
+};
+
+static struct dwc3_omap_device usb_otg_ss2_glue = {
+	.base = (void *)USB_OTG_SS2_GLUE_BASE,
+	.utmi_mode = DWC3_OMAP_UTMI_MODE_SW,
+	.index = 1,
+};
+
+static struct ti_usb_phy_device usb_phy2_device = {
+	.usb2_phy_power = (void *)USB2_PHY2_POWER,
+	.index = 1,
+};
+
+int usb_gadget_handle_interrupts(int index)
+{
+	u32 status;
+
+	status = dwc3_omap_uboot_interrupt_status(index);
+	if (status)
+		dwc3_uboot_handle_interrupt(index);
+
+	return 0;
+}
+#endif /* CONFIG_USB_DWC3 */
+
+#if defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP)
+int board_usb_init(int index, enum usb_init_type init)
+{
+	enable_usb_clocks(index);
+#ifdef CONFIG_USB_DWC3
+	switch (index) {
+	case 0:
+		if (init == USB_INIT_DEVICE) {
+			usb_otg_ss1.dr_mode = USB_DR_MODE_PERIPHERAL;
+			usb_otg_ss1_glue.vbus_id_status = OMAP_DWC3_VBUS_VALID;
+			dwc3_omap_uboot_init(&usb_otg_ss1_glue);
+			ti_usb_phy_uboot_init(&usb_phy1_device);
+			dwc3_uboot_init(&usb_otg_ss1);
+		}
+		break;
+	case 1:
+		if (init == USB_INIT_DEVICE) {
+			usb_otg_ss2.dr_mode = USB_DR_MODE_PERIPHERAL;
+			usb_otg_ss2_glue.vbus_id_status = OMAP_DWC3_VBUS_VALID;
+			ti_usb_phy_uboot_init(&usb_phy2_device);
+			dwc3_omap_uboot_init(&usb_otg_ss2_glue);
+			dwc3_uboot_init(&usb_otg_ss2);
+		}
+		break;
+	default:
+		printf("Invalid Controller Index\n");
+	}
+#endif
+
+	return 0;
+}
+
+int board_usb_cleanup(int index, enum usb_init_type init)
+{
+#ifdef CONFIG_USB_DWC3
+	switch (index) {
+	case 0:
+	case 1:
+		if (init == USB_INIT_DEVICE) {
+			ti_usb_phy_uboot_exit(index);
+			dwc3_uboot_exit(index);
+			dwc3_omap_uboot_exit(index);
+		}
+		break;
+	default:
+		printf("Invalid Controller Index\n");
+	}
+#endif
+	disable_usb_clocks(index);
+
+	return 0;
+}
+#endif /* defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP) */
 
 #ifdef CONFIG_DRIVER_TI_CPSW
 
@@ -694,7 +802,7 @@ int board_eth_init(bd_t *bis)
 
 	if (!getenv("ethaddr")) {
 		puts("<ethaddr> not set. Validating first E-fuse MAC\n");
-		if (is_valid_ether_addr(mac_addr))
+		if (is_valid_ethaddr(mac_addr))
 			eth_setenv_enetaddr("ethaddr", mac_addr);
 	}
 
@@ -708,7 +816,7 @@ int board_eth_init(bd_t *bis)
 	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
 
 	if (!getenv("eth1addr")) {
-		if (is_valid_ether_addr(mac_addr))
+		if (is_valid_ethaddr(mac_addr))
 			eth_setenv_enetaddr("eth1addr", mac_addr);
 	}
 
@@ -736,5 +844,21 @@ int board_eth_init(bd_t *bis)
 		printf("Error %d registering CPSW switch\n", rv);
 
 	return rv;
+}
+#endif
+
+#ifdef CONFIG_SPL_LOAD_FIT
+int board_fit_config_name_match(const char *name)
+{
+	if (board_is_evm() && !strcmp(name, "am437x-gp-evm"))
+		return 0;
+	else if (board_is_sk() && !strcmp(name, "am437x-sk-evm"))
+		return 0;
+	else if (board_is_eposevm() && !strcmp(name, "am43x-epos-evm"))
+		return 0;
+	else if (board_is_idk() && !strcmp(name, "am437x-idk-evm"))
+		return 0;
+	else
+		return -1;
 }
 #endif

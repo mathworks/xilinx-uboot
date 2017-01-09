@@ -11,3 +11,8 @@ obj-y	+= clock.o
 obj-y	+= funcmux.o
 obj-y	+= pinmux.o
 obj-y	+= xusb-padctl.o
+obj-y	+= ../xusb-padctl-common.o
+
+ifndef CONFIG_SPL_BUILD
+obj-$(CONFIG_ARMV7_NONSEC) += psci.o
+endif

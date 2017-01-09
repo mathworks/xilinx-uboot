@@ -30,7 +30,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #if !defined(CONFIG_SPL_BUILD)
-inline void set_muxconf_regs_essential(void){};
+inline void set_muxconf_regs(void){};
 #endif
 
 const struct omap_sysinfo sysinfo = {
@@ -82,7 +82,7 @@ static int cm_t54_palmas_regulator_set(u8 vreg, u8 vval, u8 creg, u8 cval)
 #ifdef CONFIG_SYS_MMC_ENV_PART
 uint mmc_get_env_part(struct mmc *mmc)
 {
-	u32 bootmode = gd->arch.omap_boot_params.omap_bootmode;
+	u32 bootmode = gd->arch.omap_boot_mode;
 	uint bootpart = CONFIG_SYS_MMC_ENV_PART;
 
 	/*
@@ -166,10 +166,10 @@ static int handle_mac_address(void)
 		return 0;
 
 	ret = cl_eeprom_read_mac_addr(enetaddr, CONFIG_SYS_I2C_EEPROM_BUS);
-	if (ret || !is_valid_ether_addr(enetaddr))
+	if (ret || !is_valid_ethaddr(enetaddr))
 		generate_mac_addr(enetaddr);
 
-	if (!is_valid_ether_addr(enetaddr))
+	if (!is_valid_ethaddr(enetaddr))
 		return -1;
 
 	return eth_setenv_enetaddr("usbethaddr", enetaddr);

@@ -53,13 +53,27 @@ led_dev_t led_dev[] = {
 	0,
     },
 #endif
+#if defined(STATUS_LED_BIT4)
+    {	STATUS_LED_BIT4,
+	STATUS_LED_STATE4,
+	STATUS_LED_PERIOD4,
+	0,
+    },
+#endif
+#if defined(STATUS_LED_BIT5)
+    {	STATUS_LED_BIT5,
+	STATUS_LED_STATE5,
+	STATUS_LED_PERIOD5,
+	0,
+    },
+#endif
 };
 
 #define MAX_LED_DEV	(sizeof(led_dev)/sizeof(led_dev_t))
 
 static int status_led_init_done = 0;
 
-static void status_led_init (void)
+void status_led_init(void)
 {
 	led_dev_t *ld;
 	int i;

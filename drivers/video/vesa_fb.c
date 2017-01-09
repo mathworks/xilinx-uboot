@@ -1,6 +1,5 @@
 /*
- *
- * Vesa frame buffer driver for x86
+ * VESA frame buffer driver
  *
  * Copyright (C) 2014 Google, Inc
  *
@@ -17,34 +16,31 @@
  */
 GraphicDevice ctfb;
 
-/* Devices to allow - only the last one works fully */
-struct pci_device_id vesa_video_ids[] = {
-	{ .vendor = 0x102b, .device = 0x0525 },
-	{ .vendor = 0x1002, .device = 0x5159 },
-	{ .vendor = 0x1002, .device = 0x4752 },
-	{ .vendor = 0x1002, .device = 0x5452 },
-	{ .vendor = 0x8086, .device = 0x0f31 },
-	{},
-};
-
 void *video_hw_init(void)
 {
 	GraphicDevice *gdev = &ctfb;
+	struct udevice *dev;
 	int bits_per_pixel;
-	pci_dev_t dev;
 	int ret;
 
 	printf("Video: ");
+	if (!ll_boot_init()) {
+		/*
+		 * If we are running from EFI or coreboot, this driver can't
+		 * work.
+		 */
+		printf("Not available (previous bootloader prevents it)\n");
+		return NULL;
+	}
 	if (vbe_get_video_info(gdev)) {
-		/* TODO: Should we look these up by class? */
-		dev = pci_find_devices(vesa_video_ids, 0);
-		if (dev == -1) {
+		ret = dm_pci_find_class(PCI_CLASS_DISPLAY_VGA << 8, 0, &dev);
+		if (ret) {
 			printf("no card detected\n");
 			return NULL;
 		}
 		bootstage_start(BOOTSTAGE_ID_ACCUM_LCD, "vesa display");
-		ret = pci_run_vga_bios(dev, NULL, PCI_ROM_USE_NATIVE |
-				       PCI_ROM_ALLOW_FALLBACK);
+		ret = dm_pci_run_vga_bios(dev, NULL, PCI_ROM_USE_NATIVE |
+					  PCI_ROM_ALLOW_FALLBACK);
 		bootstage_accum(BOOTSTAGE_ID_ACCUM_LCD);
 		if (ret) {
 			printf("failed to run video BIOS: %d\n", ret);

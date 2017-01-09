@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for SSV DNP5370 board
+ * U-Boot - Configuration file for SSV DNP5370 board
  */
 
 #ifndef __CONFIG_DNP5370_H__
@@ -53,10 +53,6 @@
 #define CONFIG_PHY_ADDR         0
 #define CONFIG_RMII             1
 
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-
-#define CONFIG_LIB_RAND
 #endif
 
 /*
@@ -95,7 +91,6 @@
 /*
  * Misc Settings
  */
-#define CONFIG_CMD_GPIO
 #define CONFIG_CMD_STRINGS
 #define CONFIG_MISC_INIT_R
 #define CONFIG_RTC_BFIN
@@ -118,13 +113,5 @@
 		"erase 0x20030000 0x202effff;" \
 		"cp.b 0x01000000 0x20030000 0x2c0000\0" \
 	"runme=bootm 0x01000000\0"
-
-/* this sets up the default list of enabled commands */
-#include <config_cmd_default.h>
-
-#ifndef CONFIG_BFIN_MAC
-# undef CONFIG_CMD_NET
-# undef CONFIG_CMD_NFS
-#endif
 
 #endif

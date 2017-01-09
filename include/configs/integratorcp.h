@@ -18,7 +18,6 @@
 #include "integrator-common.h"
 
 /* Integrator CP-specific configuration */
-#define CONFIG_ARCH_CINTEGRATOR
 #define CONFIG_SYS_HZ_CLOCK		1000000	/* Timer 1 is clocked at 1Mhz */
 
 /*
@@ -29,21 +28,9 @@
 #define CONFIG_SMC91111_BASE    0xC8000000
 #undef CONFIG_SMC91111_EXT_PHY
 
-/* PL011 configuration */
-#define CONFIG_PL011_SERIAL
-#define CONFIG_PL011_CLOCK	14745600
-#define CONFIG_PL01x_PORTS	{ (void *)CONFIG_SYS_SERIAL0, (void *)CONFIG_SYS_SERIAL1 }
-#define CONFIG_CONS_INDEX	0
-#define CONFIG_BAUDRATE		38400
-#define CONFIG_SYS_SERIAL0		0x16000000
-#define CONFIG_SYS_SERIAL1		0x17000000
-
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_BOOTDELAY	2
 #define CONFIG_BOOTARGS	"root=/dev/mtdblock0 console=ttyAMA0 console=tty ip=dhcp netdev=27,0,0xfc800000,0xfc800010,eth0 video=clcdfb:0"
 #define CONFIG_BOOTCOMMAND "tftpboot ; bootm"
 #define CONFIG_SERVERIP 192.168.1.100
@@ -53,8 +40,6 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_PROMPT	"Integrator-CP # "	/* Monitor Command Prompt */
-
 #define PHYS_FLASH_SIZE			0x01000000	/* 16MB */
 #define CONFIG_SYS_MAX_FLASH_SECT	64
 #define CONFIG_ENV_IS_IN_FLASH	1

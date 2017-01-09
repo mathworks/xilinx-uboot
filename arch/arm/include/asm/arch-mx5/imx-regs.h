@@ -9,6 +9,8 @@
 
 #define ARCH_MXC
 
+#define CONFIG_SYS_CACHELINE_SIZE 64
+
 #if defined(CONFIG_MX51)
 #define IRAM_BASE_ADDR		0x1FFE0000	/* internal ram */
 #define IPU_SOC_BASE_ADDR	0x40000000
@@ -288,17 +290,6 @@
 #define DP_OP_216	((6 << 4) + ((3 - 1)  << 0))
 #define DP_MFD_216	(4 - 1)
 #define DP_MFN_216	3
-
-#define CHIP_REV_1_0            0x10
-#define CHIP_REV_1_1            0x11
-#define CHIP_REV_2_0            0x20
-#define CHIP_REV_2_5		0x25
-#define CHIP_REV_3_0            0x30
-
-#define BOARD_REV_1_0           0x0
-#define BOARD_REV_2_0           0x1
-
-#define BOARD_VER_OFFSET	0x8
 
 #define IMX_IIM_BASE            (IIM_BASE_ADDR)
 

@@ -6,6 +6,7 @@ config SYS_ARCH
 
 choice
 	prompt "CPU select"
+	optional
 
 config MPC512X
 	bool "MPC512X"
@@ -21,9 +22,11 @@ config MPC8260
 
 config MPC83xx
 	bool "MPC83xx"
+	select CREATE_ARCH_SYMLINK
 
 config MPC85xx
 	bool "MPC85xx"
+	select CREATE_ARCH_SYMLINK
 
 config MPC86xx
 	bool "MPC86xx"
@@ -33,6 +36,7 @@ config 8xx
 
 config 4xx
 	bool "PPC4xx"
+	select CREATE_ARCH_SYMLINK
 
 endchoice
 

@@ -73,9 +73,9 @@ static void write_toggle(struct usb_device *dev, u8 ep, u8 dir_out)
 }
 
 /*
- * This function checks if RxStall has occured on the endpoint. If a RxStall
- * has occured, the RxStall is cleared and 1 is returned. If RxStall has
- * not occured, 0 is returned.
+ * This function checks if RxStall has occurred on the endpoint. If a RxStall
+ * has occurred, the RxStall is cleared and 1 is returned. If RxStall has
+ * not occurred, 0 is returned.
  */
 static u8 check_stall(u8 ep, u8 dir_out)
 {
@@ -117,7 +117,7 @@ static int wait_until_ep0_ready(struct usb_device *dev, u32 bit_mask)
 {
 	u16 csr;
 	int result = 1;
-	int timeout = CONFIG_MUSB_TIMEOUT;
+	int timeout = CONFIG_USB_MUSB_TIMEOUT;
 
 	while (result > 0) {
 		csr = readw(&musbr->txcsr);
@@ -179,7 +179,7 @@ static int wait_until_ep0_ready(struct usb_device *dev, u32 bit_mask)
 static int wait_until_txep_ready(struct usb_device *dev, u8 ep)
 {
 	u16 csr;
-	int timeout = CONFIG_MUSB_TIMEOUT;
+	int timeout = CONFIG_USB_MUSB_TIMEOUT;
 
 	do {
 		if (check_stall(ep, 1)) {
@@ -211,7 +211,7 @@ static int wait_until_txep_ready(struct usb_device *dev, u8 ep)
 static int wait_until_rxep_ready(struct usb_device *dev, u8 ep)
 {
 	u16 csr;
-	int timeout = CONFIG_MUSB_TIMEOUT;
+	int timeout = CONFIG_USB_MUSB_TIMEOUT;
 
 	do {
 		if (check_stall(ep, 0)) {

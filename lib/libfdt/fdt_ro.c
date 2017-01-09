@@ -3,7 +3,7 @@
  * Copyright (C) 2006 David Gibson, IBM Corporation.
  * SPDX-License-Identifier:	GPL-2.0+ BSD-2-Clause
  */
-#include "libfdt_env.h"
+#include <libfdt_env.h>
 
 #ifndef USE_HOSTCC
 #include <fdt.h>
@@ -19,7 +19,7 @@ static int _fdt_nodename_eq(const void *fdt, int offset,
 {
 	const char *p = fdt_offset_ptr(fdt, offset + FDT_TAGSIZE, len+1);
 
-	if (! p)
+	if (!p)
 		/* short match */
 		return 0;
 
@@ -113,6 +113,25 @@ int fdt_subnode_offset(const void *fdt, int parentoffset,
 	return fdt_subnode_offset_namelen(fdt, parentoffset, name, strlen(name));
 }
 
+/*
+ * Find the next of path seperator, note we need to search for both '/' and ':'
+ * and then take the first one so that we do the right thing for e.g.
+ * "foo/bar:option" and "bar:option/otheroption", both of which happen, so
+ * first searching for either ':' or '/' does not work.
+ */
+static const char *fdt_path_next_seperator(const char *path)
+{
+	const char *sep1 = strchr(path, '/');
+	const char *sep2 = strchr(path, ':');
+
+	if (sep1 && sep2)
+		return (sep1 < sep2) ? sep1 : sep2;
+	else if (sep1)
+		return sep1;
+	else
+		return sep2;
+}
+
 int fdt_path_offset(const void *fdt, const char *path)
 {
 	const char *end = path + strlen(path);
@@ -123,7 +142,7 @@ int fdt_path_offset(const void *fdt, const char *path)
 
 	/* see if we have an alias */
 	if (*path != '/') {
-		const char *q = strchr(path, '/');
+		const char *q = fdt_path_next_seperator(path);
 
 		if (!q)
 			q = end;
@@ -141,10 +160,10 @@ int fdt_path_offset(const void *fdt, const char *path)
 
 		while (*p == '/')
 			p++;
-		if (! *p)
+		if (*p == '\0' || *p == ':')
 			return offset;
-		q = strchr(p, '/');
-		if (! q)
+		q = fdt_path_next_seperator(p);
+		if (!q)
 			q = end;
 
 		offset = fdt_subnode_offset_namelen(fdt, offset, p, q-p);
@@ -254,7 +273,7 @@ const void *fdt_getprop_namelen(const void *fdt, int nodeoffset,
 	const struct fdt_property *prop;
 
 	prop = fdt_get_property_namelen(fdt, nodeoffset, name, namelen, lenp);
-	if (! prop)
+	if (!prop)
 		return NULL;
 
 	return prop->data;
@@ -498,7 +517,7 @@ int fdt_count_strings(const void *fdt, int node, const char *property)
 
 	list = fdt_getprop(fdt, node, property, &length);
 	if (!list)
-		return -length;
+		return length;
 
 	for (i = 0; i < length; i++) {
 		int len = strlen(list);
@@ -558,7 +577,7 @@ int fdt_get_string_index(const void *fdt, int node, const char *property,
 		index--;
 	}
 
-	return FDT_ERR_NOTFOUND;
+	return -FDT_ERR_NOTFOUND;
 }
 
 int fdt_get_string(const void *fdt, int node, const char *property,

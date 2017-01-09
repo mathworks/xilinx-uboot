@@ -7,6 +7,7 @@
 #define __SANDBOX_STATE_H
 
 #include <config.h>
+#include <sysreset.h>
 #include <stdbool.h>
 #include <linux/stringify.h>
 
@@ -42,6 +43,7 @@ struct sandbox_spi_info {
 struct sandbox_state {
 	const char *cmd;		/* Command to execute */
 	bool interactive;		/* Enable cmdline after execute */
+	bool run_distro_boot;		/* Automatically run distro bootcommands */
 	const char *fdt_fname;		/* Filename of FDT binary */
 	const char *parse_err;		/* Error to report from parsing */
 	int argc;			/* Program arguments */
@@ -58,7 +60,11 @@ struct sandbox_state {
 	bool write_state;		/* Write sandbox state on exit */
 	bool ignore_missing_state_on_read;	/* No error if state missing */
 	bool show_lcd;			/* Show LCD on start-up */
+	enum sysreset_t last_sysreset;	/* Last system reset type */
+	bool sysreset_allowed[SYSRESET_COUNT];	/* Allowed system reset types */
 	enum state_terminal_raw term_raw;	/* Terminal raw/cooked */
+	bool skip_delays;		/* Ignore any time delays (for test) */
+	bool show_test_output;		/* Don't suppress stdout in tests */
 
 	/* Pointer to information for each SPI bus/cs */
 	struct sandbox_spi_info spi[CONFIG_SANDBOX_SPI_MAX_BUS]
@@ -179,6 +185,24 @@ int sandbox_write_state(struct sandbox_state *state, const char *fname);
  * @param size		Size of data to write into property
  */
 int state_setprop(int node, const char *prop_name, const void *data, int size);
+
+/**
+ * Control skipping of time delays
+ *
+ * Some tests have unnecessay time delays (e.g. USB). Allow these to be
+ * skipped to speed up testing
+ *
+ * @param skip_delays	true to skip delays from now on, false to honour delay
+ *			requests
+ */
+void state_set_skip_delays(bool skip_delays);
+
+/**
+ * See if delays should be skipped
+ *
+ * @return true if delays should be skipped, false if they should be honoured
+ */
+bool state_get_skip_delays(void);
 
 /**
  * Initialize the test system state

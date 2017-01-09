@@ -7,6 +7,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <console.h>
 #include <asm/io.h>
 #include <asm/processor.h>
 #include <asm/fsl_serdes.h>
@@ -113,7 +114,7 @@ int init_sata(int dev)
 	/* Save the private struct to block device struct */
 	sata_dev_desc[dev].priv = (void *)sata;
 
-	sprintf(sata->name, "SATA%d", dev);
+	snprintf(sata->name, 12, "SATA%d", dev);
 
 	/* Set the controller register base address to device struct */
 	reg = (fsl_sata_reg_t *)(fsl_sata_info[dev].sata_reg_base);
@@ -397,7 +398,7 @@ static int fsl_ata_exec_ata_cmd(struct fsl_sata *sata, struct sata_fis_h2d *cfis
 	debug("attribute = %08x\n\r", val32);
 	cmd_hdr->attribute = cpu_to_le32(val32);
 
-	/* Make sure cmd desc and cmd slot valid before commmand issue */
+	/* Make sure cmd desc and cmd slot valid before command issue */
 	sync();
 
 	/* PMP*/

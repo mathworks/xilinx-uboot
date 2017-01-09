@@ -22,15 +22,9 @@
 #include <asm/arch/timestamp.h>
 #endif
 
-#define COMMAND_LINE_OFFSET 0x9000
+DECLARE_GLOBAL_DATA_PTR;
 
-/*
- * Implement a weak default function for boards that optionally
- * need to clean up the system before jumping to the kernel.
- */
-__weak void board_final_cleanup(void)
-{
-}
+#define COMMAND_LINE_OFFSET 0x9000
 
 void bootm_announce_and_cleanup(void)
 {
@@ -43,7 +37,6 @@ void bootm_announce_and_cleanup(void)
 #ifdef CONFIG_BOOTSTAGE_REPORT
 	bootstage_report();
 #endif
-	board_final_cleanup();
 }
 
 #if defined(CONFIG_OF_LIBFDT) && !defined(CONFIG_OF_NO_KERNEL)
@@ -160,9 +153,13 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 		* boot_params structure, and then jump to the kernel. We
 		* assume that %cs is 0x10, 4GB flat, and read/execute, and
 		* the data segments are 0x18, 4GB flat, and read/write.
-		* U-boot is setting them up that way for itself in
+		* U-Boot is setting them up that way for itself in
 		* arch/i386/cpu/cpu.c.
+		*
+		* Note that we cannot currently boot a kernel while running as
+		* an EFI application. Please use the payload option for that.
 		*/
+#ifndef CONFIG_EFI_APP
 		__asm__ __volatile__ (
 		"movl $0, %%ebp\n"
 		"cli\n"
@@ -171,6 +168,7 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 		[boot_params] "S"(setup_base),
 		"b"(0), "D"(0)
 		);
+#endif
 	}
 
 	/* We can't get to here */

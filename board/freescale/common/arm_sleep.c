@@ -6,19 +6,21 @@
 
 #include <common.h>
 #include <asm/io.h>
-#if !defined(CONFIG_ARMV7_NONSEC) || !defined(CONFIG_ARMV7_VIRT)
+#ifndef CONFIG_ARMV7_NONSEC
 #error " Deep sleep needs non-secure mode support. "
 #else
 #include <asm/secure.h>
 #endif
 #include <asm/armv7.h>
-#include <asm/cache.h>
 
 #if defined(CONFIG_LS102XA)
 #include <asm/arch/immap_ls102xa.h>
 #endif
 
 #include "sleep.h"
+#ifdef CONFIG_U_QE
+#include <fsl_qe.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -62,8 +64,6 @@ static void dp_ddr_restore(void)
 
 	for (i = 0; i < DDR_BUFF_LEN / 8; i++)
 		*dst++ = *src++;
-
-	flush_dcache_all();
 }
 
 static void dp_resume_prepare(void)
@@ -71,7 +71,9 @@ static void dp_resume_prepare(void)
 	dp_ddr_restore();
 	board_sleep_prepare();
 	armv7_init_nonsec();
-	cleanup_before_linux();
+#ifdef CONFIG_U_QE
+	u_qe_resume();
+#endif
 }
 
 int fsl_dp_resume(void)

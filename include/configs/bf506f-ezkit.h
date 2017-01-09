@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF506F EZ-Kit board
+ * U-Boot - Configuration file for BF506F EZ-Kit board
  */
 
 #ifndef __CONFIG_BF506F_EZKIT_H__
@@ -7,13 +7,11 @@
 
 #include <asm/config-pre.h>
 
-
 /*
  * Processor Settings
  */
 #define CONFIG_BFIN_CPU             bf506-0.0
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_PARA
-
 
 /*
  * Clock Settings
@@ -38,7 +36,6 @@
 /* Values can range from 1-15						*/
 #define CONFIG_SCLK_DIV			5
 
-
 /*
  * Memory Settings
  */
@@ -52,7 +49,6 @@
 #define CONFIG_SYS_MONITOR_LEN	(4 * 1024)
 #define CONFIG_SYS_MALLOC_LEN	(4 * 1024)
 
-
 /*
  * Flash Settings
  */
@@ -62,7 +58,6 @@
 #define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_MAX_FLASH_SECT	71
-#define CONFIG_CMD_FLASH
 #define CONFIG_MONITOR_IS_IN_RAM
 */
 #define CONFIG_SYS_NO_FLASH
@@ -73,19 +68,12 @@
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-/*
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SPI
-*/
 
 /*
  * Env Storage Settings
  */
 #define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_ENV_SIZE 0x400
-
 
 /*
  * Misc Settings
@@ -97,7 +85,6 @@
 #define CONFIG_BAUDRATE 115200
 #define CONFIG_BFIN_SERIAL
 
-#define CONFIG_CMD_MEMORY
 #undef CONFIG_GZIP
 #undef CONFIG_ZLIB
 #undef CONFIG_BOOTM_RTEMS

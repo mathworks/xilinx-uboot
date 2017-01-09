@@ -4,9 +4,6 @@ menu "ARC architecture"
 config SYS_ARCH
 	default "arc"
 
-config USE_PRIVATE_LIBGCC
-	default y
-
 config SYS_CPU
 	default "arcv1" if ISA_ARCOMPACT
 	default "arcv2" if ISA_ARCV2
@@ -119,27 +116,9 @@ config SYS_DCACHE_OFF
 	bool "Do not use Data Cache"
 	default n
 
-config ARC_CACHE_LINE_SHIFT
-	int "Cache Line Length (as power of 2)"
-	range 5 7
-	default "6"
-	depends on !SYS_DCACHE_OFF || !SYS_ICACHE_OFF
-	help
-	  Starting with ARC700 4.9, Cache line length is configurable,
-	  This option specifies "N", with Line-len = 2 power N
-	  So line lengths of 32, 64, 128 are specified by 5,6,7, respectively
-	  Linux only supports same line lengths for I and D caches.
-
 choice
 	prompt "Target select"
-
-config TARGET_DUMMY
-	bool "Dummy target"
-	help
-	  Please select one of real target boards below!
-	  This target is only meant to force "makedefconfig" to put
-	  TARGET_xxx in defconfig even this is the first target from the list
-	  below.
+	default TARGET_AXS101
 
 config TARGET_TB100
 	bool "Support tb100"

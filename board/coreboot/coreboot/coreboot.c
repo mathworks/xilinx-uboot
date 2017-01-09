@@ -10,15 +10,5 @@
 
 int arch_early_init_r(void)
 {
-#ifdef CONFIG_CROS_EC
-	if (cros_ec_board_init())
-		return -1;
-#endif
-
 	return 0;
-}
-
-void setup_pch_gpios(u16 gpiobase, const struct pch_gpio_map *gpio)
-{
-	return;
 }

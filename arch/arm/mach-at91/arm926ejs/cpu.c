@@ -10,7 +10,6 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_pit.h>
 #include <asm/arch/at91_gpbr.h>
 #include <asm/arch/clk.h>
@@ -42,7 +41,7 @@ void arch_preboot_os(void)
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo(void)
 {
-	char buf[32];
+	char __maybe_unused buf[32];
 
 	printf("CPU: %s\n", ATMEL_CPU_NAME);
 	printf("Crystal frequency: %8s MHz\n",

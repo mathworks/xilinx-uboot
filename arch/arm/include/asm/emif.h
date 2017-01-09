@@ -44,6 +44,8 @@
 #define EMIF_REG_DUAL_CLK_MODE_MASK			(1 << 30)
 #define EMIF_REG_FAST_INIT_SHIFT			29
 #define EMIF_REG_FAST_INIT_MASK			(1 << 29)
+#define EMIF_REG_LEVLING_TO_SHIFT		4
+#define EMIF_REG_LEVELING_TO_MASK		(7 << 4)
 #define EMIF_REG_PHY_DLL_READY_SHIFT		2
 #define EMIF_REG_PHY_DLL_READY_MASK			(1 << 2)
 
@@ -476,6 +478,12 @@
 #define EMIF_REG_DLL_SLAVE_DLY_CTRL_SHDW_MASK	(0xFF << 4)
 #define EMIF_EMIF_DDR_PHY_CTRL_1_BASE_VAL_SHDW_SHIFT 12
 #define EMIF_EMIF_DDR_PHY_CTRL_1_BASE_VAL_SHDW_MASK	(0xFFFFF << 12)
+#define EMIF_DDR_PHY_CTRL_1_WRLVL_MASK_SHIFT		25
+#define EMIF_DDR_PHY_CTRL_1_WRLVL_MASK_MASK		(1 << 25)
+#define EMIF_DDR_PHY_CTRL_1_RDLVLGATE_MASK_SHIFT	26
+#define EMIF_DDR_PHY_CTRL_1_RDLVLGATE_MASK_MASK		(1 << 26)
+#define EMIF_DDR_PHY_CTRL_1_RDLVL_MASK_SHIFT		27
+#define EMIF_DDR_PHY_CTRL_1_RDLVL_MASK_MASK		(1 << 27)
 
 /* DDR_PHY_CTRL_2 */
 #define EMIF_REG_DDR_PHY_CTRL_2_SHIFT		0
@@ -509,6 +517,13 @@
 #define EMIF_REG_RDWRLVLINC_RMP_WIN_SHIFT	0
 #define EMIF_REG_RDWRLVLINC_RMP_WIN_MASK	(0x1FFF << 0)
 
+/* EMIF_PHY_CTRL_36 */
+#define EMIF_REG_PHY_FIFO_WE_IN_MISALINED_CLR	(1 << 8)
+
+#define PHY_RDDQS_RATIO_REGS		5
+#define PHY_FIFO_WE_SLAVE_RATIO_REGS	5
+#define PHY_REG_WR_DQ_SLAVE_RATIO_REGS	10
+
 /*Leveling Fields */
 #define DDR3_WR_LVL_INT		0x73
 #define DDR3_RD_LVL_INT		0x33
@@ -530,6 +545,9 @@
 
 /* Memory Adapter */
 #define MA_BASE				0x482AF040
+#define MA_PRIORITY			0x482A2000
+#define MA_HIMEM_INTERLEAVE_UN_SHIFT	8
+#define MA_HIMEM_INTERLEAVE_UN_MASK	(1 << 8)
 
 /* DMM_LISA_MAP */
 #define EMIF_SYS_ADDR_SHIFT		24
@@ -896,8 +914,8 @@ struct dmm_lisa_map_regs {
 
 /* Maximum delay before Low Power Modes */
 #define REG_CS_TIM		0x0
-#define REG_SR_TIM		0x0
-#define REG_PD_TIM		0x0
+#define REG_SR_TIM		0xF
+#define REG_PD_TIM		0xF
 
 
 /* EMIF_PWR_MGMT_CTRL register */
@@ -905,7 +923,7 @@ struct dmm_lisa_map_regs {
 	((REG_CS_TIM << EMIF_REG_CS_TIM_SHIFT) & EMIF_REG_CS_TIM_MASK)|\
 	((REG_SR_TIM << EMIF_REG_SR_TIM_SHIFT) & EMIF_REG_SR_TIM_MASK)|\
 	((REG_PD_TIM << EMIF_REG_PD_TIM_SHIFT) & EMIF_REG_PD_TIM_MASK)|\
-	((LP_MODE_DISABLE << EMIF_REG_LP_MODE_SHIFT)\
+	((LP_MODE_SELF_REFRESH << EMIF_REG_LP_MODE_SHIFT)\
 			& EMIF_REG_LP_MODE_MASK) |\
 	((DPD_DISABLE << EMIF_REG_DPD_EN_SHIFT)\
 			& EMIF_REG_DPD_EN_MASK))\
@@ -1200,12 +1218,10 @@ static inline u32 get_emif_rev(u32 base)
  * which is typically the case. So it is sufficient to get
  * SDRAM type from EMIF1.
  */
-static inline u32 emif_sdram_type(void)
+static inline u32 emif_sdram_type(u32 sdram_config)
 {
-	struct emif_reg_struct *emif = (struct emif_reg_struct *)EMIF1_BASE;
-
-	return (readl(&emif->emif_sdram_config) &
-		EMIF_REG_SDRAM_TYPE_MASK) >> EMIF_REG_SDRAM_TYPE_SHIFT;
+	return (sdram_config & EMIF_REG_SDRAM_TYPE_MASK)
+	       >> EMIF_REG_SDRAM_TYPE_SHIFT;
 }
 
 /* assert macros */
@@ -1235,6 +1251,5 @@ extern u32 *const T_den;
 #endif
 
 void config_data_eye_leveling_samples(u32 emif_base);
-u32 emif_sdram_type(void);
 const struct read_write_regs *get_bug_regs(u32 *iterations);
 #endif

@@ -137,7 +137,7 @@ int fec_initialize(bd_t *bis)
 	struct ether_fcc_info_s *efis;
 	int             i;
 
-	for (i = 0; i < sizeof(ether_fcc_info) / sizeof(ether_fcc_info[0]); i++) {
+	for (i = 0; i < ARRAY_SIZE(ether_fcc_info); i++) {
 
 		dev = malloc(sizeof(*dev));
 		if (dev == NULL)
@@ -148,7 +148,7 @@ int fec_initialize(bd_t *bis)
 		/* for FEC1 make sure that the name of the interface is the same
 		   as the old one for compatibility reasons */
 		if (i == 0) {
-			sprintf (dev->name, "FEC");
+			strcpy(dev->name, "FEC");
 		} else {
 			sprintf (dev->name, "FEC%d",
 				ether_fcc_info[i].ether_index + 1);
@@ -247,21 +247,21 @@ static int fec_recv (struct eth_device *dev)
 				rtx->rxbd[rxIdx].cbd_sc);
 #endif
 		} else {
-			uchar *rx = NetRxPackets[rxIdx];
+			uchar *rx = net_rx_packets[rxIdx];
 
 			length -= 4;
 
 #if defined(CONFIG_CMD_CDP)
-			if ((rx[0] & 1) != 0
-			    && memcmp ((uchar *) rx, NetBcastAddr, 6) != 0
-			    && !is_cdp_packet((uchar *)rx))
+			if ((rx[0] & 1) != 0 &&
+			    memcmp((uchar *)rx, net_bcast_ethaddr, 6) != 0 &&
+			    !is_cdp_packet((uchar *)rx))
 				rx = NULL;
 #endif
 			/*
 			 * Pass the packet up to the protocol layers.
 			 */
 			if (rx != NULL)
-				NetReceive (rx, length);
+				net_process_received_packet(rx, length);
 		}
 
 		/* Give the buffer back to the FEC. */
@@ -576,7 +576,7 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 	for (i = 0; i < PKTBUFSRX; i++) {
 		rtx->rxbd[i].cbd_sc = BD_ENET_RX_EMPTY;
 		rtx->rxbd[i].cbd_datlen = 0;	/* Reset */
-		rtx->rxbd[i].cbd_bufaddr = (uint) NetRxPackets[i];
+		rtx->rxbd[i].cbd_bufaddr = (uint) net_rx_packets[i];
 	}
 	rtx->rxbd[PKTBUFSRX - 1].cbd_sc |= BD_ENET_RX_WRAP;
 
@@ -879,7 +879,7 @@ void mii_init (void)
 
 	/* Setup the pin configuration of the FEC(s)
 	*/
-	for (i = 0; i < sizeof(ether_fcc_info) / sizeof(ether_fcc_info[0]); i++)
+	for (i = 0; i < ARRAY_SIZE(ether_fcc_info); i++)
 		fec_pin_init(ether_fcc_info[i].ether_index);
 }
 

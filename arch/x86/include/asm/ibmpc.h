@@ -21,4 +21,10 @@
 #define UART0_BASE	0x3f8
 #define UART1_BASE	0x2f8
 
+#define UART0_IRQ	4
+#define UART1_IRQ	3
+
+#define KBD_IRQ		1
+#define MSE_IRQ		12
+
 #endif

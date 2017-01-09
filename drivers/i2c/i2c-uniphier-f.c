@@ -1,21 +1,19 @@
 /*
- * Copyright (C) 2014 Panasonic Corporation
- * Copyright (C) 2015 Socionext Inc.
- *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ * Copyright (C) 2014-2015 Masahiro Yamada <yamada.masahiro@socionext.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <linux/types.h>
-#include <asm/io.h>
+#include <linux/io.h>
+#include <linux/sizes.h>
 #include <asm/errno.h>
 #include <dm/device.h>
 #include <dm/root.h>
 #include <i2c.h>
 #include <fdtdec.h>
-
-DECLARE_GLOBAL_DATA_PTR;
+#include <mapmem.h>
 
 struct uniphier_fi2c_regs {
 	u32 cr;				/* control register */
@@ -113,15 +111,14 @@ static int check_device_busy(struct uniphier_fi2c_regs __iomem *regs)
 static int uniphier_fi2c_probe(struct udevice *dev)
 {
 	fdt_addr_t addr;
-	fdt_size_t size;
 	struct uniphier_fi2c_dev *priv = dev_get_priv(dev);
 	int ret;
 
-	addr = fdtdec_get_addr_size(gd->fdt_blob, dev->of_offset, "reg",
-				    &size);
+	addr = dev_get_addr(dev);
+	if (addr == FDT_ADDR_T_NONE)
+		return -EINVAL;
 
-	priv->regs = map_sysmem(addr, size);
-
+	priv->regs = map_sysmem(addr, SZ_128);
 	if (!priv->regs)
 		return -ENOMEM;
 

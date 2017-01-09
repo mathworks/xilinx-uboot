@@ -363,7 +363,7 @@ static struct cpsw_platform_data cpsw_data = {
 #if ((defined(CONFIG_SPL_ETH_SUPPORT) || defined(CONFIG_SPL_USBETH_SUPPORT)) &&\
 		defined(CONFIG_SPL_BUILD)) || \
 	((defined(CONFIG_DRIVER_TI_CPSW) || \
-	  defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET)) && \
+	  defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET)) && \
 	 !defined(CONFIG_SPL_BUILD))
 int board_eth_init(bd_t *bis)
 {
@@ -384,7 +384,7 @@ int board_eth_init(bd_t *bis)
 	ecode = read_eeprom(&header);
 	/* if we have a valid EE, get mac address from there */
 	if ((ecode == 0) &&
-	    is_valid_ether_addr((const u8 *)&header.mac_addr[0][0])) {
+	    is_valid_ethaddr((const u8 *)&header.mac_addr[0][0])) {
 		memcpy(mac_addr, (const void *)&header.mac_addr[0][0], 6);
 	}
 
@@ -395,7 +395,7 @@ int board_eth_init(bd_t *bis)
 	if (!getenv("ethaddr")) {
 		printf("<ethaddr> not set. Validating first E-fuse MAC\n");
 
-		if (is_valid_ether_addr(mac_addr))
+		if (is_valid_ethaddr(mac_addr))
 			eth_setenv_enetaddr("ethaddr", mac_addr);
 	}
 

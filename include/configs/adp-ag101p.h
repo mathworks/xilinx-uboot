@@ -9,7 +9,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/arch/ag101.h>
+#include <asm/arch-ag101/ag101.h>
 
 /*
  * CPU and Board Configuration Options
@@ -20,21 +20,28 @@
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
+#define CONFIG_SYS_GENERIC_GLOBAL_DATA
+
 /*
  * Definitions related to passing arguments to kernel.
  */
 #define CONFIG_CMDLINE_TAG			/* send commandline to Kernel */
 #define CONFIG_SETUP_MEMORY_TAGS	/* send memory definition to kernel */
 #define CONFIG_INITRD_TAG			/* send initrd params */
+#define CONFIG_NEEDS_MANUAL_RELOC
 
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_MEM_REMAP
 #endif
 
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_SYS_TEXT_BASE	0x03200000
+#define CONFIG_SYS_TEXT_BASE	0x00500000
+#else
+#ifdef CONFIG_MEM_REMAP
+#define CONFIG_SYS_TEXT_BASE	0x80000000
 #else
 #define CONFIG_SYS_TEXT_BASE	0x00000000
+#endif
 #endif
 
 /*
@@ -80,7 +87,6 @@
 /* FTUART is a high speed NS 16C550A compatible UART, addr: 0x99600000 */
 #define CONFIG_BAUDRATE			38400
 #define CONFIG_CONS_INDEX		1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_COM1		CONFIG_FTUART010_02_BASE
 #define CONFIG_SYS_NS16550_REG_SIZE	-4
@@ -91,35 +97,26 @@
  */
 #define CONFIG_FTMAC100
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * SD (MMC) controller
  */
 #define CONFIG_MMC
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_DOS_PARTITION
 #define CONFIG_FTSDC010
 #define CONFIG_FTSDC010_NUMBER		1
 #define CONFIG_FTSDC010_SDIO
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_EXT2
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_PING
 
 /*
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory */
-#define CONFIG_SYS_PROMPT	"NDS32 # "	/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
 
 /* Print Buffer Size */
@@ -228,20 +225,33 @@
 /*
  * Physical Memory Map
  */
-#if defined(CONFIG_MEM_REMAP) || defined(CONFIG_SKIP_LOWLEVEL_INIT)
-#define PHYS_SDRAM_0		0x00000000	/* SDRAM Bank #1 */
-#if defined(CONFIG_MEM_REMAP)
-#define PHYS_SDRAM_0_AT_INIT	0x10000000	/* SDRAM Bank #1 before remap*/
+#ifdef CONFIG_SKIP_LOWLEVEL_INIT
+#define PHYS_SDRAM_0	0x00000000  /* SDRAM Bank #1 */
+#else
+#ifdef CONFIG_MEM_REMAP
+#define PHYS_SDRAM_0	0x00000000	/* SDRAM Bank #1 */
+#else
+#define PHYS_SDRAM_0	0x80000000	/* SDRAM Bank #1 */
 #endif
-#else	/* !CONFIG_SKIP_LOWLEVEL_INIT && !CONFIG_MEM_REMAP */
-#define PHYS_SDRAM_0		0x10000000	/* SDRAM Bank #1 */
 #endif
+
 #define PHYS_SDRAM_1 \
 	(PHYS_SDRAM_0 + PHYS_SDRAM_0_SIZE)	/* SDRAM Bank #2 */
 
 #define CONFIG_NR_DRAM_BANKS	2		/* we have 2 bank of DRAM */
-#define PHYS_SDRAM_0_SIZE	0x04000000	/* 64 MB */
-#define PHYS_SDRAM_1_SIZE	0x04000000	/* 64 MB */
+
+#ifdef CONFIG_SKIP_LOWLEVEL_INIT
+#define PHYS_SDRAM_0_SIZE	0x20000000	/* 512 MB */
+#define PHYS_SDRAM_1_SIZE	0x20000000	/* 512 MB */
+#else
+#ifdef CONFIG_MEM_REMAP
+#define PHYS_SDRAM_0_SIZE	0x20000000	/* 512 MB */
+#define PHYS_SDRAM_1_SIZE	0x20000000	/* 512 MB */
+#else
+#define PHYS_SDRAM_0_SIZE	0x08000000	/* 128 MB */
+#define PHYS_SDRAM_1_SIZE	0x08000000	/* 128 MB */
+#endif
+#endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_0
 
@@ -255,7 +265,7 @@
 
 /*
  * Load address and memory test area should agree with
- * arch/nds32/config.mk. Be careful not to overwrite U-boot itself.
+ * arch/nds32/config.mk. Be careful not to overwrite U-Boot itself.
  */
 #define CONFIG_SYS_LOAD_ADDR		0x300000
 
@@ -321,19 +331,20 @@
 
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
+#define CONFIG_SYS_CFI_FLASH_STATUS_POLL
 
 /* support JEDEC */
 
 /* Do not use CONFIG_FLASH_CFI_LEGACY to detect on board flash */
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
-#define PHYS_FLASH_1			0x80400000	/* BANK 1 */
-#else	/* !CONFIG_SKIP_LOWLEVEL_INIT */
+#define PHYS_FLASH_1			0x80000000	/* BANK 0 */
+#else
 #ifdef CONFIG_MEM_REMAP
 #define PHYS_FLASH_1			0x80000000	/* BANK 0 */
 #else
 #define PHYS_FLASH_1			0x00000000	/* BANK 0 */
+#endif
 #endif	/* CONFIG_MEM_REMAP */
-#endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
 
 #define CONFIG_SYS_FLASH_BASE		PHYS_FLASH_1
 #define CONFIG_SYS_FLASH_BANKS_LIST	{ PHYS_FLASH_1, }
@@ -348,11 +359,12 @@
  * but we have only 1 bank connected to flash on board
  */
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
+#define CONFIG_SYS_FLASH_BANKS_SIZES {0x4000000}
 
 /* max number of sectors on one chip */
-#define CONFIG_FLASH_SECTOR_SIZE	(0x10000*2*2)
+#define CONFIG_FLASH_SECTOR_SIZE	(0x10000*2)
 #define CONFIG_ENV_SECT_SIZE		CONFIG_FLASH_SECTOR_SIZE
-#define CONFIG_SYS_MAX_FLASH_SECT	128
+#define CONFIG_SYS_MAX_FLASH_SECT	512
 
 /* environments */
 #define CONFIG_ENV_IS_IN_FLASH

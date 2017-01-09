@@ -1,5 +1,5 @@
 /*
- * U-boot - bitops.h Routines for bit operations
+ * U-Boot - bitops.h Routines for bit operations
  *
  * Copyright (c) 2005-2007 Analog Devices Inc.
  *
@@ -15,6 +15,10 @@
 
 #include <asm/byteorder.h>
 #include <asm/system.h>
+#include <asm-generic/bitops/fls.h>
+#include <asm-generic/bitops/__fls.h>
+#include <asm-generic/bitops/fls64.h>
+#include <asm-generic/bitops/__ffs.h>
 
 #ifdef __KERNEL__
 /*

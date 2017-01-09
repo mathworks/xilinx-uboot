@@ -111,6 +111,7 @@ void enable_basic_clocks(void)
 		&cmper->emifclkctrl,
 		&cmper->otfaemifclkctrl,
 		&cmper->qspiclkctrl,
+		&cmper->spi0clkctrl,
 		0
 	};
 
@@ -122,3 +123,109 @@ void enable_basic_clocks(void)
 	/* For OPP100 the mac clock should be /5. */
 	writel(0x4, &cmdpll->clkselmacclk);
 }
+
+#ifdef CONFIG_TI_EDMA3
+void enable_edma3_clocks(void)
+{
+	u32 *const clk_domains_edma3[] = {
+		0
+	};
+
+	u32 *const clk_modules_explicit_en_edma3[] = {
+		&cmper->tpccclkctrl,
+		&cmper->tptc0clkctrl,
+		0
+	};
+
+	do_enable_clocks(clk_domains_edma3,
+			 clk_modules_explicit_en_edma3,
+			 1);
+}
+
+void disable_edma3_clocks(void)
+{
+	u32 *const clk_domains_edma3[] = {
+		0
+	};
+
+	u32 *const clk_modules_disable_edma3[] = {
+		&cmper->tpccclkctrl,
+		&cmper->tptc0clkctrl,
+		0
+	};
+
+	do_disable_clocks(clk_domains_edma3,
+			  clk_modules_disable_edma3,
+			  1);
+}
+#endif
+
+#if defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP)
+void enable_usb_clocks(int index)
+{
+	u32 *usbclkctrl = 0;
+	u32 *usbphyocp2scpclkctrl = 0;
+
+	if (index == 0) {
+		usbclkctrl = &cmper->usb0clkctrl;
+		usbphyocp2scpclkctrl = &cmper->usbphyocp2scp0clkctrl;
+		setbits_le32(&cmper->usb0clkctrl,
+			     USBOTGSSX_CLKCTRL_OPTFCLKEN_REFCLK960);
+		setbits_le32(&cmwkup->usbphy0clkctrl,
+			     USBPHY0_CLKCTRL_OPTFCLKEN_CLK32K);
+	} else if (index == 1) {
+		usbclkctrl = &cmper->usb1clkctrl;
+		usbphyocp2scpclkctrl = &cmper->usbphyocp2scp1clkctrl;
+		setbits_le32(&cmper->usb1clkctrl,
+			     USBOTGSSX_CLKCTRL_OPTFCLKEN_REFCLK960);
+		setbits_le32(&cmwkup->usbphy1clkctrl,
+			     USBPHY0_CLKCTRL_OPTFCLKEN_CLK32K);
+	}
+
+	u32 *const clk_domains_usb[] = {
+		0
+	};
+
+	u32 *const clk_modules_explicit_en_usb[] = {
+		usbclkctrl,
+		usbphyocp2scpclkctrl,
+		0
+	};
+
+	do_enable_clocks(clk_domains_usb, clk_modules_explicit_en_usb, 1);
+}
+
+void disable_usb_clocks(int index)
+{
+	u32 *usbclkctrl = 0;
+	u32 *usbphyocp2scpclkctrl = 0;
+
+	if (index == 0) {
+		usbclkctrl = &cmper->usb0clkctrl;
+		usbphyocp2scpclkctrl = &cmper->usbphyocp2scp0clkctrl;
+		clrbits_le32(&cmper->usb0clkctrl,
+			     USBOTGSSX_CLKCTRL_OPTFCLKEN_REFCLK960);
+		clrbits_le32(&cmwkup->usbphy0clkctrl,
+			     USBPHY0_CLKCTRL_OPTFCLKEN_CLK32K);
+	} else if (index == 1) {
+		usbclkctrl = &cmper->usb1clkctrl;
+		usbphyocp2scpclkctrl = &cmper->usbphyocp2scp1clkctrl;
+		clrbits_le32(&cmper->usb1clkctrl,
+			     USBOTGSSX_CLKCTRL_OPTFCLKEN_REFCLK960);
+		clrbits_le32(&cmwkup->usbphy1clkctrl,
+			     USBPHY0_CLKCTRL_OPTFCLKEN_CLK32K);
+	}
+
+	u32 *const clk_domains_usb[] = {
+		0
+	};
+
+	u32 *const clk_modules_disable_usb[] = {
+		usbclkctrl,
+		usbphyocp2scpclkctrl,
+		0
+	};
+
+	do_disable_clocks(clk_domains_usb, clk_modules_disable_usb, 1);
+}
+#endif

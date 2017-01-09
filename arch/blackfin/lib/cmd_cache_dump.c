@@ -1,5 +1,5 @@
 /*
- * U-boot - cmd_cache_dump.c
+ * U-Boot - cmd_cache_dump.c
  *
  * Copyright (c) 2007-2008 Analog Devices Inc.
  *
@@ -9,6 +9,7 @@
 #include <config.h>
 #include <common.h>
 #include <command.h>
+#include <console.h>
 
 #include <asm/blackfin.h>
 #include <asm/mach-common/bits/mpu.h>

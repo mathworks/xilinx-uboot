@@ -16,7 +16,7 @@ def ParseArgs():
     """
     parser = OptionParser()
     parser.add_option('-b', '--branch', type='string',
-          help='Branch name to build')
+          help='Branch name to build, or range of commits to build')
     parser.add_option('-B', '--bloat', dest='show_bloat',
           action='store_true', default=False,
           help='Show changes in function code size for each board')
@@ -49,10 +49,14 @@ def ParseArgs():
     parser.add_option('-i', '--in-tree', dest='in_tree',
           action='store_true', default=False,
           help='Build in the source tree instead of a separate directory')
+    parser.add_option('-I', '--incremental', action='store_true',
+          default=False, help='Do not run make mrproper (when reconfiguring)')
     parser.add_option('-j', '--jobs', dest='jobs', type='int',
           default=None, help='Number of jobs to run at once (passed to make)')
     parser.add_option('-k', '--keep-outputs', action='store_true',
           default=False, help='Keep all build output files (e.g. binaries)')
+    parser.add_option('-K', '--show-config', action='store_true',
+          default=False, help='Show configuration changes in summary (both board config files and Kconfig)')
     parser.add_option('-l', '--list-error-boards', action='store_true',
           default=False, help='Show a list of boards next to each error/warning')
     parser.add_option('--list-tool-chains', action='store_true', default=False,
@@ -68,6 +72,8 @@ def ParseArgs():
           default=False, help='Do a rough build, with limited warning resolution')
     parser.add_option('-p', '--full-path', action='store_true',
           default=False, help="Use full toolchain path in CROSS_COMPILE")
+    parser.add_option('-P', '--per-board-out-dir', action='store_true',
+          default=False, help="Use an O= (output) directory per board rather than per thread")
     parser.add_option('-s', '--summary', action='store_true',
           default=False, help='Show a build summary')
     parser.add_option('-S', '--show-sizes', action='store_true',
@@ -83,7 +89,7 @@ def ParseArgs():
     parser.add_option('-v', '--verbose', action='store_true',
           default=False, help='Show build results while the build progresses')
     parser.add_option('-V', '--verbose-build', action='store_true',
-          default=False, help='Run make with V=1, showing all output')
+          default=False, help='Run make with V=1, logging all output')
     parser.add_option('-x', '--exclude', dest='exclude',
           type='string', action='append',
           help='Specify a list of boards to exclude, separated by comma')

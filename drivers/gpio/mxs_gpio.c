@@ -8,7 +8,6 @@
  */
 
 #include <common.h>
-#include <netdev.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/iomux.h>
@@ -113,4 +112,19 @@ int gpio_request(unsigned gpio, const char *label)
 int gpio_free(unsigned gpio)
 {
 	return 0;
+}
+
+int name_to_gpio(const char *name)
+{
+	unsigned bank, pin;
+	char *end;
+
+	bank = simple_strtoul(name, &end, 10);
+
+	if (!*end || *end != ':')
+		return bank;
+
+	pin = simple_strtoul(end + 1, NULL, 10);
+
+	return (bank << MXS_PAD_BANK_SHIFT) | (pin << MXS_PAD_PIN_SHIFT);
 }

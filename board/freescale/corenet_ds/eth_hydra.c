@@ -55,7 +55,7 @@
 #include <fsl_mdio.h>
 #include <malloc.h>
 #include <fdt_support.h>
-#include <asm/fsl_dtsec.h>
+#include <fsl_dtsec.h>
 
 #include "../common/ngpixis.h"
 #include "../common/fman.h"
@@ -170,7 +170,7 @@ static int hydra_mdio_init(char *realbusname, char *fakebusname)
 	bus->read = hydra_mdio_read;
 	bus->write = hydra_mdio_write;
 	bus->reset = hydra_mdio_reset;
-	sprintf(bus->name, fakebusname);
+	strcpy(bus->name, fakebusname);
 
 	hmdio->realbus = miiphy_get_dev_by_name(realbusname);
 

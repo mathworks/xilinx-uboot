@@ -6,6 +6,8 @@
 #ifndef _TEGRA_GPIO_H_
 #define _TEGRA_GPIO_H_
 
+#include <dt-bindings/gpio/tegra-gpio.h>
+
 #define TEGRA_GPIOS_PER_PORT	8
 #define TEGRA_PORTS_PER_BANK	4
 #define MAX_NUM_GPIOS           (TEGRA_GPIO_PORTS * TEGRA_GPIO_BANKS * 8)
@@ -26,15 +28,6 @@ struct tegra_gpio_config {
 	u32 gpio:16;
 	u32 init:2;
 };
-
-/**
- * tegra_spl_gpio_direction_output() - set the output value of a GPIO
- *
- * This function is only used from SPL on seaboard, which needs to enable a
- * GPIO to get the UART running. It could be done in U-Boot rather than SPL,
- * but for now, this gets it working
- */
-int tegra_spl_gpio_direction_output(int gpio, int value);
 
 /**
  * Configure a list of GPIOs

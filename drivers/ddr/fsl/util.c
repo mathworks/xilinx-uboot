@@ -1,9 +1,7 @@
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -23,12 +21,34 @@
 
 #define ULL_8FS 0xFFFFFFFFULL
 
-u32 fsl_ddr_get_version(void)
+u32 fsl_ddr_get_version(unsigned int ctrl_num)
 {
 	struct ccsr_ddr __iomem *ddr;
 	u32 ver_major_minor_errata;
 
-	ddr = (void *)_DDR_ADDR;
+	switch (ctrl_num) {
+	case 0:
+		ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+		break;
+#if defined(CONFIG_SYS_FSL_DDR2_ADDR) && (CONFIG_NUM_DDR_CONTROLLERS > 1)
+	case 1:
+		ddr = (void *)CONFIG_SYS_FSL_DDR2_ADDR;
+		break;
+#endif
+#if defined(CONFIG_SYS_FSL_DDR3_ADDR) && (CONFIG_NUM_DDR_CONTROLLERS > 2)
+	case 2:
+		ddr = (void *)CONFIG_SYS_FSL_DDR3_ADDR;
+		break;
+#endif
+#if defined(CONFIG_SYS_FSL_DDR4_ADDR) && (CONFIG_NUM_DDR_CONTROLLERS > 3)
+	case 3:
+		ddr = (void *)CONFIG_SYS_FSL_DDR4_ADDR;
+		break;
+#endif
+	default:
+		printf("%s unexpected ctrl_num = %u\n", __func__, ctrl_num);
+		return 0;
+	}
 	ver_major_minor_errata = (ddr_in32(&ddr->ip_rev1) & 0xFFFF) << 8;
 	ver_major_minor_errata |= (ddr_in32(&ddr->ip_rev2) & 0xFF00) >> 8;
 
@@ -212,7 +232,7 @@ void print_ddr_info(unsigned int start_ctrl)
 
 	/* Calculate CAS latency based on timing cfg values */
 	cas_lat = ((ddr_in32(&ddr->timing_cfg_1) >> 16) & 0xf);
-	if (fsl_ddr_get_version() <= 0x40400)
+	if (fsl_ddr_get_version(0) <= 0x40400)
 		cas_lat += 1;
 	else
 		cas_lat += 2;
@@ -363,3 +383,43 @@ void fsl_ddr_sync_memctl_refresh(unsigned int first_ctrl,
 		ddr_out32(ddrc_debug2_p[i], ddrc_debug2[i]);
 }
 #endif /* CONFIG_FSL_DDR_SYNC_REFRESH */
+
+void remove_unused_controllers(fsl_ddr_info_t *info)
+{
+#ifdef CONFIG_FSL_LSCH3
+	int i;
+	u64 nodeid;
+	void *hnf_sam_ctrl = (void *)(CCI_HN_F_0_BASE + CCN_HN_F_SAM_CTL);
+	bool ddr0_used = false;
+	bool ddr1_used = false;
+
+	for (i = 0; i < 8; i++) {
+		nodeid = in_le64(hnf_sam_ctrl) & CCN_HN_F_SAM_NODEID_MASK;
+		if (nodeid == CCN_HN_F_SAM_NODEID_DDR0) {
+			ddr0_used = true;
+		} else if (nodeid == CCN_HN_F_SAM_NODEID_DDR1) {
+			ddr1_used = true;
+		} else {
+			printf("Unknown nodeid in HN-F SAM control: 0x%llx\n",
+			       nodeid);
+		}
+		hnf_sam_ctrl += (CCI_HN_F_1_BASE - CCI_HN_F_0_BASE);
+	}
+	if (!ddr0_used && !ddr1_used) {
+		printf("Invalid configuration in HN-F SAM control\n");
+		return;
+	}
+
+	if (!ddr0_used && info->first_ctrl == 0) {
+		info->first_ctrl = 1;
+		info->num_ctrls = 1;
+		debug("First DDR controller disabled\n");
+		return;
+	}
+
+	if (!ddr1_used && info->first_ctrl + info->num_ctrls > 1) {
+		info->num_ctrls = 1;
+		debug("Second DDR controller disabled\n");
+	}
+#endif
+}

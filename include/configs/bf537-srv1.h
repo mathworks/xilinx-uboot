@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for CSP Minotaur board
+ * U-Boot - Configuration file for CSP Minotaur board
  *
  * Thu Oct 25 15:30:44 CEST 2007 <hackfin@section5.ch>
  *    Minotaur config, brushed up for official uClinux dist.
@@ -20,13 +20,11 @@
 
 #include <asm/config-pre.h>
 
-
 /*
  * Processor Settings
  */
 #define CONFIG_BFIN_CPU             bf537-0.2
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_SPI_MASTER
-
 
 /*
  * Clock Settings
@@ -51,7 +49,6 @@
 /* Values can range from 1-15						*/
 #define CONFIG_SCLK_DIV			5
 
-
 /*
  * Memory Settings
  */
@@ -67,7 +64,6 @@
 
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)
 #define CONFIG_SYS_MALLOC_LEN		(384 << 10)
-
 
 /*
  * Network Settings
@@ -86,9 +82,6 @@
 
 #define CONFIG_SYS_AUTOLOAD	"no"
 #define CONFIG_ROOTPATH		"/romfs"
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:42 */
-#define CONFIG_LIB_RAND
 
 /*
  * Flash Settings
@@ -96,16 +89,12 @@
 /* We don't have a parallel flash chip there */
 #define CONFIG_SYS_NO_FLASH
 
-
 /*
  * SPI Settings
  */
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
-
 
 /*
  * Env Storage Settings
@@ -116,7 +105,6 @@
 #define CONFIG_ENV_SECT_SIZE	0x10000
 #define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 
-
 /*
  * I2C settings
  */
@@ -125,14 +113,12 @@
 #define CONFIG_SYS_I2C_SPEED		50000
 #define CONFIG_SYS_I2C_SLAVE		0
 
-
 /*
  * Misc Settings
  */
 #define CONFIG_SYS_LONGHELP		1
 #define CONFIG_CMDLINE_EDITING	1
 #define CONFIG_ENV_OVERWRITE	1
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_BAUDRATE		115200
 #define CONFIG_UART_CONSOLE	0
@@ -143,34 +129,11 @@
 #define CONFIG_BOOT_RETRY_TIME	-1
 #define CONFIG_LOADS_ECHO		1
 
-#if (CONFIG_BFIN_BOOT_MODE == BFIN_BOOT_UART)
-# define CONFIG_BOOTDELAY	-1
-#else
-# define CONFIG_BOOTDELAY	5
-#endif
-
-#include <config_cmd_default.h>
-
-#ifdef CONFIG_BFIN_MAC
-# define CONFIG_CMD_DHCP
-# define CONFIG_CMD_PING
-#else
-# undef CONFIG_CMD_NET
-# undef CONFIG_CMD_NFS
-#endif
-
 #define CONFIG_CMD_BOOTLDR
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#undef CONFIG_CMD_FLASH
-#define CONFIG_CMD_I2C
-#undef CONFIG_CMD_IMLS
-#define CONFIG_CMD_SF
 
 #define CONFIG_BOOTCOMMAND	"run flashboot"
 #define CONFIG_BOOTARGS	"root=/dev/mtdblock0 rw"
-#define CONFIG_SYS_PROMPT	"srv1> "
 
 #define BOOT_ENV_SETTINGS \
 	"update=tftpboot $(loadaddr) u-boot.ldr;" \

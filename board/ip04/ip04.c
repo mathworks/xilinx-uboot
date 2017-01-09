@@ -1,5 +1,5 @@
 /*
- * U-boot - main board file
+ * U-Boot - main board file
  *
  * Copyright (c) 2007 David Rowe,
  *           (c) 2006 Ivan Danov
@@ -25,17 +25,5 @@ int checkboard(void)
 int board_eth_init(bd_t *bis)
 {
 	return dm9000_initialize(bis);
-}
-
-int misc_init_r(void)
-{
-	uchar enetaddr[6];
-	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
-		puts("Warning: Generating 'random' MAC address\n");
-		eth_random_addr(enetaddr);
-		eth_setenv_enetaddr("ethaddr", enetaddr);
-	}
-
-	return 0;
 }
 #endif

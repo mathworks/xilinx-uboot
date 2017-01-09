@@ -19,11 +19,13 @@
 #ifndef _E1000_HW_H_
 #define _E1000_HW_H_
 
-#include <common.h>
 #include <linux/list.h>
 #include <malloc.h>
 #include <net.h>
+/* Avoids a compile error since struct eth_device is not defined */
+#ifndef CONFIG_DM_ETH
 #include <netdev.h>
+#endif
 #include <asm/io.h>
 #include <pci.h>
 
@@ -1072,14 +1074,21 @@ typedef enum {
 
 /* Structure containing variables used by the shared code (e1000_hw.c) */
 struct e1000_hw {
+	const char *name;
 	struct list_head list_node;
+#ifndef CONFIG_DM_ETH
 	struct eth_device *nic;
+#endif
 #ifdef CONFIG_E1000_SPI
 	struct spi_slave spi;
 #endif
 	unsigned int cardnum;
 
+#ifdef CONFIG_DM_ETH
+	struct udevice *pdev;
+#else
 	pci_dev_t pdev;
+#endif
 	uint8_t *hw_addr;
 	e1000_mac_type mac_type;
 	e1000_phy_type phy_type;
@@ -1088,11 +1097,6 @@ struct e1000_hw {
 	e1000_media_type media_type;
 	e1000_fc_type fc;
 	e1000_bus_type bus_type;
-#if 0
-	e1000_bus_speed bus_speed;
-	e1000_bus_width bus_width;
-	uint32_t io_base;
-#endif
 	uint32_t		asf_firmware_present;
 #ifndef CONFIG_E1000_NO_NVM
 	uint32_t		eeprom_semaphore_present;
@@ -1111,29 +1115,11 @@ struct e1000_hw {
 	uint32_t original_fc;
 	uint32_t txcw;
 	uint32_t autoneg_failed;
-#if 0
-	uint32_t max_frame_size;
-	uint32_t min_frame_size;
-	uint32_t mc_filter_type;
-	uint32_t num_mc_addrs;
-	uint32_t collision_delta;
-	uint32_t tx_packet_delta;
-	uint32_t ledctl_default;
-	uint32_t ledctl_mode1;
-	uint32_t ledctl_mode2;
-#endif
 	uint16_t autoneg_advertised;
 	uint16_t pci_cmd_word;
 	uint16_t fc_high_water;
 	uint16_t fc_low_water;
 	uint16_t fc_pause_time;
-#if 0
-	uint16_t current_ifs_val;
-	uint16_t ifs_min_val;
-	uint16_t ifs_max_val;
-	uint16_t ifs_step_size;
-	uint16_t ifs_ratio;
-#endif
 	uint16_t device_id;
 	uint16_t vendor_id;
 	uint16_t subsystem_id;
@@ -1144,9 +1130,6 @@ struct e1000_hw {
 	uint8_t forced_speed_duplex;
 	uint8_t wait_autoneg_complete;
 	uint8_t dma_fairness;
-#if 0
-	uint8_t perm_mac_addr[NODE_ADDRESS_SIZE];
-#endif
 	bool disable_polarity_correction;
 	bool		speed_downgraded;
 	bool get_link_status;
@@ -1157,11 +1140,6 @@ struct e1000_hw {
 	bool report_tx_early;
 	bool phy_reset_disable;
 	bool		initialize_hw_bits_disable;
-#if 0
-	bool adaptive_ifs;
-	bool ifs_params_forced;
-	bool in_ifs_mode;
-#endif
 	e1000_smart_speed	smart_speed;
 	e1000_dsp_config	dsp_config_state;
 };
@@ -2460,7 +2438,7 @@ struct e1000_hw {
 #define MII_CR_SPEED_100		0x2000
 #define MII_CR_SPEED_10		0x0000
 #define E1000_PHY_ADDRESS		0x01
-#define PHY_AUTO_NEG_TIME		45	/* 4.5 Seconds */
+#define PHY_AUTO_NEG_TIME		80	/* 8.0 Seconds */
 #define PHY_FORCE_TIME			20	/* 2.0 Seconds */
 #define PHY_REVISION_MASK		0xFFFFFFF0
 #define DEVICE_SPEED_MASK		0x00000300	/* Device Ctrl Reg Speed Mask */
@@ -2496,7 +2474,6 @@ struct e1000_hw {
 #define ICH_GFPREG_BASE_MASK       0x1FFF
 #define ICH_FLASH_LINEAR_ADDR_MASK 0x00FFFFFF
 
-#define E1000_I210_SW_FW_SYNC 0x5B50 /* Software-Firmware Synchronization - RW */
 #define E1000_SW_FW_SYNC 0x05B5C /* Software-Firmware Synchronization - RW */
 
 /* SPI EEPROM Status Register */

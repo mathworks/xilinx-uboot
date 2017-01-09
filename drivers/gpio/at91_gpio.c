@@ -59,6 +59,11 @@ int at91_set_pio_pullup(unsigned port, unsigned pin, int use_pullup)
 {
 	struct at91_port *at91_port = at91_pio_get_port(port);
 
+#if defined(CPU_HAS_PIO3)
+	if (use_pullup)
+		at91_set_pio_pulldown(port, pin, 0);
+#endif
+
 	if (at91_port && (pin < GPIO_PER_BANK))
 		at91_set_port_pullup(at91_port, pin, use_pullup);
 
@@ -305,10 +310,10 @@ int at91_set_pio_pulldown(unsigned port, unsigned pin, int is_on)
 
 	if (at91_port && (pin < GPIO_PER_BANK)) {
 		mask = 1 << pin;
-		writel(mask, &at91_port->pudr);
-		if (is_on)
+		if (is_on) {
+			at91_set_pio_pullup(port, pin, 0);
 			writel(mask, &at91_port->ppder);
-		else
+		} else
 			writel(mask, &at91_port->ppddr);
 	}
 
@@ -511,7 +516,7 @@ static int at91_gpio_probe(struct udevice *dev)
 {
 	struct at91_port_priv *port = dev_get_priv(dev);
 	struct at91_port_platdata *plat = dev_get_platdata(dev);
-	struct gpio_dev_priv *uc_priv = dev->uclass_priv;
+	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
 	uc_priv->bank_name = plat->bank_name;
 	uc_priv->gpio_count = GPIO_PER_BANK;

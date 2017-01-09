@@ -1,12 +1,11 @@
 /*
- * U-boot - Configuration file for BF533 STAMP board
+ * U-Boot - Configuration file for BF533 STAMP board
  */
 
 #ifndef __CONFIG_BF533_STAMP_H__
 #define __CONFIG_BF533_STAMP_H__
 
 #include <asm/config-pre.h>
-
 
 /*
  * Processor Settings
@@ -53,7 +52,6 @@
 #define CONFIG_SYS_MONITOR_LEN	(256 * 1024)
 #define CONFIG_SYS_MALLOC_LEN	(384 * 1024)
 
-
 /*
  * Network Settings
  */
@@ -68,9 +66,6 @@
 		SSYNC(); \
 	} while (0)
 #define CONFIG_HOSTNAME		bf533-stamp
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:b8 */
-
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -100,7 +95,6 @@
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 /*
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_ALL
 */
 
@@ -136,7 +130,6 @@
 	. = DEFINED(env_offset) ? env_offset : .; \
 	common/env_embedded.o (.text*);
 #endif
-
 
 /*
  * I2C Settings
@@ -180,7 +173,6 @@
 #define CONFIG_EBIU_AMBCTL1_VAL	0x99B3ffc2
 #endif
 
-
 /*
  * Misc Settings
  */
@@ -213,7 +205,6 @@
 
 /* define to enable splash screen support */
 /* #define CONFIG_VIDEO */
-
 
 /*
  * Pull in common ADI header for remaining command/environment setup

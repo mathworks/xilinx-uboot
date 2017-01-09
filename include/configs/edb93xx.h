@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for Cirrus Logic EDB93xx boards
+ * U-Boot - Configuration file for Cirrus Logic EDB93xx boards
  */
 
 #ifndef __CONFIG_H
@@ -26,59 +26,45 @@
 #endif
 
 /* Initial environment and monitor configuration options. */
-#define CONFIG_BOOTDELAY		2
 #define CONFIG_CMDLINE_TAG		1
 #define CONFIG_INITRD_TAG		1
 #define CONFIG_SETUP_MEMORY_TAGS	1
 #define CONFIG_BOOTARGS		"root=/dev/nfs console=ttyAM0,115200 ip=dhcp"
 #define CONFIG_BOOTFILE		"edb93xx.img"
 
-#define CONFIG_SYS_HUSH_PARSER		1
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
-
-
 #define CONFIG_SYS_LDSCRIPT	"board/cirrus/edb93xx/u-boot.lds"
-
 
 #ifdef CONFIG_EDB9301
 #define CONFIG_EP9301
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9301
-#define CONFIG_SYS_PROMPT		"EDB9301> "
 #define CONFIG_ENV_SECT_SIZE		0x00020000
 #elif defined(CONFIG_EDB9302)
 #define CONFIG_EP9302
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9302
-#define CONFIG_SYS_PROMPT		"EDB9302> "
 #define CONFIG_ENV_SECT_SIZE		0x00020000
 #elif defined(CONFIG_EDB9302A)
 #define CONFIG_EP9302
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9302A
-#define CONFIG_SYS_PROMPT		"EDB9302A> "
 #define CONFIG_ENV_SECT_SIZE		0x00020000
 #elif defined(CONFIG_EDB9307)
 #define CONFIG_EP9307
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9307
-#define CONFIG_SYS_PROMPT		"EDB9307> "
 #define CONFIG_ENV_SECT_SIZE		0x00040000
 #elif defined(CONFIG_EDB9307A)
 #define CONFIG_EP9307
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9307A
-#define CONFIG_SYS_PROMPT		"EDB9307A> "
 #define CONFIG_ENV_SECT_SIZE		0x00020000
 #elif defined(CONFIG_EDB9312)
 #define CONFIG_EP9312
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9312
-#define CONFIG_SYS_PROMPT		"EDB9312> "
 #define CONFIG_ENV_SECT_SIZE		0x00040000
 #elif defined(CONFIG_EDB9315)
 #define CONFIG_EP9315
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9315
-#define CONFIG_SYS_PROMPT		"EDB9315> "
 #define CONFIG_ENV_SECT_SIZE		0x00040000
 #elif defined(CONFIG_EDB9315A)
 #define CONFIG_EP9315
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9315A
-#define CONFIG_SYS_PROMPT		"EDB9315A> "
 #define CONFIG_ENV_SECT_SIZE		0x00020000
 #else
 #error "no board defined"
@@ -91,13 +77,7 @@
 #undef CONFIG_USE_IRQ				/* Don't need IRQ/FIQ */
 
 /* Monitor configuration */
-#include <config_cmd_default.h>
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_SETGETDCR
-#undef CONFIG_CMD_XIMG
-
 #undef CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_JFFS2
 
 #define CONFIG_SYS_LONGHELP			/* Enable "long" help in mon */
@@ -142,7 +122,6 @@
 #define CONFIG_MII_SUPPRESS_PREAMBLE
 #define CONFIG_MII
 #define CONFIG_PHY_ADDR		1
-#define CONFIG_NET_MULTI
 #undef CONFIG_NETCONSOLE
 
 /* SDRAM configuration */
@@ -177,7 +156,6 @@
 #error "no SDCS configuration for this board"
 #endif
 
-
 #if defined(CONFIG_EDB93XX_SDCS3)
 #define CONFIG_SYS_LOAD_ADDR	0x01000000	/* Default load address	*/
 #define PHYS_SDRAM_1		0x00000000
@@ -191,7 +169,6 @@
 
 #define CONFIG_SYS_INIT_SP_ADDR \
     (CONFIG_SYS_SDRAM_BASE + 32*1024 - GENERATED_GBL_DATA_SIZE)
-
 
 /* Must match kernel config */
 #define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
@@ -231,7 +208,6 @@
 #define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 
-
 #define CONFIG_SYS_FLASH_PROTECTION
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
@@ -261,7 +237,6 @@
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_MMC_SPI
-#define CONFIG_CMD_MMC
 #define CONFIG_MMC_SPI_NPOWER_EGPIO	9
 #endif
 
@@ -273,13 +248,7 @@
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"ep93xx-ohci"
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		0x80020000
 
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_USB
-
 #define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_CMD_BOOTZ
 
 /* Define to disable flash configuration*/
 /* #define CONFIG_EP93XX_NO_FLASH_CFG */

@@ -62,7 +62,6 @@
 #define CONFIG_USART_BASE		ATMEL_BASE_USART1
 #define CONFIG_USART_ID			1
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_EARLY_INIT_R
 
@@ -75,17 +74,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-/*
- * Only interrupt autoboot if <space> is pressed. Otherwise, garbage
- * data on the serial line may interrupt the boot sequence.
- */
-#define CONFIG_BOOTDELAY		1
-#define CONFIG_AUTOBOOT
-#define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_PROMPT		"Press SPACE to abort autoboot in %d" \
-					" seconds\n", bootdelay
-#define CONFIG_AUTOBOOT_DELAY_STR	"d"
-#define CONFIG_AUTOBOOT_STOP_STR	" "
 
 /*
  * After booting the board for the first time, new ethernet addresses
@@ -103,20 +91,10 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-/* remove unneeded commands */
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_SETGETDCR
-
 /* add useful commands */
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
 
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_CMDLINE_EDITING
 
@@ -161,7 +139,6 @@
 #define CONFIG_SYS_BOOTPARAMS_LEN	(16 * 1024)
 
 /* Other configuration settings that shouldn't have to change all that often */
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \

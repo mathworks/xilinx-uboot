@@ -44,13 +44,13 @@ static const u32 gpmc_lab_enet[] = {
 };
 
 static const struct ns16550_platdata zoom1_serial = {
-	OMAP34XX_UART3,
-	2,
-	V_NS16550_CLK
+	.base = OMAP34XX_UART3,
+	.reg_shift = 2,
+	.clock = V_NS16550_CLK
 };
 
 U_BOOT_DEVICE(zoom1_uart) = {
-	"serial_omap",
+	"ns16550_serial",
 	&zoom1_serial
 };
 
@@ -80,7 +80,7 @@ int misc_init_r(void)
 {
 	twl4030_power_init();
 	twl4030_led_init(TWL4030_LED_LEDEN_LEDAON | TWL4030_LED_LEDEN_LEDBON);
-	dieid_num_r();
+	omap_die_id_display();
 
 	/*
 	 * Board Reset

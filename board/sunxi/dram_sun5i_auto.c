@@ -12,7 +12,7 @@ static struct dram_para dram_para = {
 	.io_width = 0,
 	.bus_width = 0,
 	.zq = CONFIG_DRAM_ZQ,
-	.odt_en = CONFIG_DRAM_ODT_EN,
+	.odt_en = IS_ENABLED(CONFIG_DRAM_ODT_EN),
 	.size = 0,
 #ifdef CONFIG_DRAM_TIMINGS_VENDOR_MAGIC
 	.cas = 9,

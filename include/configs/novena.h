@@ -1,5 +1,5 @@
 /*
- * Configuration settings for the Novena U-boot.
+ * Configuration settings for the Novena U-Boot.
  *
  * Copyright (C) 2014 Marek Vasut <marex@denx.de>
  *
@@ -10,64 +10,26 @@
 #define __CONFIG_H
 
 /* System configurations */
-#define CONFIG_MX6
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_MISC_INIT_R
-#define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DOS_PARTITION
-#define CONFIG_FAT_WRITE
-#define CONFIG_FIT
 #define CONFIG_KEYBOARD
-#define CONFIG_MXC_GPIO
-#define CONFIG_OF_LIBFDT
-#define CONFIG_REGEX
-#define CONFIG_SYS_GENERIC_BOARD
-#define CONFIG_SYS_NO_FLASH
 
-#include "configs/mx6_common.h"
-#include <asm/arch/imx-regs.h>
-#include <asm/imx-common/gpio.h>
-#include <config_cmd_default.h>
+#include <config_distro_defaults.h>
+#include "mx6_common.h"
 
 /* U-Boot Commands */
-#define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_BMODE
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_FS_GENERIC
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_FUSE
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_NET
+#define CONFIG_FAT_WRITE
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_SATA
-#define CONFIG_CMD_SETEXPR
-#define CONFIG_CMD_TIME
-#define CONFIG_CMD_USB
 #define CONFIG_VIDEO
 
 /* U-Boot general configurations */
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_CBSIZE	1024		/* Console I/O buffer size */
-#define CONFIG_SYS_MAXARGS	32		/* Max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-						/* Boot argument buffer size */
 #define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
-#define CONFIG_AUTO_COMPLETE			/* Command auto complete */
-#define CONFIG_CMDLINE_EDITING			/* Command history etc */
-#define CONFIG_SYS_HUSH_PARSER
 
 /* U-Boot environment */
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_ENV_SIZE			(16 * 1024)
 /*
  * Environment is on MMC, starting at offset 512KiB from start of the card.
@@ -87,12 +49,9 @@
 #endif
 
 /* Booting Linux */
-#define CONFIG_BOOTDELAY		5
 #define CONFIG_BOOTFILE			"fitImage"
 #define CONFIG_BOOTARGS			"console=ttymxc1,115200 "
-#define CONFIG_BOOTCOMMAND		"run net_nfs"
-#define CONFIG_LOADADDR			0x18000000
-#define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
+#define CONFIG_BOOTCOMMAND		"run distro_bootcmd ; run net_nfs"
 #define CONFIG_HOSTNAME			novena
 
 /* Physical Memory Map */
@@ -119,11 +78,6 @@
 #define CONFIG_SPL_MMC_SUPPORT
 #include "imx6_spl.h"			/* common IMX6 SPL configuration */
 
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
-#define CONFIG_REVISION_TAG
-
 /* Ethernet Configuration */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_FEC_MXC
@@ -141,31 +95,23 @@
 /* I2C */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_I2C_MULTI_BUS
 #define CONFIG_I2C_MXC
 #define CONFIG_SYS_I2C_SPEED		100000
+#define CONFIG_SYS_SPD_BUS_NUM		0
 
 /* I2C EEPROM */
 #ifdef CONFIG_CMD_EEPROM
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2
-#define CONFIG_SYS_SPD_BUS_NUM		2
+#define CONFIG_SYS_I2C_EEPROM_BUS	2
 #endif
 
 /* MMC Configs */
-#ifdef CONFIG_CMD_MMC
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_BOUNCE_BUFFER
-#define CONFIG_FSL_ESDHC
-#define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_USDHC_NUM	2
-#endif
-
-/* OCOTP Configs */
-#ifdef CONFIG_CMD_FUSE
-#define CONFIG_MXC_OCOTP
-#endif
 
 /* PCI express */
 #ifdef CONFIG_CMD_PCI
@@ -196,8 +142,6 @@
 /* UART */
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART2_BASE
-#define CONFIG_BAUDRATE			115200
-#define CONFIG_CONS_INDEX		1
 
 /* USB Configs */
 #ifdef CONFIG_CMD_USB
@@ -205,6 +149,7 @@
 #define CONFIG_USB_EHCI_MX6
 #define CONFIG_USB_STORAGE
 #define CONFIG_USB_KEYBOARD
+#define CONFIG_SYS_STDIO_DEREGISTER
 #define CONFIG_SYS_USB_EVENT_POLL_VIA_CONTROL_EP
 #define CONFIG_USB_HOST_ETHER
 #define CONFIG_USB_ETHER_ASIX
@@ -213,9 +158,7 @@
 #define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS		0
 /* Gadget part */
-#define CONFIG_CI_UDC
 #define CONFIG_USBD_HS
-#define CONFIG_USB_GADGET_DUALSPEED
 #define CONFIG_USB_ETHER
 #define CONFIG_USB_ETH_CDC
 #define CONFIG_NETCONSOLE
@@ -239,6 +182,7 @@
 #endif
 
 /* Extra U-Boot environment. */
+#ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"fdt_high=0xffffffff\0"						\
 	"initrd_high=0xffffffff\0"					\
@@ -247,7 +191,12 @@
 	"bootdev=/dev/mmcblk0p1\0"					\
 	"rootdev=/dev/mmcblk0p2\0"					\
 	"netdev=eth0\0"							\
-	"kernel_addr_r=0x18000000\0"					\
+	"kernel_addr_r="__stringify(CONFIG_LOADADDR)"\0"		\
+	"pxefile_addr_r="__stringify(CONFIG_LOADADDR)"\0"		\
+	"scriptaddr="__stringify(CONFIG_LOADADDR)"\0"			\
+	"ramdisk_addr_r=0x28000000\0"		   			\
+	"fdt_addr_r=0x18000000\0"					\
+	"fdtfile=imx6q-novena.dtb\0"					\
 	"addcons="							\
 		"setenv bootargs ${bootargs} "				\
 		"console=${consdev},${baudrate}\0"			\
@@ -291,5 +240,19 @@
 		"fatwrite mmc 0:1 ${loadaddr} u-boot.img ${filesize} ; "\
 		"fi ; "							\
 		"fi\0"							\
+	BOOTENV
+
+#define BOOT_TARGET_DEVICES(func) \
+	func(MMC, mmc, 0) \
+	func(USB, usb, 0) \
+	func(SATA, sata, 0) \
+	func(PXE, pxe, na) \
+	func(DHCP, dhcp, na)
+
+#include <config_distro_bootcmd.h>
+
+#else
+#define CONFIG_EXTRA_ENV_SETTINGS
+#endif /* CONFIG_SPL_BUILD */
 
 #endif				/* __CONFIG_H */

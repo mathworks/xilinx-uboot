@@ -8,15 +8,20 @@
 #ifndef _U_BOOT_I386_H_
 #define _U_BOOT_I386_H_	1
 
+extern char gdt_rom[];
+
 /* cpu/.../cpu.c */
 int arch_cpu_init(void);
 int x86_cpu_init_f(void);
 int cpu_init_f(void);
-void init_gd(gd_t *id, u64 *gdt_addr);
 void setup_gdt(gd_t *id, u64 *gdt_addr);
+/*
+ * Setup FSP execution environment GDT to use the one we used in
+ * arch/x86/cpu/start16.S and reload the segment registers.
+ */
+void setup_fsp_gdt(void);
 int init_cache(void);
 int cleanup_before_linux(void);
-void panic_puts(const char *str);
 
 /* cpu/.../timer.c */
 void timer_isr(void *);
@@ -24,7 +29,7 @@ typedef void (timer_fnc_t) (void);
 int register_timer_isr (timer_fnc_t *isr_func);
 unsigned long get_tbclk_mhz(void);
 void timer_set_base(uint64_t base);
-int pcat_timer_init(void);
+int i8254_init(void);
 
 /* cpu/.../interrupts.c */
 int cpu_init_interrupts(void);
@@ -40,7 +45,7 @@ void dram_init_banksize(void);
 int default_print_cpuinfo(void);
 
 /* Set up a UART which can be used with printch(), printhex8(), etc. */
-int setup_early_uart(void);
+int setup_internal_uart(int enable);
 
 void setup_pcat_compatibility(void);
 
@@ -50,8 +55,13 @@ u32 isa_map_rom(u32 bus_addr, int size);
 /* arch/x86/lib/... */
 int video_bios_init(void);
 
+/* arch/x86/lib/fsp/... */
+int x86_fsp_init(void);
+
 void	board_init_f_r_trampoline(ulong) __attribute__ ((noreturn));
 void	board_init_f_r(void) __attribute__ ((noreturn));
+
+int arch_misc_init(void);
 
 /* Read the time stamp counter */
 static inline __attribute__((no_instrument_function)) uint64_t rdtsc(void)

@@ -11,6 +11,7 @@
  */
 
 #include <asm/omap_common.h>
+#include <asm/io.h>
 
 struct prcm_regs const omap5_es1_prcm = {
 	/* cm1.ckgen */
@@ -296,7 +297,10 @@ struct prcm_regs const omap5_es1_prcm = {
 
 struct omap_sys_ctrl_regs const omap5_ctrl = {
 	.control_status				= 0x4A002134,
-	.control_std_fuse_opp_vdd_mpu_2		= 0x4A0021B4,
+	.control_std_fuse_die_id_0		= 0x4A002200,
+	.control_std_fuse_die_id_1		= 0x4A002208,
+	.control_std_fuse_die_id_2		= 0x4A00220C,
+	.control_std_fuse_die_id_3		= 0x4A002210,
 	.control_phy_power_usb 			= 0x4A002370,
 	.control_phy_power_sata			= 0x4A002374,
 	.control_padconf_core_base		= 0x4A002800,
@@ -348,6 +352,7 @@ struct omap_sys_ctrl_regs const omap5_ctrl = {
 	.control_emif1_sdram_config_ext		= 0x4AE0C144,
 	.control_emif2_sdram_config_ext		= 0x4AE0C148,
 	.control_wkup_ldovbb_mpu_voltage_ctrl	= 0x4AE0C318,
+	.control_wkup_ldovbb_mm_voltage_ctrl	= 0x4AE0C314,
 	.control_padconf_wkup_base		= 0x4AE0C800,
 	.control_smart1nopmio_padconf_0		= 0x4AE0CDA0,
 	.control_smart1nopmio_padconf_1		= 0x4AE0CDA4,
@@ -378,6 +383,8 @@ struct omap_sys_ctrl_regs const dra7xx_ctrl = {
 	.control_status				= 0x4A002134,
 	.control_phy_power_usb			= 0x4A002370,
 	.control_phy_power_sata			= 0x4A002374,
+	.ctrl_core_sma_sw_0			= 0x4A0023FC,
+	.ctrl_core_sma_sw_1			= 0x4A002534,
 	.control_core_mac_id_0_lo		= 0x4A002514,
 	.control_core_mac_id_0_hi		= 0x4A002518,
 	.control_core_mac_id_1_lo		= 0x4A00251C,
@@ -433,13 +440,19 @@ struct omap_sys_ctrl_regs const dra7xx_ctrl = {
 	.control_srcomp_code_latch		= 0x4A002E84,
 	.control_ddr_control_ext_0		= 0x4A002E88,
 	.control_padconf_core_base		= 0x4A003400,
-	.control_std_fuse_opp_vdd_mpu_2		= 0x4A003B20,
 	.control_port_emif1_sdram_config	= 0x4AE0C110,
 	.control_port_emif1_lpddr2_nvm_config	= 0x4AE0C114,
 	.control_port_emif2_sdram_config	= 0x4AE0C118,
 	.control_emif1_sdram_config_ext		= 0x4AE0C144,
 	.control_emif2_sdram_config_ext		= 0x4AE0C148,
 	.control_wkup_ldovbb_mpu_voltage_ctrl	= 0x4AE0C158,
+	.control_wkup_ldovbb_iva_voltage_ctrl	= 0x4A002470,
+	.control_wkup_ldovbb_eve_voltage_ctrl	= 0x4A00246C,
+	.control_wkup_ldovbb_gpu_voltage_ctrl	= 0x4AE0C154,
+	.control_std_fuse_die_id_0		= 0x4AE0C200,
+	.control_std_fuse_die_id_1		= 0x4AE0C208,
+	.control_std_fuse_die_id_2		= 0x4AE0C20C,
+	.control_std_fuse_die_id_3		= 0x4AE0C210,
 	.control_padconf_mode			= 0x4AE0C5A0,
 	.control_xtal_oscillator		= 0x4AE0C5A4,
 	.control_i2c_2				= 0x4AE0C5A8,
@@ -453,6 +466,7 @@ struct omap_sys_ctrl_regs const dra7xx_ctrl = {
 	.control_efuse_3			= 0x4AE0C5D0,
 	.control_efuse_4			= 0x4AE0C5D4,
 	.control_efuse_13			= 0x4AE0C5F0,
+	.iodelay_config_base			= 0x4844A000,
 };
 
 struct prcm_regs const omap5_es2_prcm = {
@@ -575,7 +589,7 @@ struct prcm_regs const omap5_es2_prcm = {
 	.cm_div_m2_dpll_unipro = 0x4a0081d0,
 	.cm_ssc_deltamstep_dpll_unipro = 0x4a0081e8,
 	.cm_ssc_modfreqdiv_dpll_unipro = 0x4a0081ec,
-	.cm_coreaon_usb_phy_core_clkctrl = 0x4A008640,
+	.cm_coreaon_usb_phy1_core_clkctrl = 0x4A008640,
 	.cm_coreaon_bandgap_clkctrl = 0x4a008648,
 	.cm_coreaon_io_srcomp_clkctrl = 0x4a008650,
 
@@ -709,9 +723,10 @@ struct prcm_regs const omap5_es2_prcm = {
 	.cm_l3init_fsusb_clkctrl = 0x4a0096d0,
 	.cm_l3init_ocp2scp1_clkctrl = 0x4a0096e0,
 	.cm_l3init_ocp2scp3_clkctrl = 0x4a0096e8,
-	.cm_l3init_usb_otg_ss_clkctrl = 0x4a0096f0,
+	.cm_l3init_usb_otg_ss1_clkctrl = 0x4a0096f0,
 
 	/* prm irqstatus regs */
+	.prm_irqstatus_mpu = 0x4ae06010,
 	.prm_irqstatus_mpu_2 = 0x4ae06014,
 
 	/* l4 wkup regs */
@@ -741,6 +756,8 @@ struct prcm_regs const omap5_es2_prcm = {
 
 	.prm_abbldo_mpu_setup = 0x4ae07cdc,
 	.prm_abbldo_mpu_ctrl = 0x4ae07ce0,
+	.prm_abbldo_mm_setup = 0x4ae07ce4,
+	.prm_abbldo_mm_ctrl = 0x4ae07ce8,
 
 	/* SCRM stuff, used by some boards */
 	.scrm_auxclk0 = 0x4ae0a310,
@@ -801,8 +818,10 @@ struct prcm_regs const dra7xx_prcm = {
 	.cm_clkmode_dpll_dsp			= 0x4a005234,
 	.cm_shadow_freq_config1			= 0x4a005260,
 	.cm_clkmode_dpll_gmac			= 0x4a0052a8,
-	.cm_coreaon_usb_phy_core_clkctrl	= 0x4a008640,
-	.cm_coreaon_usb_phy2_core_clkctrl = 0x4a008688,
+	.cm_coreaon_usb_phy1_core_clkctrl	= 0x4a008640,
+	.cm_coreaon_usb_phy2_core_clkctrl	= 0x4a008688,
+	.cm_coreaon_usb_phy3_core_clkctrl	= 0x4a008698,
+	.cm_coreaon_l3init_60m_gfclk_clkctrl	= 0x4a0086c0,
 
 	/* cm1.mpu */
 	.cm_mpu_mpu_clkctrl			= 0x4a005320,
@@ -811,7 +830,12 @@ struct prcm_regs const dra7xx_prcm = {
 	.cm_dsp_clkstctrl			= 0x4a005400,
 	.cm_dsp_dsp_clkctrl			= 0x4a005420,
 
+	/* cm IPU */
+	.cm_ipu_clkstctrl			= 0x4a005540,
+	.cm_ipu_i2c5_clkctrl			= 0x4a005578,
+
 	/* prm irqstatus regs */
+	.prm_irqstatus_mpu			= 0x4ae06010,
 	.prm_irqstatus_mpu_2			= 0x4ae06014,
 
 	/* cm2.ckgen */
@@ -908,7 +932,8 @@ struct prcm_regs const dra7xx_prcm = {
 	.cm_gmac_gmac_clkctrl			= 0x4a0093d0,
 	.cm_l3init_ocp2scp1_clkctrl		= 0x4a0093e0,
 	.cm_l3init_ocp2scp3_clkctrl		= 0x4a0093e8,
-	.cm_l3init_usb_otg_ss_clkctrl		= 0x4a0093f0,
+	.cm_l3init_usb_otg_ss1_clkctrl		= 0x4a0093f0,
+	.cm_l3init_usb_otg_ss2_clkctrl		= 0x4a009340,
 
 	/* cm2.l4per */
 	.cm_l4per_clkstctrl			= 0x4a009700,
@@ -972,10 +997,28 @@ struct prcm_regs const dra7xx_prcm = {
 	.prm_rstctrl				= 0x4ae07d00,
 	.prm_rstst				= 0x4ae07d04,
 	.prm_rsttime				= 0x4ae07d08,
+	.prm_io_pmctrl				= 0x4ae07d20,
 	.prm_vc_val_bypass			= 0x4ae07da0,
 	.prm_vc_cfg_i2c_mode			= 0x4ae07db4,
 	.prm_vc_cfg_i2c_clk			= 0x4ae07db8,
 
 	.prm_abbldo_mpu_setup			= 0x4AE07DDC,
 	.prm_abbldo_mpu_ctrl			= 0x4AE07DE0,
+	.prm_abbldo_iva_setup			= 0x4AE07E34,
+	.prm_abbldo_iva_ctrl			= 0x4AE07E24,
+	.prm_abbldo_eve_setup			= 0x4AE07E30,
+	.prm_abbldo_eve_ctrl			= 0x4AE07E20,
+	.prm_abbldo_gpu_setup			= 0x4AE07DE4,
+	.prm_abbldo_gpu_ctrl			= 0x4AE07DE8,
+
+	/*l3main1 edma*/
+	.cm_l3main1_tptc1_clkctrl               = 0x4a008778,
+	.cm_l3main1_tptc2_clkctrl               = 0x4a008780,
 };
+
+void clrset_spare_register(u8 spare_type, u32 clear_bits, u32 set_bits)
+{
+	u32 reg = spare_type ? (*ctrl)->ctrl_core_sma_sw_1 :
+		(*ctrl)->ctrl_core_sma_sw_0;
+	clrsetbits_le32(reg, clear_bits, set_bits);
+}

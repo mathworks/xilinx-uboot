@@ -33,8 +33,6 @@
 
 #define CONFIG_DISPLAY_CPUINFO
 
-#define CONFIG_OF_LIBFDT
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_SYS_TEXT_BASE		0x23f00000
 
 /*
@@ -48,7 +46,6 @@
 #define CONFIG_USART_ID			ATMEL_ID_SYS
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_BOOTDELAY 3
 
 /*
  * BOOTP options
@@ -61,17 +58,6 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-#undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_IMLS
-#undef CONFIG_CMD_ITEST
-#undef CONFIG_CMD_LOADB
-#undef CONFIG_CMD_LOADS
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_NAND
 
 /* SDRAM */
@@ -126,7 +112,6 @@
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"at91sam9263"
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
 #define CONFIG_USB_STORAGE
-#define CONFIG_CMD_FAT
 #endif
 
 #define CONFIG_SYS_LOAD_ADDR			0x22000000
@@ -149,14 +134,12 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 					 sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_SYS_LONGHELP
 
 /*

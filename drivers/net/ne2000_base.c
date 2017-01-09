@@ -582,7 +582,7 @@ dp83902a_Overflow(void)
 	/*
 	 * Read in as many packets as we can and acknowledge any and receive
 	 * interrupts. Since the buffer has overflowed, a receive event of
-	 * some kind will have occured.
+	 * some kind will have occurred.
 	 */
 	dp83902a_RxEvent();
 	DP_OUT(base, DP_ISR, DP_ISR_RxP|DP_ISR_RxE);
@@ -592,7 +592,7 @@ dp83902a_Overflow(void)
 	DP_OUT(base, DP_TCR, DP_TCR_NORMAL);
 
 	/*
-	 * If a transmit command was issued, but no transmit event has occured,
+	 * If a transmit command was issued, but no transmit event has occurred,
 	 * restart it here.
 	 */
 	DP_IN(base, DP_ISR, isr);
@@ -650,7 +650,7 @@ dp83902a_poll(void)
 }
 
 
-/* U-boot specific routines */
+/* U-Boot specific routines */
 static u8 *pbuf = NULL;
 
 static int pkey = -1;
@@ -665,7 +665,7 @@ void uboot_push_packet_len(int len) {
 	dp83902a_recv(&pbuf[0], len);
 
 	/*Just pass it to the upper layer*/
-	NetReceive(&pbuf[0], len);
+	net_process_received_packet(&pbuf[0], len);
 }
 
 void uboot_push_tx_done(int key, int val) {
@@ -794,7 +794,7 @@ int ne2k_register(void)
 	dev->send = ne2k_send;
 	dev->recv = ne2k_recv;
 
-	sprintf(dev->name, "NE2000");
+	strcpy(dev->name, "NE2000");
 
 	return eth_register(dev);
 }

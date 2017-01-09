@@ -12,6 +12,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <errno.h>
 #include <net.h>
 #include <netdev.h>
 #include <malloc.h>
@@ -19,7 +20,7 @@
 #include <ambapp.h>
 #include <asm/leon.h>
 
-#include "greth.h"
+#include <grlib/greth.h>
 
 /* Default to 3s timeout on autonegotiation */
 #ifndef GRETH_PHY_TIMEOUT_MS
@@ -31,6 +32,13 @@
 #define GRETH_PHY_ADR_DEFAULT CONFIG_SYS_GRLIB_GRETH_PHYADDR
 #else
 #define GRETH_PHY_ADR_DEFAULT 0
+#endif
+
+/* Let board select which GRETH to use as network interface, set
+ * this to zero if only one GRETH is available.
+ */
+#ifndef CONFIG_SYS_GRLIB_GRETH_INDEX
+#define CONFIG_SYS_GRLIB_GRETH_INDEX 0
 #endif
 
 /* ByPass Cache when reading regs */
@@ -237,7 +245,7 @@ int greth_init_phy(greth_priv * dev, bd_t * bis)
 	debug("GRETH PHY ADDRESS: %d\n", phyaddr);
 
 	/* X msecs to ticks */
-	timeout = usec2ticks(GRETH_PHY_TIMEOUT_MS * 1000);
+	timeout = GRETH_PHY_TIMEOUT_MS * 1000;
 
 	/* Get system timer0 current value
 	 * Total timeout is 5s
@@ -533,7 +541,7 @@ int greth_recv(struct eth_device *dev)
 			sparc_dcache_flush_all();
 
 			/* pass packet on to network subsystem */
-			NetReceive((void *)d, len);
+			net_process_received_packet((void *)d, len);
 
 			/* bump stats counters */
 			greth->stats.rx_packets++;
@@ -592,8 +600,12 @@ int greth_initialize(bd_t * bis)
 
 	debug("Scanning for GRETH\n");
 
-	/* Find Device & IRQ via AMBA Plug&Play information */
-	if (ambapp_apb_first(VENDOR_GAISLER, GAISLER_ETHMAC, &apbdev) != 1) {
+	/* Find Device & IRQ via AMBA Plug&Play information,
+	 * CONFIG_SYS_GRLIB_GRETH_INDEX select which GRETH if multiple
+	 * GRETHs in system.
+	 */
+	if (ambapp_apb_find(&ambapp_plb, VENDOR_GAISLER, GAISLER_ETHMAC,
+			CONFIG_SYS_GRLIB_GRETH_INDEX, &apbdev) != 1) {
 		return -1;	/* GRETH not found */
 	}
 
@@ -628,9 +640,9 @@ int greth_initialize(bd_t * bis)
 
 	/* Make descriptor string */
 	if (greth->gbit_mac) {
-		sprintf(dev->name, "GRETH_10/100/GB");
+		strcpy(dev->name, "GRETH_10/100/GB");
 	} else {
-		sprintf(dev->name, "GRETH_10/100");
+		strcpy(dev->name, "GRETH_10/100");
 	}
 
 	/* initiate PHY, select speed/duplex depending on connected PHY */
@@ -653,13 +665,8 @@ int greth_initialize(bd_t * bis)
 			}
 		}
 	} else {
-		/* HW Address not found in environment, Set default HW address */
-		addr[0] = GRETH_HWADDR_0;	/* MSB */
-		addr[1] = GRETH_HWADDR_1;
-		addr[2] = GRETH_HWADDR_2;
-		addr[3] = GRETH_HWADDR_3;
-		addr[4] = GRETH_HWADDR_4;
-		addr[5] = GRETH_HWADDR_5;	/* LSB */
+		/* No ethaddr set */
+		return -EINVAL;
 	}
 
 	/* set and remember MAC address */

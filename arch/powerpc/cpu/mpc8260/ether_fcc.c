@@ -24,6 +24,7 @@
  */
 
 #include <common.h>
+#include <console.h>
 #include <malloc.h>
 #include <asm/cpm_8260.h>
 #include <mpc8260.h>
@@ -183,7 +184,7 @@ static int fec_recv(struct eth_device* dev)
 	}
 	else {
 	    /* Pass the packet up to the protocol layers. */
-	    NetReceive(NetRxPackets[rxIdx], length - 4);
+	    net_process_received_packet(net_rx_packets[rxIdx], length - 4);
 	}
 
 
@@ -243,7 +244,7 @@ static int fec_init(struct eth_device* dev, bd_t *bis)
     {
       rtx.rxbd[i].cbd_sc = BD_ENET_RX_EMPTY;
       rtx.rxbd[i].cbd_datlen = 0;
-      rtx.rxbd[i].cbd_bufaddr = (uint)NetRxPackets[i];
+      rtx.rxbd[i].cbd_bufaddr = (uint)net_rx_packets[i];
     }
     rtx.rxbd[PKTBUFSRX - 1].cbd_sc |= BD_ENET_RX_WRAP;
 
@@ -299,7 +300,7 @@ static int fec_init(struct eth_device* dev, bd_t *bis)
      * it unique by setting a few bits in the upper byte of the
      * non-static part of the address.
      */
-#define ea eth_get_dev()->enetaddr
+#define ea eth_get_ethaddr()
     pram_ptr->fen_paddrh = (ea[5] << 8) + ea[4];
     pram_ptr->fen_paddrm = (ea[3] << 8) + ea[2];
     pram_ptr->fen_paddrl = (ea[1] << 8) + ea[0];
@@ -361,7 +362,7 @@ int fec_initialize(bd_t *bis)
 	struct eth_device* dev;
 	int i;
 
-	for (i = 0; i < sizeof(ether_fcc_info) / sizeof(ether_fcc_info[0]); i++)
+	for (i = 0; i < ARRAY_SIZE(ether_fcc_info); i++)
 	{
 		dev = (struct eth_device*) malloc(sizeof *dev);
 		memset(dev, 0, sizeof *dev);
@@ -431,7 +432,7 @@ static elbt_prdesc rxeacc_descs[] = {
 	{ offsetof(elbt_rxeacc, badlen),	"Bad Frame Length"	},
 	{ offsetof(elbt_rxeacc, badbit),	"Data Compare Errors"	},
 };
-static int rxeacc_ndesc = sizeof (rxeacc_descs) / sizeof (rxeacc_descs[0]);
+static int rxeacc_ndesc = ARRAY_SIZE(rxeacc_descs);
 
 typedef
 	struct {
@@ -448,7 +449,7 @@ static elbt_prdesc txeacc_descs[] = {
 	{ offsetof(elbt_txeacc, un),		"Underrun"		},
 	{ offsetof(elbt_txeacc, csl),		"Carrier Sense Lost"	},
 };
-static int txeacc_ndesc = sizeof (txeacc_descs) / sizeof (txeacc_descs[0]);
+static int txeacc_ndesc = ARRAY_SIZE(txeacc_descs);
 
 typedef
 	struct {
@@ -499,7 +500,7 @@ static elbt_prdesc epram_descs[] = {
 	{ offsetof(fcc_enet_t, fen_p512c),	"512-1023 Octet Frames"	},
 	{ offsetof(fcc_enet_t, fen_p1024c),	"1024-1518 Octet Frames"},
 };
-static int epram_ndesc = sizeof (epram_descs) / sizeof (epram_descs[0]);
+static int epram_ndesc = ARRAY_SIZE(epram_descs);
 
 /*
  * given an elbt_prdesc array and an array of base addresses, print
@@ -637,7 +638,7 @@ eth_loopback_test (void)
 
 	puts ("FCC Ethernet External loopback test\n");
 
-	eth_getenv_enetaddr("ethaddr", NetOurEther);
+	eth_getenv_enetaddr("ethaddr", net_ethaddr);
 
 	/*
 	 * global initialisations for all FCC channels
@@ -720,8 +721,8 @@ eth_loopback_test (void)
 			bdp->cbd_sc = BD_ENET_TX_READY | BD_ENET_TX_PAD | \
 				BD_ENET_TX_LAST | BD_ENET_TX_TC;
 
-			memset ((void *)bp, patbytes[i], ELBT_BUFSZ);
-			NetSetEther (bp, NetBcastAddr, 0x8000);
+			memset((void *)bp, patbytes[i], ELBT_BUFSZ);
+			net_set_ether(bp, net_bcast_ethaddr, 0x8000);
 		}
 		ecp->txbd[ELBT_NTXBD - 1].cbd_sc |= BD_ENET_TX_WRAP;
 
@@ -799,11 +800,9 @@ eth_loopback_test (void)
 		 * So, far we have only been given one Ethernet address. We use
 		 * the same address for all channels
 		 */
-#define ea NetOurEther
-		fpp->fen_paddrh = (ea[5] << 8) + ea[4];
-		fpp->fen_paddrm = (ea[3] << 8) + ea[2];
-		fpp->fen_paddrl = (ea[1] << 8) + ea[0];
-#undef ea
+		fpp->fen_paddrh = (net_ethaddr[5] << 8) + net_ethaddr[4];
+		fpp->fen_paddrm = (net_ethaddr[3] << 8) + net_ethaddr[2];
+		fpp->fen_paddrl = (net_ethaddr[1] << 8) + net_ethaddr[0];
 
 		fpp->fen_minflr = PKT_MINBUF_SIZE; /* min frame len register */
 		/*
@@ -1016,7 +1015,7 @@ eth_loopback_test (void)
 							&ecp->rxbufs[i][0];
 
 						ours = memcmp (ehp->et_src, \
-							NetOurEther, 6);
+							net_ethaddr, 6);
 
 						prot = swap16 (ehp->et_protlen);
 						tb = prot & 0x8000;

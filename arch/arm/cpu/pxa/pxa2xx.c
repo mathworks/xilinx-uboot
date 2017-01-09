@@ -10,11 +10,11 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <common.h>
+#include <asm/arch/pxa-regs.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <command.h>
-#include <common.h>
-#include <asm/arch/pxa-regs.h>
 
 /* Flush I/D-cache */
 static void cache_flush(void)
@@ -283,4 +283,14 @@ void reset_cpu(ulong ignored)
 
 	for (;;)
 		;
+}
+
+void enable_caches(void)
+{
+#ifndef CONFIG_SYS_ICACHE_OFF
+	icache_enable();
+#endif
+#ifndef CONFIG_SYS_DCACHE_OFF
+	dcache_enable();
+#endif
 }

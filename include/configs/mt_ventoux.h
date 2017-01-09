@@ -22,18 +22,11 @@
 #define MACH_TYPE_AM3517_MT_VENTOUX	3832
 #define CONFIG_MACH_TYPE	MACH_TYPE_AM3517_MT_VENTOUX
 
-#define CONFIG_BOOTDELAY	10
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_AUTO_COMPLETE
 
 #define CONFIG_OMAP3_GPIO_4
 #define CONFIG_HOSTNAME mt_ventoux
-
-/*
- * Miscellaneous configurable options
- */
-#define V_PROMPT			"mt_ventoux => "
-#define CONFIG_SYS_PROMPT		V_PROMPT
 
 /*
  * Set its own mtdparts, different from common
@@ -48,7 +41,6 @@
 /*
  * FPGA
  */
-#define CONFIG_CMD_FPGA
 #define CONFIG_CMD_FPGA_LOADMK
 #define CONFIG_FPGA
 #define CONFIG_FPGA_XILINX

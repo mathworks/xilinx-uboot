@@ -9,6 +9,7 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/crm_regs.h>
+#include <asm/imx-common/sys_proto.h>
 #include <netdev.h>
 #ifdef CONFIG_FSL_ESDHC
 #include <fsl_esdhc.h>
@@ -17,6 +18,8 @@
 #ifdef CONFIG_FSL_ESDHC
 DECLARE_GLOBAL_DATA_PTR;
 #endif
+
+static char soc_type[] = "xx0";
 
 #ifdef CONFIG_MXC_OCOTP
 void enable_ocotp_clk(unsigned char enable)
@@ -196,6 +199,11 @@ static u32 get_i2c_clk(void)
 	return get_ipg_clk();
 }
 
+static u32 get_dspi_clk(void)
+{
+	return get_ipg_clk();
+}
+
 unsigned int mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {
@@ -213,6 +221,8 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 		return get_fec_clk();
 	case MXC_I2C_CLK:
 		return get_i2c_clk();
+	case MXC_DSPI_CLK:
+		return get_dspi_clk();
 	default:
 		break;
 	}
@@ -257,6 +267,11 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 }
 #endif
 
+u32 get_cpu_rev(void)
+{
+	return MXC_CPU_VF610 << 12;
+}
+
 #if defined(CONFIG_DISPLAY_CPUINFO)
 static char *get_reset_cause(void)
 {
@@ -284,9 +299,32 @@ static char *get_reset_cause(void)
 
 int print_cpuinfo(void)
 {
-	printf("CPU:   Freescale Vybrid VF610 at %d MHz\n",
-		mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	printf("CPU: Freescale Vybrid VF%s at %d MHz\n",
+	       soc_type, mxc_get_clock(MXC_ARM_CLK) / 1000000);
 	printf("Reset cause: %s\n", get_reset_cause());
+
+	return 0;
+}
+#endif
+
+int arch_cpu_init(void)
+{
+	struct mscm *mscm = (struct mscm *)MSCM_BASE_ADDR;
+
+	soc_type[0] = mscm->cpxcount ? '6' : '5'; /*Dual Core => VF6x0 */
+	soc_type[1] = mscm->cpxcfg1 ? '1' : '0'; /* L2 Cache => VFx10 */
+
+	return 0;
+}
+
+#ifdef CONFIG_ARCH_MISC_INIT
+int arch_misc_init(void)
+{
+	char soc[6];
+
+	strcat(soc, "vf");
+	strcat(soc, soc_type);
+	setenv("soc", soc);
 
 	return 0;
 }
@@ -317,3 +355,19 @@ int get_clocks(void)
 #endif
 	return 0;
 }
+
+#ifndef CONFIG_SYS_DCACHE_OFF
+void enable_caches(void)
+{
+#if defined(CONFIG_SYS_ARM_CACHE_WRITETHROUGH)
+	enum dcache_option option = DCACHE_WRITETHROUGH;
+#else
+	enum dcache_option option = DCACHE_WRITEBACK;
+#endif
+	dcache_enable();
+	icache_enable();
+
+    /* Enable caching on OCRAM */
+	mmu_set_region_dcache_behaviour(IRAM_BASE_ADDR, IRAM_SIZE, option);
+}
+#endif

@@ -16,6 +16,7 @@ typedef volatile unsigned short vu_short;
 typedef volatile unsigned char	vu_char;
 
 #include <config.h>
+#include <errno.h>
 #include <asm-offsets.h>
 #include <linux/bitops.h>
 #include <linux/types.h>
@@ -75,6 +76,12 @@ typedef volatile unsigned char	vu_char;
 #endif
 #ifdef CONFIG_SOC_DA8XX
 #include <asm/arch/hardware.h>
+#endif
+#ifdef CONFIG_FSL_LSCH3
+#include <asm/arch/immap_lsch3.h>
+#endif
+#ifdef CONFIG_FSL_LSCH2
+#include <asm/arch/immap_lsch2.h>
 #endif
 
 #include <part.h>
@@ -140,9 +147,6 @@ void __assert_fail(const char *assertion, const char *file, unsigned line,
 #define BUG_ON(condition) do { if (unlikely((condition)!=0)) BUG(); } while(0)
 #endif /* BUG */
 
-/* Force a compilation error if condition is true */
-#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
-
 typedef void (interrupt_handler_t)(void *);
 
 #include <asm/u-boot.h> /* boot information for Linux kernel */
@@ -192,22 +196,8 @@ int	cpu_init(void);
 
 /* */
 phys_size_t initdram (int);
-int	display_options (void);
 
-/**
- * print_size() - Print a size with a suffic
- *
- * print sizes as "xxx KiB", "xxx.y KiB", "xxx MiB", "xxx.y MiB",
- * xxx GiB, xxx.y GiB, etc as needed; allow for optional trailing string
- * (like "\n")
- *
- * @size:	Size to print
- * @suffix	String to print after the size
- */
-void print_size(uint64_t size, const char *suffix);
-
-int print_buffer(ulong addr, const void *data, uint width, uint count,
-		 uint linelen);
+#include <display_options.h>
 
 /* common/main.c */
 void	main_loop	(void);
@@ -226,11 +216,47 @@ int run_command_repeatable(const char *cmd, int flag);
  * @return 0 on success, or != 0 on error.
  */
 int run_command_list(const char *cmd, int len, int flag);
-extern char console_buffer[];
 
 /* arch/$(ARCH)/lib/board.c */
 void board_init_f(ulong);
 void board_init_r(gd_t *, ulong) __attribute__ ((noreturn));
+
+/**
+ * ulong board_init_f_alloc_reserve - allocate reserved area
+ *
+ * This function is called by each architecture very early in the start-up
+ * code to allow the C runtime to reserve space on the stack for writable
+ * 'globals' such as GD and the malloc arena.
+ *
+ * @top:	top of the reserve area, growing down.
+ * @return:	bottom of reserved area
+ */
+ulong board_init_f_alloc_reserve(ulong top);
+
+/**
+ * board_init_f_init_reserve - initialize the reserved area(s)
+ *
+ * This function is called once the C runtime has allocated the reserved
+ * area on the stack. It must initialize the GD at the base of that area.
+ *
+ * @base:	top from which reservation was done
+ */
+void board_init_f_init_reserve(ulong base);
+
+/**
+ * arch_setup_gd() - Set up the global_data pointer
+ *
+ * This pointer is special in some architectures and cannot easily be assigned
+ * to. For example on x86 it is implemented by adding a specific record to its
+ * Global Descriptor Table! So we we provide a function to carry out this task.
+ * For most architectures this can simply be:
+ *
+ *    gd = gd_ptr;
+ *
+ * @gd_ptr:	Pointer to global data
+ */
+void arch_setup_gd(gd_t *gd_ptr);
+
 int checkboard(void);
 int show_board_info(void);
 int checkflash(void);
@@ -251,6 +277,17 @@ static inline int print_cpuinfo(void)
 #endif
 int update_flash_size(int flash_size);
 int arch_early_init_r(void);
+
+/**
+ * arch_cpu_init_dm() - init CPU after driver model is available
+ *
+ * This is called immediately after driver model is available before
+ * relocation. This is similar to arch_cpu_init() but is able to reference
+ * devices
+ *
+ * @return 0 if OK, -ve on error
+ */
+int arch_cpu_init_dm(void);
 
 /**
  * Reserve all necessary stacks
@@ -277,7 +314,7 @@ __weak int arch_reserve_stacks(void);
  *
  * @param size	Size of DRAM (which should be displayed along with other info)
  */
-void board_show_dram(ulong size);
+void board_show_dram(phys_size_t size);
 
 /**
  * arch_fixup_fdt() - Write arch-specific information to fdt
@@ -387,7 +424,6 @@ int get_env_id (void);
 
 void	pci_init      (void);
 void	pci_init_board(void);
-void	pciinfo	      (int, int);
 
 #if defined(CONFIG_PCI) && defined(CONFIG_4xx)
     int	   pci_pre_init	       (struct pci_controller *);
@@ -429,10 +465,7 @@ void	reset_phy     (void);
 void	fdc_hw_init   (void);
 
 /* $(BOARD)/eeprom.c */
-void eeprom_init  (void);
-#ifndef CONFIG_SPI
-int  eeprom_probe (unsigned dev_addr, unsigned offset);
-#endif
+void eeprom_init  (int bus);
 int  eeprom_read  (unsigned dev_addr, unsigned offset, uchar *buffer, unsigned cnt);
 int  eeprom_write (unsigned dev_addr, unsigned offset, uchar *buffer, unsigned cnt);
 
@@ -471,7 +504,6 @@ int testdram(void);
     defined(CONFIG_8xx)
 uint	get_immr      (uint);
 #endif
-uint	get_pir	      (void);
 #if defined(CONFIG_MPC5xxx)
 uint	get_svr       (void);
 #endif
@@ -565,12 +597,8 @@ void	upmconfig     (unsigned int, unsigned int *, unsigned int);
 ulong	get_tbclk     (void);
 void	reset_misc    (void);
 void	reset_cpu     (ulong addr);
-#if defined (CONFIG_OF_LIBFDT) && defined (CONFIG_OF_BOARD_SETUP)
 void ft_cpu_setup(void *blob, bd_t *bd);
-#ifdef CONFIG_PCI
 void ft_pci_setup(void *blob, bd_t *bd);
-#endif
-#endif
 
 void smp_set_core_boot_addr(unsigned long addr, int corenr);
 void smp_kick_all_cpus(void);
@@ -629,10 +657,8 @@ int get_serial_clock(void);
 #if defined(CONFIG_MPC85xx)
 typedef MPC85xx_SYS_INFO sys_info_t;
 void	get_sys_info  ( sys_info_t * );
-#  if defined(CONFIG_OF_LIBFDT)
-	void ft_fixup_cpu(void *, u64);
-	void ft_fixup_num_cores(void *);
-#  endif
+void ft_fixup_cpu(void *, u64);
+void ft_fixup_num_cores(void *);
 #endif
 #if defined(CONFIG_MPC86xx)
 typedef MPC86xx_SYS_INFO sys_info_t;
@@ -718,6 +744,21 @@ void	invalidate_dcache_range(unsigned long start, unsigned long stop);
 void	invalidate_dcache_all(void);
 void	invalidate_icache_all(void);
 
+enum {
+	/* Disable caches (else flush caches but leave them active) */
+	CBL_DISABLE_CACHES		= 1 << 0,
+	CBL_SHOW_BOOTSTAGE_REPORT	= 1 << 1,
+
+	CBL_ALL				= 3,
+};
+
+/**
+ * Clean up ready for linux
+ *
+ * @param flags		Flags to control what is done
+ */
+int cleanup_before_linux_select(int flags);
+
 /* arch/$(ARCH)/lib/ticks.S */
 uint64_t get_ticks(void);
 void	wait_ticks    (unsigned long);
@@ -732,6 +773,48 @@ int	init_timebase (void);
 int gunzip(void *, int, unsigned char *, unsigned long *);
 int zunzip(void *dst, int dstlen, unsigned char *src, unsigned long *lenp,
 						int stoponerr, int offset);
+
+/**
+ * gzwrite progress indicators: defined weak to allow board-specific
+ * overrides:
+ *
+ *	gzwrite_progress_init called on startup
+ *	gzwrite_progress called during decompress/write loop
+ *	gzwrite_progress_finish called at end of loop to
+ *		indicate success (retcode=0) or failure
+ */
+void gzwrite_progress_init(u64 expected_size);
+
+void gzwrite_progress(int iteration,
+		     u64 bytes_written,
+		     u64 total_bytes);
+
+void gzwrite_progress_finish(int retcode,
+			     u64 totalwritten,
+			     u64 totalsize,
+			     u32 expected_crc,
+			     u32 calculated_crc);
+
+/**
+ * decompress and write gzipped image from memory to block device
+ *
+ * @param	src		compressed image address
+ * @param	len		compressed image length in bytes
+ * @param	dev		block device descriptor
+ * @param	szwritebuf	bytes per write (pad to erase size)
+ * @param	startoffs	offset in bytes of first write
+ * @param	szexpected	expected uncompressed length
+ *				may be zero to use gzip trailer
+ *				for files under 4GiB
+ */
+int gzwrite(unsigned char *src, int len,
+	    struct blk_desc *dev,
+	    unsigned long szwritebuf,
+	    u64 startoffs,
+	    u64 szexpected);
+
+/* lib/lz4_wrapper.c */
+int ulz4fn(const void *src, size_t srcn, void *dst, size_t *dstn);
 
 /* lib/qsort.c */
 void qsort(void *base, size_t nmemb, size_t size,
@@ -760,15 +843,6 @@ void srand(unsigned int seed);
 unsigned int rand(void);
 unsigned int rand_r(unsigned int *seedp);
 
-/* common/console.c */
-int	console_init_f(void);	/* Before relocation; uses the serial  stuff	*/
-int	console_init_r(void);	/* After  relocation; uses the console stuff	*/
-int	console_assign(int file, const char *devname);	/* Assign the console	*/
-int	ctrlc (void);
-int	had_ctrlc (void);	/* have we had a Control-C since last clear? */
-void	clear_ctrlc (void);	/* clear the Control-C condition */
-int	disable_ctrlc (int);	/* 1 to disable, 0 to enable Control-C detect */
-int confirm_yesno(void);        /*  1 if input is "y", "Y", "yes" or "YES" */
 /*
  * STDIO based functions (can always be used)
  */
@@ -780,11 +854,18 @@ int	getc(void);
 int	tstc(void);
 
 /* stdout */
+#if defined(CONFIG_SPL_BUILD) && !defined(CONFIG_SPL_SERIAL_SUPPORT)
+#define	putc(...) do { } while (0)
+#define puts(...) do { } while (0)
+#define printf(...) do { } while (0)
+#define vprintf(...) do { } while (0)
+#else
 void	putc(const char c);
 void	puts(const char *s);
 int	printf(const char *fmt, ...)
 		__attribute__ ((format (__printf__, 1, 2)));
 int	vprintf(const char *fmt, va_list args);
+#endif
 
 /* stderr */
 #define eputc(c)		fputc(stderr, c)
@@ -815,17 +896,10 @@ int zzip(void *dst, unsigned long *lenp, unsigned char *src,
 
 /* lib/net_utils.c */
 #include <net.h>
-static inline IPaddr_t getenv_IPaddr(char *var)
+static inline struct in_addr getenv_ip(char *var)
 {
 	return string_to_ip(getenv(var));
 }
-
-/*
- * CONSOLE multiplexing.
- */
-#ifdef CONFIG_CONSOLE_MUX
-#include <iomux.h>
-#endif
 
 int	pcmcia_init (void);
 
@@ -846,23 +920,6 @@ int cpu_reset(int nr);
 int cpu_disable(int nr);
 int cpu_release(int nr, int argc, char * const argv[]);
 #endif
-
-/* Define a null map_sysmem() if the architecture doesn't use it */
-# ifndef CONFIG_ARCH_MAP_SYSMEM
-static inline void *map_sysmem(phys_addr_t paddr, unsigned long len)
-{
-	return (void *)(uintptr_t)paddr;
-}
-
-static inline void unmap_sysmem(const void *vaddr)
-{
-}
-
-static inline phys_addr_t map_to_sysmem(const void *ptr)
-{
-	return (phys_addr_t)(uintptr_t)ptr;
-}
-# endif
 
 #endif /* __ASSEMBLY__ */
 
@@ -891,91 +948,22 @@ static inline phys_addr_t map_to_sysmem(const void *ptr)
 #define ROUND(a,b)		(((a) + (b) - 1) & ~((b) - 1))
 
 /*
- * ARCH_DMA_MINALIGN is defined in asm/cache.h for each architecture.  It
- * is used to align DMA buffers.
+ * check_member() - Check the offset of a structure member
+ *
+ * @structure:	Name of structure (e.g. global_data)
+ * @member:	Name of member (e.g. baudrate)
+ * @offset:	Expected offset in bytes
  */
-#ifndef __ASSEMBLY__
-#include <asm/cache.h>
+#define check_member(structure, member, offset) _Static_assert( \
+	offsetof(struct structure, member) == offset, \
+	"`struct " #structure "` offset for `" #member "` is not " #offset)
+
+/* Avoid using CONFIG_EFI_STUB directly as we may boot from other loaders */
+#ifdef CONFIG_EFI_STUB
+#define ll_boot_init()	false
+#else
+#define ll_boot_init()	true
 #endif
-
-/*
- * The ALLOC_CACHE_ALIGN_BUFFER macro is used to allocate a buffer on the
- * stack that meets the minimum architecture alignment requirements for DMA.
- * Such a buffer is useful for DMA operations where flushing and invalidating
- * the cache before and after a read and/or write operation is required for
- * correct operations.
- *
- * When called the macro creates an array on the stack that is sized such
- * that:
- *
- * 1) The beginning of the array can be advanced enough to be aligned.
- *
- * 2) The size of the aligned portion of the array is a multiple of the minimum
- *    architecture alignment required for DMA.
- *
- * 3) The aligned portion contains enough space for the original number of
- *    elements requested.
- *
- * The macro then creates a pointer to the aligned portion of this array and
- * assigns to the pointer the address of the first element in the aligned
- * portion of the array.
- *
- * Calling the macro as:
- *
- *     ALLOC_CACHE_ALIGN_BUFFER(uint32_t, buffer, 1024);
- *
- * Will result in something similar to saying:
- *
- *     uint32_t    buffer[1024];
- *
- * The following differences exist:
- *
- * 1) The resulting buffer is guaranteed to be aligned to the value of
- *    ARCH_DMA_MINALIGN.
- *
- * 2) The buffer variable created by the macro is a pointer to the specified
- *    type, and NOT an array of the specified type.  This can be very important
- *    if you want the address of the buffer, which you probably do, to pass it
- *    to the DMA hardware.  The value of &buffer is different in the two cases.
- *    In the macro case it will be the address of the pointer, not the address
- *    of the space reserved for the buffer.  However, in the second case it
- *    would be the address of the buffer.  So if you are replacing hard coded
- *    stack buffers with this macro you need to make sure you remove the & from
- *    the locations where you are taking the address of the buffer.
- *
- * Note that the size parameter is the number of array elements to allocate,
- * not the number of bytes.
- *
- * This macro can not be used outside of function scope, or for the creation
- * of a function scoped static buffer.  It can not be used to create a cache
- * line aligned global buffer.
- */
-#define PAD_COUNT(s, pad) (((s) - 1) / (pad) + 1)
-#define PAD_SIZE(s, pad) (PAD_COUNT(s, pad) * pad)
-#define ALLOC_ALIGN_BUFFER_PAD(type, name, size, align, pad)		\
-	char __##name[ROUND(PAD_SIZE((size) * sizeof(type), pad), align)  \
-		      + (align - 1)];					\
-									\
-	type *name = (type *) ALIGN((uintptr_t)__##name, align)
-#define ALLOC_ALIGN_BUFFER(type, name, size, align)		\
-	ALLOC_ALIGN_BUFFER_PAD(type, name, size, align, 1)
-#define ALLOC_CACHE_ALIGN_BUFFER_PAD(type, name, size, pad)		\
-	ALLOC_ALIGN_BUFFER_PAD(type, name, size, ARCH_DMA_MINALIGN, pad)
-#define ALLOC_CACHE_ALIGN_BUFFER(type, name, size)			\
-	ALLOC_ALIGN_BUFFER(type, name, size, ARCH_DMA_MINALIGN)
-
-/*
- * DEFINE_CACHE_ALIGN_BUFFER() is similar to ALLOC_CACHE_ALIGN_BUFFER, but it's
- * purpose is to allow allocating aligned buffers outside of function scope.
- * Usage of this macro shall be avoided or used with extreme care!
- */
-#define DEFINE_ALIGN_BUFFER(type, name, size, align)			\
-	static char __##name[ALIGN(size * sizeof(type), align)]	\
-			__aligned(align);				\
-									\
-	static type *name = (type *)__##name
-#define DEFINE_CACHE_ALIGN_BUFFER(type, name, size)			\
-	DEFINE_ALIGN_BUFFER(type, name, size, ARCH_DMA_MINALIGN)
 
 /* Pull in stuff for the build system */
 #ifdef DO_DEPS_ONLY

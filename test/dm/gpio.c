@@ -8,15 +8,15 @@
 #include <fdtdec.h>
 #include <dm.h>
 #include <dm/root.h>
-#include <dm/ut.h>
 #include <dm/test.h>
 #include <dm/util.h>
 #include <asm/gpio.h>
+#include <test/ut.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Test that sandbox GPIOs work correctly */
-static int dm_test_gpio(struct dm_test_state *dms)
+static int dm_test_gpio(struct unit_test_state *uts)
 {
 	unsigned int offset, gpio;
 	struct dm_gpio_ops *ops;
@@ -75,6 +75,13 @@ static int dm_test_gpio(struct dm_test_state *dms)
 	ut_assertok(ops->set_value(dev, offset, 1));
 	ut_asserteq(1, ops->get_value(dev, offset));
 
+	/* Make it an open drain output, and reset it */
+	ut_asserteq(0, sandbox_gpio_get_open_drain(dev, offset));
+	ut_assertok(ops->set_open_drain(dev, offset, 1));
+	ut_asserteq(1, sandbox_gpio_get_open_drain(dev, offset));
+	ut_assertok(ops->set_open_drain(dev, offset, 0));
+	ut_asserteq(0, sandbox_gpio_get_open_drain(dev, offset));
+
 	/* Make it an input */
 	ut_assertok(ops->direction_input(dev, offset));
 	ut_assertok(gpio_get_status(dev, offset, buf, sizeof(buf)));
@@ -103,7 +110,7 @@ static int dm_test_gpio(struct dm_test_state *dms)
 DM_TEST(dm_test_gpio, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
 /* Test that sandbox anonymous GPIOs work correctly */
-static int dm_test_gpio_anon(struct dm_test_state *dms)
+static int dm_test_gpio_anon(struct unit_test_state *uts)
 {
 	unsigned int offset, gpio;
 	struct udevice *dev;
@@ -125,7 +132,7 @@ static int dm_test_gpio_anon(struct dm_test_state *dms)
 DM_TEST(dm_test_gpio_anon, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
 /* Test that gpio_requestf() works as expected */
-static int dm_test_gpio_requestf(struct dm_test_state *dms)
+static int dm_test_gpio_requestf(struct unit_test_state *uts)
 {
 	unsigned int offset, gpio;
 	struct udevice *dev;
@@ -143,7 +150,7 @@ static int dm_test_gpio_requestf(struct dm_test_state *dms)
 DM_TEST(dm_test_gpio_requestf, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
 /* Test that gpio_request() copies its string */
-static int dm_test_gpio_copy(struct dm_test_state *dms)
+static int dm_test_gpio_copy(struct unit_test_state *uts)
 {
 	unsigned int offset, gpio;
 	struct udevice *dev;
@@ -165,19 +172,19 @@ static int dm_test_gpio_copy(struct dm_test_state *dms)
 DM_TEST(dm_test_gpio_copy, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
 /* Test that we don't leak memory with GPIOs */
-static int dm_test_gpio_leak(struct dm_test_state *dms)
+static int dm_test_gpio_leak(struct unit_test_state *uts)
 {
-	ut_assertok(dm_test_gpio(dms));
-	ut_assertok(dm_test_gpio_anon(dms));
-	ut_assertok(dm_test_gpio_requestf(dms));
-	ut_assertok(dm_leak_check_end(dms));
+	ut_assertok(dm_test_gpio(uts));
+	ut_assertok(dm_test_gpio_anon(uts));
+	ut_assertok(dm_test_gpio_requestf(uts));
+	ut_assertok(dm_leak_check_end(uts));
 
 	return 0;
 }
 DM_TEST(dm_test_gpio_leak, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
 /* Test that we can find GPIOs using phandles */
-static int dm_test_gpio_phandles(struct dm_test_state *dms)
+static int dm_test_gpio_phandles(struct unit_test_state *uts)
 {
 	struct gpio_desc desc, desc_list[8], desc_list2[8];
 	struct udevice *dev, *gpio_a, *gpio_b;

@@ -25,6 +25,8 @@
 #endif
 #include <linux/compiler.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 /*
  * Memory lay-out:
  *
@@ -39,16 +41,6 @@
 #define HEAP_END_OFFSET		0x8e00
 
 #define COMMAND_LINE_SIZE	2048
-
-unsigned generic_install_e820_map(unsigned max_entries,
-				  struct e820entry *entries)
-{
-	return 0;
-}
-
-unsigned install_e820_map(unsigned max_entries,
-			  struct e820entry *entries)
-	__attribute__((weak, alias("generic_install_e820_map")));
 
 static void build_command_line(char *command_line, int auto_boot)
 {
@@ -257,6 +249,8 @@ int setup_zimage(struct boot_params *setup_base, char *cmd_line, int auto_boot,
 		/* build command line at COMMAND_LINE_OFFSET */
 		build_command_line(cmd_line, auto_boot);
 	}
+
+	setup_video(&setup_base->screen_info);
 
 	return 0;
 }

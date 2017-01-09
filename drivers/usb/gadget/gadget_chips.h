@@ -11,7 +11,7 @@
  * Some are available on 2.4 kernels; several are available, but not
  * yet pushed in the 2.6 mainline tree.
  *
- * Ported to U-boot by: Thomas Smits <ts.smits@gmail.com> and
+ * Ported to U-Boot by: Thomas Smits <ts.smits@gmail.com> and
  *                      Remy Bohmer <linux@bohmer.net>
  */
 #ifdef CONFIG_USB_GADGET_NET2280
@@ -125,7 +125,7 @@
 #endif
 
 /* Mentor high speed "dual role" controller, in peripheral role */
-#ifdef CONFIG_MUSB_GADGET
+#ifdef CONFIG_USB_MUSB_GADGET
 #define gadget_is_musbhdrc(g)	(!strcmp("musb-hdrc", (g)->name))
 #else
 #define gadget_is_musbhdrc(g)	0
@@ -155,6 +155,14 @@
 #else
 #define gadget_is_fotg210(g)        0
 #endif
+
+#ifdef CONFIG_USB_DWC3_GADGET
+#define gadget_is_dwc3(g)        (!strcmp("dwc3-gadget", (g)->name))
+#else
+#define gadget_is_dwc3(g)        0
+#endif
+
+
 
 /*
  * CONFIG_USB_GADGET_SX2

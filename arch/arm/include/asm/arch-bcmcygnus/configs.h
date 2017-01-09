@@ -22,4 +22,12 @@
 #define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		0x18023000
 
+/* Ethernet */
+#define CONFIG_BCM_SF2_ETH
+#define CONFIG_BCM_SF2_ETH_GMAC
+
+#define CONFIG_PHYLIB
+#define CONFIG_PHY_BROADCOM
+#define CONFIG_PHY_RESET_DELAY 10000 /* PHY reset delay in us*/
+
 #endif /* __ARCH_CONFIGS_H */

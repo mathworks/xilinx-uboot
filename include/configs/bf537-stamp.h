@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF537 STAMP board
+ * U-Boot - Configuration file for BF537 STAMP board
  */
 
 #ifndef __CONFIG_BF537_STAMP_H__
@@ -7,13 +7,11 @@
 
 #include <asm/config-pre.h>
 
-
 /*
  * Processor Settings
  */
 #define CONFIG_BFIN_CPU             bf537-0.2
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_BYPASS
-
 
 /*
  * Clock Settings
@@ -38,7 +36,6 @@
 /* Values can range from 1-15						*/
 #define CONFIG_SCLK_DIV			4
 
-
 /*
  * Memory Settings
  */
@@ -55,7 +52,6 @@
 #define CONFIG_SYS_MONITOR_LEN		(768 * 1024)
 #define CONFIG_SYS_MALLOC_LEN		(384 * 1024)
 
-
 /*
  * Network Settings
  */
@@ -65,9 +61,6 @@
 #define CONFIG_NETCONSOLE	1
 #endif
 #define CONFIG_HOSTNAME		bf537-stamp
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
-#define CONFIG_LIB_RAND
 
 /*
  * Flash Settings
@@ -80,16 +73,13 @@
 /* some have 67 sectors (M29W320DB), but newer have 71 (M29W320EB) */
 #define CONFIG_SYS_MAX_FLASH_SECT	71
 
-
 /*
  * SPI Settings
  */
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_ALL
-
 
 /*
  * Env Storage Settings
@@ -124,13 +114,11 @@
 	common/env_embedded.o (.text*);
 #endif
 
-
 /*
  * I2C Settings
  */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_ADI
-
 
 /*
  * SPI_MMC Settings
@@ -247,7 +235,6 @@
 
 #endif
 
-
 /*
  * Misc Settings
  */
@@ -272,12 +259,7 @@
 /* These are for board tests */
 #if 0
 #define CONFIG_BOOTCOMMAND       "bootldr 0x203f0100"
-#define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_PROMPT \
-	"autoboot in %d seconds: press space to stop\n", bootdelay
-#define CONFIG_AUTOBOOT_STOP_STR " "
 #endif
-
 
 /*
  * Pull in common ADI header for remaining command/environment setup

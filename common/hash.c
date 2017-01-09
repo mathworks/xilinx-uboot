@@ -14,6 +14,7 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
+#include <mapmem.h>
 #include <hw_sha.h>
 #include <asm/io.h>
 #include <asm/errno.h>
@@ -226,6 +227,49 @@ int hash_progressive_lookup_algo(const char *algo_name,
 }
 
 #ifndef USE_HOSTCC
+int hash_parse_string(const char *algo_name, const char *str, uint8_t *result)
+{
+	struct hash_algo *algo;
+	int ret;
+	int i;
+
+	ret = hash_lookup_algo(algo_name, &algo);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < algo->digest_size; i++) {
+		char chr[3];
+
+		strncpy(chr, &str[i * 2], 2);
+		result[i] = simple_strtoul(chr, NULL, 16);
+	}
+
+	return 0;
+}
+
+int hash_block(const char *algo_name, const void *data, unsigned int len,
+	       uint8_t *output, int *output_size)
+{
+	struct hash_algo *algo;
+	int ret;
+
+	ret = hash_lookup_algo(algo_name, &algo);
+	if (ret)
+		return ret;
+
+	if (output_size && *output_size < algo->digest_size) {
+		debug("Output buffer size %d too small (need %d bytes)",
+		      *output_size, algo->digest_size);
+		return -ENOSPC;
+	}
+	if (output_size)
+		*output_size = algo->digest_size;
+	algo->hash_func_ws(data, len, output, algo->chunk_size);
+
+	return 0;
+}
+
+#if defined(CONFIG_CMD_HASH) || defined(CONFIG_CMD_SHA1SUM) || defined(CONFIG_CMD_CRC32)
 /**
  * store_result: Store the resulting sum to an address or variable
  *
@@ -314,7 +358,6 @@ static int parse_verify_sum(struct hash_algo *algo, char *verify_str,
 		buf = map_sysmem(addr, algo->digest_size);
 		memcpy(vsum, buf, algo->digest_size);
 	} else {
-		unsigned int i;
 		char *vsum_str;
 		int digits = algo->digest_size * 2;
 
@@ -334,47 +377,18 @@ static int parse_verify_sum(struct hash_algo *algo, char *verify_str,
 			}
 		}
 
-		for (i = 0; i < algo->digest_size; i++) {
-			char *nullp = vsum_str + (i + 1) * 2;
-			char end = *nullp;
-
-			*nullp = '\0';
-			vsum[i] = simple_strtoul(vsum_str + (i * 2), NULL, 16);
-			*nullp = end;
-		}
+		hash_parse_string(algo->name, vsum_str, vsum);
 	}
 	return 0;
 }
 
-void hash_show(struct hash_algo *algo, ulong addr, ulong len, uint8_t *output)
+static void hash_show(struct hash_algo *algo, ulong addr, ulong len, uint8_t *output)
 {
 	int i;
 
 	printf("%s for %08lx ... %08lx ==> ", algo->name, addr, addr + len - 1);
 	for (i = 0; i < algo->digest_size; i++)
 		printf("%02x", output[i]);
-}
-
-int hash_block(const char *algo_name, const void *data, unsigned int len,
-	       uint8_t *output, int *output_size)
-{
-	struct hash_algo *algo;
-	int ret;
-
-	ret = hash_lookup_algo(algo_name, &algo);
-	if (ret)
-		return ret;
-
-	if (output_size && *output_size < algo->digest_size) {
-		debug("Output buffer size %d too small (need %d bytes)",
-		      *output_size, algo->digest_size);
-		return -ENOSPC;
-	}
-	if (output_size)
-		*output_size = algo->digest_size;
-	algo->hash_func_ws(data, len, output, algo->chunk_size);
-
-	return 0;
 }
 
 int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
@@ -459,4 +473,5 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 
 	return 0;
 }
+#endif
 #endif

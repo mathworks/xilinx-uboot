@@ -36,6 +36,36 @@
 			       LDST_SRCDST_WORD_DECOCTRL | \
 			       (LDOFF_ENABLE_AUTO_NFIFO << LDST_OFFSET_SHIFT))
 
+#ifdef CONFIG_PHYS_64BIT
+union ptr_addr_t {
+	u64 m_whole;
+	struct {
+#ifdef CONFIG_SYS_FSL_SEC_LE
+		u32 low;
+		u32 high;
+#elif defined(CONFIG_SYS_FSL_SEC_BE)
+		u32 high;
+		u32 low;
+#else
+#error Neither CONFIG_SYS_FSL_SEC_LE nor CONFIG_SYS_FSL_SEC_BE is defined
+#endif
+	} m_halfs;
+};
+#endif
+
+static inline void pdb_add_ptr(dma_addr_t *offset, dma_addr_t ptr)
+{
+#ifdef CONFIG_PHYS_64BIT
+	/* The Position of low and high part of 64 bit address
+	 * will depend on the endianness of CAAM Block */
+	union ptr_addr_t *ptr_addr = (union ptr_addr_t *)offset;
+	ptr_addr->m_halfs.high = (u32)(ptr >> 32);
+	ptr_addr->m_halfs.low = (u32)ptr;
+#else
+	*offset = ptr;
+#endif
+}
+
 static inline int desc_len(u32 *desc)
 {
 	return *desc & HDR_DESCLEN_MASK;
@@ -51,6 +81,11 @@ static inline u32 *desc_end(u32 *desc)
 	return desc + desc_len(desc);
 }
 
+static inline void *desc_pdb(u32 *desc)
+{
+	return desc + 1;
+}
+
 static inline void init_desc(u32 *desc, u32 options)
 {
 	*desc = (options | HDR_ONE) + 1;
@@ -61,11 +96,28 @@ static inline void init_job_desc(u32 *desc, u32 options)
 	init_desc(desc, CMD_DESC_HDR | options);
 }
 
+static inline void init_job_desc_pdb(u32 *desc, u32 options, size_t pdb_bytes)
+{
+	u32 pdb_len = (pdb_bytes + CAAM_CMD_SZ - 1) / CAAM_CMD_SZ;
+
+	init_job_desc(desc,
+		      (((pdb_len + 1) << HDR_START_IDX_SHIFT) + pdb_len) |
+		       options);
+}
+
 static inline void append_ptr(u32 *desc, dma_addr_t ptr)
 {
 	dma_addr_t *offset = (dma_addr_t *)desc_end(desc);
 
+#ifdef CONFIG_PHYS_64BIT
+	/* The Position of low and high part of 64 bit address
+	 * will depend on the endianness of CAAM Block */
+	union ptr_addr_t *ptr_addr = (union ptr_addr_t *)offset;
+	ptr_addr->m_halfs.high = (u32)(ptr >> 32);
+	ptr_addr->m_halfs.low = (u32)ptr;
+#else
 	*offset = ptr;
+#endif
 
 	(*desc) += CAAM_PTR_SZ / CAAM_CMD_SZ;
 }

@@ -57,7 +57,6 @@
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART0_BASE /* Base address of UART0 */
@@ -66,8 +65,6 @@
 #define CONFIG_BAUDRATE		115200		/* Default baud rate */
 
 #define CONFIG_SPI
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_DAVINCI_SPI
 #define CONFIG_SYS_SPI_BASE		DAVINCI_SPI1_BASE
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
@@ -104,7 +101,6 @@
 #define CONFIG_SYS_NO_FLASH
 #endif
 
-
 #if defined(CONFIG_VIDEO)
 #define CONFIG_VIDEO_DA8XX
 #define CONFIG_CFB_CONSOLE
@@ -123,7 +119,6 @@
  * U-Boot general configuration
  */
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT	"ea20 > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS	16 /* max number of command args */
@@ -131,7 +126,6 @@
 #define CONFIG_SYS_LOAD_ADDR	(PHYS_SDRAM_1 + 0x700000)
 #define CONFIG_VERSION_VARIABLE
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CRC32_VERIFY
@@ -143,38 +137,23 @@
 #define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	3
 
 /*
  * U-Boot commands
  */
-#include <config_cmd_default.h>
 #define CONFIG_CMD_ENV
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_GPIO
 
 #ifdef CONFIG_CMD_BDI
 #define CONFIG_CLOCKS
 #endif
 
 #ifndef CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_DHCP
-#undef CONFIG_CMD_MII
-#undef CONFIG_CMD_PING
 #endif
 
 /* NAND Setup */
 #ifdef CONFIG_SYS_USE_NAND
-#undef CONFIG_CMD_FLASH
-#undef CONFIG_CMD_IMLS
 #define CONFIG_CMD_NAND
 
 #define CONFIG_CMD_MTDPARTS
@@ -198,11 +177,6 @@
 
 /* SPI Flash */
 #ifdef CONFIG_USE_SPIFLASH
-#undef CONFIG_CMD_IMLS
-#undef CONFIG_CMD_FLASH
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SAVEENV
 #endif
 
 #if !defined(CONFIG_SYS_USE_NAND) && \
@@ -211,7 +185,6 @@
 #define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_SIZE		(16 << 10)
-#undef CONFIG_CMD_IMLS
 #undef CONFIG_CMD_ENV
 #endif
 
@@ -242,7 +215,6 @@
 	"rootpath=/opt/eldk/arm\0"					\
 	"splashpos=230,180\0"						\
 	"testrfspath=/opt/eldk/test_arm\0"				\
-	"tempmac=setenv ethaddr 02:ea:20:ff:ff:ff\0"			\
 	"nandargs=setenv bootargs rootfstype=ubifs ro chk_data_crc "	\
 	"ubi.mtd=${as} root=ubi0:rootfs\0"				\
 	"nandrwargs=setenv bootargs rootfstype=ubifs rw chk_data_crc "	\
@@ -315,6 +287,6 @@
 		"fi;"							\
 		"else echo U-Boot not downloaded..exiting;fi\0"	\
 	"ubootupd_nand=echo run load_magic,run load_nand,run upd;\0"	\
-	"bootcmd=run tempmac;run net_testrfs\0"
+	"bootcmd=run net_testrfs\0"
 
 #endif /* __CONFIG_H */

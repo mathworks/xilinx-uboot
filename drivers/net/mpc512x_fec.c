@@ -591,7 +591,8 @@ static int mpc512x_fec_recv (struct eth_device *dev)
 			rx_buff_idx = frame_length;
 
 			if (pRbd->status & FEC_RBD_LAST) {
-				NetReceive ((uchar*)rx_buff, frame_length);
+				net_process_received_packet((uchar *)rx_buff,
+							    frame_length);
 				rx_buff_idx = 0;
 			}
 		}
@@ -634,7 +635,7 @@ int mpc512x_fec_initialize (bd_t * bis)
 	dev->send = mpc512x_fec_send;
 	dev->recv = mpc512x_fec_recv;
 
-	sprintf (dev->name, "FEC");
+	strcpy(dev->name, "FEC");
 	eth_register (dev);
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)

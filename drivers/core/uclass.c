@@ -56,9 +56,14 @@ static int uclass_add(enum uclass_id id, struct uclass **ucp)
 	*ucp = NULL;
 	uc_drv = lists_uclass_lookup(id);
 	if (!uc_drv) {
-		dm_warn("Cannot find uclass for id %d: please add the UCLASS_DRIVER() declaration for this UCLASS_... id\n",
-			id);
-		return -ENOENT;
+		debug("Cannot find uclass for id %d: please add the UCLASS_DRIVER() declaration for this UCLASS_... id\n",
+		      id);
+		/*
+		 * Use a strange error to make this case easier to find. When
+		 * a uclass is not available it can prevent driver model from
+		 * starting up and this failure is otherwise hard to debug.
+		 */
+		return -EPFNOSUPPORT;
 	}
 	uc = calloc(1, sizeof(*uc));
 	if (!uc)
@@ -99,10 +104,18 @@ fail_mem:
 int uclass_destroy(struct uclass *uc)
 {
 	struct uclass_driver *uc_drv;
-	struct udevice *dev, *tmp;
+	struct udevice *dev;
 	int ret;
 
-	list_for_each_entry_safe(dev, tmp, &uc->dev_head, uclass_node) {
+	/*
+	 * We cannot use list_for_each_entry_safe() here. If a device in this
+	 * uclass has a child device also in this uclass, it will be also be
+	 * unbound (by the recursion in the call to device_unbind() below).
+	 * We can loop until the list is empty.
+	 */
+	while (!list_empty(&uc->dev_head)) {
+		dev = list_first_entry(&uc->dev_head, struct udevice,
+				       uclass_node);
 		ret = device_remove(dev);
 		if (ret)
 			return ret;
@@ -145,9 +158,65 @@ int uclass_find_device(enum uclass_id id, int index, struct udevice **devp)
 	ret = uclass_get(id, &uc);
 	if (ret)
 		return ret;
+	if (list_empty(&uc->dev_head))
+		return -ENODEV;
 
 	list_for_each_entry(dev, &uc->dev_head, uclass_node) {
 		if (!index--) {
+			*devp = dev;
+			return 0;
+		}
+	}
+
+	return -ENODEV;
+}
+
+int uclass_find_first_device(enum uclass_id id, struct udevice **devp)
+{
+	struct uclass *uc;
+	int ret;
+
+	*devp = NULL;
+	ret = uclass_get(id, &uc);
+	if (ret)
+		return ret;
+	if (list_empty(&uc->dev_head))
+		return 0;
+
+	*devp = list_first_entry(&uc->dev_head, struct udevice, uclass_node);
+
+	return 0;
+}
+
+int uclass_find_next_device(struct udevice **devp)
+{
+	struct udevice *dev = *devp;
+
+	*devp = NULL;
+	if (list_is_last(&dev->uclass_node, &dev->uclass->dev_head))
+		return 0;
+
+	*devp = list_entry(dev->uclass_node.next, struct udevice, uclass_node);
+
+	return 0;
+}
+
+int uclass_find_device_by_name(enum uclass_id id, const char *name,
+			       struct udevice **devp)
+{
+	struct uclass *uc;
+	struct udevice *dev;
+	int ret;
+
+	*devp = NULL;
+	if (!name)
+		return -EINVAL;
+	ret = uclass_get(id, &uc);
+	if (ret)
+		return ret;
+
+	list_for_each_entry(dev, &uc->dev_head, uclass_node) {
+		if (!strncmp(dev->name, name, strlen(name))) {
 			*devp = dev;
 			return 0;
 		}
@@ -185,8 +254,8 @@ int uclass_find_device_by_seq(enum uclass_id id, int seq_or_req_seq,
 	return -ENODEV;
 }
 
-static int uclass_find_device_by_of_offset(enum uclass_id id, int node,
-					   struct udevice **devp)
+int uclass_find_device_by_of_offset(enum uclass_id id, int node,
+				    struct udevice **devp)
 {
 	struct uclass *uc;
 	struct udevice *dev;
@@ -209,22 +278,46 @@ static int uclass_find_device_by_of_offset(enum uclass_id id, int node,
 	return -ENODEV;
 }
 
-/**
- * uclass_get_device_tail() - handle the end of a get_device call
- *
- * This handles returning an error or probing a device as needed.
- *
- * @dev: Device that needs to be probed
- * @ret: Error to return. If non-zero then the device is not probed
- * @devp: Returns the value of 'dev' if there is no error
- * @return ret, if non-zero, else the result of the device_probe() call
- */
-static int uclass_get_device_tail(struct udevice *dev, int ret,
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+static int uclass_find_device_by_phandle(enum uclass_id id,
+					 struct udevice *parent,
+					 const char *name,
+					 struct udevice **devp)
+{
+	struct udevice *dev;
+	struct uclass *uc;
+	int find_phandle;
+	int ret;
+
+	*devp = NULL;
+	find_phandle = fdtdec_get_int(gd->fdt_blob, parent->of_offset, name,
+				      -1);
+	if (find_phandle <= 0)
+		return -ENOENT;
+	ret = uclass_get(id, &uc);
+	if (ret)
+		return ret;
+
+	list_for_each_entry(dev, &uc->dev_head, uclass_node) {
+		uint phandle = fdt_get_phandle(gd->fdt_blob, dev->of_offset);
+
+		if (phandle == find_phandle) {
+			*devp = dev;
+			return 0;
+		}
+	}
+
+	return -ENODEV;
+}
+#endif
+
+int uclass_get_device_tail(struct udevice *dev, int ret,
 				  struct udevice **devp)
 {
 	if (ret)
 		return ret;
 
+	assert(dev);
 	ret = device_probe(dev);
 	if (ret)
 		return ret;
@@ -241,6 +334,17 @@ int uclass_get_device(enum uclass_id id, int index, struct udevice **devp)
 
 	*devp = NULL;
 	ret = uclass_find_device(id, index, &dev);
+	return uclass_get_device_tail(dev, ret, devp);
+}
+
+int uclass_get_device_by_name(enum uclass_id id, const char *name,
+			      struct udevice **devp)
+{
+	struct udevice *dev;
+	int ret;
+
+	*devp = NULL;
+	ret = uclass_find_device_by_name(id, name, &dev);
 	return uclass_get_device_tail(dev, ret, devp);
 }
 
@@ -272,24 +376,40 @@ int uclass_get_device_by_of_offset(enum uclass_id id, int node,
 	return uclass_get_device_tail(dev, ret, devp);
 }
 
-int uclass_first_device(enum uclass_id id, struct udevice **devp)
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+int uclass_get_device_by_phandle(enum uclass_id id, struct udevice *parent,
+				 const char *name, struct udevice **devp)
 {
-	struct uclass *uc;
 	struct udevice *dev;
 	int ret;
 
 	*devp = NULL;
-	ret = uclass_get(id, &uc);
-	if (ret)
-		return ret;
-	if (list_empty(&uc->dev_head))
-		return 0;
+	ret = uclass_find_device_by_phandle(id, parent, name, &dev);
+	return uclass_get_device_tail(dev, ret, devp);
+}
+#endif
 
-	dev = list_first_entry(&uc->dev_head, struct udevice, uclass_node);
-	ret = device_probe(dev);
+int uclass_first_device(enum uclass_id id, struct udevice **devp)
+{
+	struct udevice *dev;
+	int ret;
+
+	*devp = NULL;
+	ret = uclass_find_first_device(id, &dev);
+	if (!dev)
+		return 0;
+	return uclass_get_device_tail(dev, ret, devp);
+}
+
+int uclass_first_device_err(enum uclass_id id, struct udevice **devp)
+{
+	int ret;
+
+	ret = uclass_first_device(id, devp);
 	if (ret)
 		return ret;
-	*devp = dev;
+	else if (!*devp)
+		return -ENODEV;
 
 	return 0;
 }
@@ -300,17 +420,10 @@ int uclass_next_device(struct udevice **devp)
 	int ret;
 
 	*devp = NULL;
-	if (list_is_last(&dev->uclass_node, &dev->uclass->dev_head))
+	ret = uclass_find_next_device(&dev);
+	if (!dev)
 		return 0;
-
-	dev = list_entry(dev->uclass_node.next, struct udevice,
-			 uclass_node);
-	ret = device_probe(dev);
-	if (ret)
-		return ret;
-	*devp = dev;
-
-	return 0;
+	return uclass_get_device_tail(dev, ret, devp);
 }
 
 int uclass_bind_device(struct udevice *dev)
@@ -330,11 +443,6 @@ int uclass_bind_device(struct udevice *dev)
 				goto err;
 		}
 	}
-	if (uc->uc_drv->post_bind) {
-		ret = uc->uc_drv->post_bind(dev);
-		if (ret)
-			goto err;
-	}
 
 	return 0;
 err:
@@ -344,6 +452,7 @@ err:
 	return ret;
 }
 
+#if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
 int uclass_unbind_device(struct udevice *dev)
 {
 	struct uclass *uc;
@@ -359,6 +468,7 @@ int uclass_unbind_device(struct udevice *dev)
 	list_del(&dev->uclass_node);
 	return 0;
 }
+#endif
 
 int uclass_resolve_seq(struct udevice *dev)
 {
@@ -391,9 +501,17 @@ int uclass_resolve_seq(struct udevice *dev)
 	return seq;
 }
 
-int uclass_pre_probe_child(struct udevice *dev)
+int uclass_pre_probe_device(struct udevice *dev)
 {
 	struct uclass_driver *uc_drv;
+	int ret;
+
+	uc_drv = dev->uclass->uc_drv;
+	if (uc_drv->pre_probe) {
+		ret = uc_drv->pre_probe(dev);
+		if (ret)
+			return ret;
+	}
 
 	if (!dev->parent)
 		return 0;
@@ -414,24 +532,19 @@ int uclass_post_probe_device(struct udevice *dev)
 	return 0;
 }
 
+#if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
 int uclass_pre_remove_device(struct udevice *dev)
 {
-	struct uclass_driver *uc_drv;
 	struct uclass *uc;
 	int ret;
 
 	uc = dev->uclass;
-	uc_drv = uc->uc_drv;
 	if (uc->uc_drv->pre_remove) {
 		ret = uc->uc_drv->pre_remove(dev);
 		if (ret)
 			return ret;
 	}
-	if (uc_drv->per_device_auto_alloc_size) {
-		free(dev->uclass_priv);
-		dev->uclass_priv = NULL;
-	}
-	dev->seq = -1;
 
 	return 0;
 }
+#endif

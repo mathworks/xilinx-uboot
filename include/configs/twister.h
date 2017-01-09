@@ -20,7 +20,6 @@
 #define CONFIG_TAM3517_SW3_SETTINGS
 #define CONFIG_XR16L2751
 
-#define CONFIG_BOOTDELAY	10
 
 #define CONFIG_BOOTFILE		"uImage"
 
@@ -29,8 +28,6 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_PROMPT		"twister => "
-
 #define CONFIG_SMC911X
 #define CONFIG_SMC911X_16_BIT
 #define CONFIG_SMC911X_BASE		0x2C000000

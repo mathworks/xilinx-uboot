@@ -1,38 +1,30 @@
 /*
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <config.h>
 #include <errno.h>
 #include <common.h>
+#include <mapmem.h>
 #include <part.h>
 #include <ext4fs.h>
 #include <fat.h>
 #include <fs.h>
 #include <sandboxfs.h>
+#include <ubifs_uboot.h>
 #include <asm/io.h>
 #include <div64.h>
 #include <linux/math64.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static block_dev_desc_t *fs_dev_desc;
+static struct blk_desc *fs_dev_desc;
 static disk_partition_t fs_partition;
 static int fs_type = FS_TYPE_ANY;
 
-static inline int fs_probe_unsupported(block_dev_desc_t *fs_dev_desc,
+static inline int fs_probe_unsupported(struct blk_desc *fs_dev_desc,
 				      disk_partition_t *fs_partition)
 {
 	printf("** Unrecognized filesystem type **\n");
@@ -89,7 +81,7 @@ struct fstype_info {
 	 * filesystem.
 	 */
 	bool null_dev_desc_ok;
-	int (*probe)(block_dev_desc_t *fs_dev_desc,
+	int (*probe)(struct blk_desc *fs_dev_desc,
 		     disk_partition_t *fs_partition);
 	int (*ls)(const char *dirname);
 	int (*exists)(const char *filename);
@@ -156,6 +148,21 @@ static struct fstype_info fstypes[] = {
 		.uuid = fs_uuid_unsupported,
 	},
 #endif
+#ifdef CONFIG_CMD_UBIFS
+	{
+		.fstype = FS_TYPE_UBIFS,
+		.name = "ubifs",
+		.null_dev_desc_ok = true,
+		.probe = ubifs_set_blk_dev,
+		.close = ubifs_close,
+		.ls = ubifs_ls,
+		.exists = ubifs_exists,
+		.size = ubifs_size,
+		.read = ubifs_read,
+		.write = fs_write_unsupported,
+		.uuid = fs_uuid_unsupported,
+	},
+#endif
 	{
 		.fstype = FS_TYPE_ANY,
 		.name = "unsupported",
@@ -206,7 +213,7 @@ int fs_set_blk_dev(const char *ifname, const char *dev_part_str, int fstype)
 	}
 #endif
 
-	part = get_device_and_partition(ifname, dev_part_str, &fs_dev_desc,
+	part = blk_get_device_part_str(ifname, dev_part_str, &fs_dev_desc,
 					&fs_partition, 1);
 	if (part < 0)
 		return -1;
@@ -300,10 +307,8 @@ int fs_read(const char *filename, ulong addr, loff_t offset, loff_t len,
 	unmap_sysmem(buf);
 
 	/* If we requested a specific number of bytes, check we got it */
-	if (ret == 0 && len && *actread != len) {
-		printf("** Unable to read file %s **\n", filename);
-		ret = -1;
-	}
+	if (ret == 0 && len && *actread != len)
+		printf("** %s shorter than offset + len **\n", filename);
 	fs_close();
 
 	return ret;
@@ -412,6 +417,7 @@ int do_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 	}
 	puts("\n");
 
+	setenv_hex("fileaddr", addr);
 	setenv_hex("filesize", len_read);
 
 	return 0;

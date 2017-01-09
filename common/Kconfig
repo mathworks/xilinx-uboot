@@ -1,349 +1,211 @@
-menu "Command line interface"
+menu "Boot timing"
 
-config HUSH_PARSER
-	bool "Use hush shell"
-	select SYS_HUSH_PARSER
+config BOOTSTAGE
+	bool "Boot timing and reporting"
 	help
-	  This option enables the "hush" shell (from Busybox) as command line
-	  interpreter, thus enabling powerful command line syntax like
-	  if...then...else...fi conditionals or `&&' and '||'
-	  constructs ("shell scripts").
+	  Enable recording of boot time while booting. To use it, insert
+	  calls to bootstage_mark() with a suitable BOOTSTAGE_ID from
+	  bootstage.h. Only a single entry is recorded for each ID. You can
+	  give the entry a name with bootstage_mark_name(). You can also
+	  record elapsed time in a particular stage using bootstage_start()
+	  before starting and bootstage_accum() when finished. Bootstage will
+	  add up all the accumated time and report it.
 
-	  If disabled, you get the old, much simpler behaviour with a somewhat
-	  smaller memory footprint.
+	  Normally, IDs are defined in bootstage.h but a small number of
+	  additional 'user' IDs can be used but passing BOOTSTAGE_ID_ALLOC
+	  as the ID.
 
-config SYS_HUSH_PARSER
-	bool
+	  Calls to show_boot_progress() wil also result in log entries but
+	  these will not have names.
+
+config BOOTSTAGE_REPORT
+	bool "Display a detailed boot timing report before booting the OS"
+	depends on BOOTSTAGE
 	help
-	  Backward compatibility.
+	  Enable output of a boot time report just before the OS is booted.
+	  This shows how long it took U-Boot to go through each stage of the
+	  boot process. The report looks something like this:
 
-comment "Commands"
+		Timer summary in microseconds:
+		       Mark    Elapsed  Stage
+			  0          0  reset
+		  3,575,678  3,575,678  board_init_f start
+		  3,575,695         17  arch_cpu_init A9
+		  3,575,777         82  arch_cpu_init done
+		  3,659,598     83,821  board_init_r start
+		  3,910,375    250,777  main_loop
+		 29,916,167 26,005,792  bootm_start
+		 30,361,327    445,160  start_kernel
 
-menu "Info commands"
-
-config CMD_BDI
-	bool "bdinfo"
+config BOOTSTAGE_USER_COUNT
+	hex "Number of boot ID numbers available for user use"
+	default 20
 	help
-	  Print board info
+	  This is the number of available user bootstage records.
+	  Each time you call bootstage_mark(BOOTSTAGE_ID_ALLOC, ...)
+	  a new ID will be allocated from this stash. If you exceed
+	  the limit, recording will stop.
 
-config CMD_CONSOLE
-	bool "coninfo"
+config BOOTSTAGE_FDT
+	bool "Store boot timing information in the OS device tree"
+	depends on BOOTSTAGE
 	help
-	  Print console devices and information.
+	  Stash the bootstage information in the FDT. A root 'bootstage'
+	  node is created with each bootstage id as a child. Each child
+	  has a 'name' property and either 'mark' containing the
+	  mark time in microsecond, or 'accum' containing the
+	  accumulated time for that bootstage id in microseconds.
+	  For example:
 
-config CMD_LICENSE
-	bool "license"
+		bootstage {
+			154 {
+				name = "board_init_f";
+				mark = <3575678>;
+			};
+			170 {
+				name = "lcd";
+				accum = <33482>;
+			};
+		};
+
+	  Code in the Linux kernel can find this in /proc/devicetree.
+
+config BOOTSTAGE_STASH
+	bool "Stash the boot timing information in memory before booting OS"
+	depends on BOOTSTAGE
 	help
-	  Print GPL license text
+	  Some OSes do not support device tree. Bootstage can instead write
+	  the boot timing information in a binary format at a given address.
+	  This happens through a call to bootstage_stash(), typically in
+	  the CPU's cleanup_before_linux() function. You can use the
+	  'bootstage stash' and 'bootstage unstash' commands to do this on
+	  the command line.
+
+config BOOTSTAGE_STASH_ADDR
+	hex "Address to stash boot timing information"
+	default 0
+	help
+	  Provide an address which will not be overwritten by the OS when it
+	  starts, so that it can read this information when ready.
+
+config BOOTSTAGE_STASH_SIZE
+	hex "Size of boot timing stash region"
+	default 4096
+	help
+	  This should be large enough to hold the bootstage stash. A value of
+	  4096 (4KiB) is normally plenty.
 
 endmenu
 
-menu "Boot commands"
+menu "Boot media"
 
-config CMD_BOOTD
-	bool "bootd"
+config NOR_BOOT
+	bool "Support for booting from NOR flash"
+	depends on NOR
 	help
-	  Run the command stored in the environment "bootcmd", i.e.
-	  "bootd" does the same thing as "run bootcmd".
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via NOR.  In this case we will enable certain pinmux early
+	  as the ROM only partially sets up pinmux.  We also default to using
+	  NOR for environment.
 
-config CMD_BOOTM
-	bool "bootm"
-	default y
+config NAND_BOOT
+	bool "Support for booting from NAND flash"
+	default n
 	help
-	  Boot an application image from the memory.
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via NAND flash. This is not a must, some SoCs need this,
+	  somes not.
 
-config CMD_GO
-	bool "go"
-	default y
+config ONENAND_BOOT
+	bool "Support for booting from ONENAND"
+	default n
 	help
-	  Start an application at a given address.
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via ONENAND. This is not a must, some SoCs need this,
+	  somes not.
 
-config CMD_RUN
-	bool "run"
+config QSPI_BOOT
+	bool "Support for booting from QSPI flash"
+	default n
 	help
-	  Run the command in the given environment variable.
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via QSPI flash. This is not a must, some SoCs need this,
+	  somes not.
 
-config CMD_IMI
-	bool "iminfo"
+config SATA_BOOT
+	bool "Support for booting from SATA"
+	default n
 	help
-	  Print header information for application image.
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via SATA. This is not a must, some SoCs need this,
+	  somes not.
 
-config CMD_IMLS
-	bool "imls"
+config SD_BOOT
+	bool "Support for booting from SD/EMMC"
+	default n
 	help
-	  List all images found in flash
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via SD/EMMC. This is not a must, some SoCs need this,
+	  somes not.
 
-config CMD_XIMG
-	bool "imxtract"
+config SPI_BOOT
+	bool "Support for booting from SPI flash"
+	default n
 	help
-	  Extract a part of a multi-image.
+	  Enabling this will make a U-Boot binary that is capable of being
+	  booted via SPI flash. This is not a must, some SoCs need this,
+	  somes not.
 
 endmenu
 
-menu "Environment commands"
-
-config CMD_EXPORTENV
-	bool "env export"
-	default y
+config BOOTDELAY
+	int "delay in seconds before automatically booting"
+	default 2
+	depends on AUTOBOOT
 	help
-	  Export environments.
+	  Delay before automatically running bootcmd;
+	  set to 0 to autoboot with no delay, but you can stop it by key input.
+	  set to -1 to disable autoboot.
+	  set to -2 to autoboot with no delay and not check for abort
 
-config CMD_IMPORTENV
-	bool "env import"
-	default y
+	  See doc/README.autoboot for details.
+
+config CONSOLE_RECORD
+	bool "Console recording"
 	help
-	  Import environments.
+	  This provides a way to record console output (and provide console
+	  input) through cirular buffers. This is mostly useful for testing.
+	  Console output is recorded even when the console is silent.
+	  To enable console recording, call console_record_reset_enable()
+	  from your code.
 
-config CMD_EDITENV
-	bool "editenv"
+config CONSOLE_RECORD_OUT_SIZE
+	hex "Output buffer size"
+	depends on CONSOLE_RECORD
+	default 0x400 if CONSOLE_RECORD
 	help
-	  Edit environment variable.
+	  Set the size of the console output buffer. When this fills up, no
+	  more data will be recorded until some is removed. The buffer is
+	  allocated immediately after the malloc() region is ready.
 
-config CMD_SAVEENV
-	bool "saveenv"
+config CONSOLE_RECORD_IN_SIZE
+	hex "Input buffer size"
+	depends on CONSOLE_RECORD
+	default 0x100 if CONSOLE_RECORD
 	help
-	  Run the command in the given environment variable.
+	  Set the size of the console input buffer. When this contains data,
+	  tstc() and getc() will use this in preference to real device input.
+	  The buffer is allocated immediately after the malloc() region is
+	  ready.
 
-endmenu
-
-menu "Memory commands"
-
-config CMD_MEMORY
-	bool "md, mm, nm, mw, cp, cmp, base, loop"
+config IDENT_STRING
+	string "String to be added to uboot version"
 	help
-	  Memeory commands.
-	    md - memory display
-	    mm - memory modify (auto-incrementing address)
-	    nm - memory modify (constant address)
-	    mw - memory write (fill)
-	    cp - memory copy
-	    cmp - memory compare
-	    base - print or set address offset
-	    loop - initinite loop on address range
+	  This string will be added to the U-Boot version
+	  information (U_BOOT_VERSION).
 
-config CMD_CRC32
-	bool "crc32"
-	default y
+config SYS_NO_FLASH
+	bool "Disable support for parallel NOR flash"
+	default n
 	help
-	  Compute CRC32.
-
-config LOOPW
-	bool "loopw"
-	help
-	  Infinite write loop on address range
-
-config CMD_MEMTEST
-	bool "memtest"
-	help
-	  Simple RAM read/write test.
-
-config CMD_MX_CYCLIC
-	bool "mdc, mwc"
-	help
-	  mdc - memory display cyclic
-	  mwc - memory write cyclic
-
-config CMD_MEMINFO
-	bool "meminfo"
-	help
-	  Display memory information.
-
-endmenu
-
-menu "Device access commands"
-
-config CMD_DM
-	bool "dm - Access to driver model information"
-	depends on DM
-	default y
-	help
-	  Provides access to driver model data structures and information,
-	  such as a list of devices, list of uclasses and the state of each
-	  device (e.g. activated). This is not required for operation, but
-	  can be useful to see the state of driver model for debugging or
-	  interest.
-
-config CMD_DEMO
-	bool "demo - Demonstration commands for driver model"
-	depends on DM
-	help
-	  Provides a 'demo' command which can be used to play around with
-	  driver model. To use this properly you will need to enable one or
-	  both of the demo devices (DM_DEMO_SHAPE and DM_DEMO_SIMPLE).
-	  Otherwise you will always get an empty list of devices. The demo
-	  devices are defined in the sandbox device tree, so the easiest
-	  option is to use sandbox and pass the -d point to sandbox's
-	  u-boot.dtb file.
-
-config CMD_LOADB
-	bool "loadb"
-	help
-	  Load a binary file over serial line.
-
-config CMD_LOADS
-	bool "loads"
-	help
-	  Load an S-Record file over serial line
-
-config CMD_FLASH
-	bool "flinfo, erase, protect"
-	help
-	  NOR flash support.
-	    flinfo - print FLASH memory information
-	    erase - FLASH memory
-	    protect - enable or disable FLASH write protection
-
-config CMD_ARMFLASH
-	depends on FLASH_CFI_DRIVER
-	bool "armflash"
-	help
-	  ARM Ltd reference designs flash partition access
-
-config CMD_NAND
-	bool "nand"
-	help
-	  NAND support.
-
-config CMD_SPI
-	bool "sspi"
-	help
-	  SPI utility command.
-
-config CMD_I2C
-	bool "i2c"
-	help
-	  I2C support.
-
-config CMD_USB
-	bool "usb"
-	help
-	  USB support.
-
-config CMD_FPGA
-	bool "fpga"
-	help
-	  FPGA support.
-
-endmenu
-
-
-menu "Shell scripting commands"
-
-config CMD_ECHO
-	bool "echo"
-	help
-	  Echo args to console
-
-config CMD_ITEST
-	bool "itest"
-	help
-	  Return true/false on integer compare.
-
-config CMD_SOURCE
-	bool "source"
-	help
-	  Run script from memory
-
-endmenu
-
-menu "Network commands"
-
-config CMD_NET
-	bool "bootp, tftpboot"
-	help
-	  Network commands.
-	  bootp - boot image via network using BOOTP/TFTP protocol
-	  tftpboot - boot image via network using TFTP protocol
-
-config CMD_TFTPPUT
-	bool "tftp put"
-	help
-	  TFTP put command, for uploading files to a server
-
-config CMD_TFTPSRV
-	bool "tftpsrv"
-	help
-	  Act as a TFTP server and boot the first received file
-
-config CMD_RARP
-	bool "rarpboot"
-	help
-	  Boot image via network using RARP/TFTP protocol
-
-config CMD_DHCP
-	bool "dhcp"
-	help
-	  Boot image via network using DHCP/TFTP protocol
-
-config CMD_NFS
-	bool "nfs"
-	help
-	  Boot image via network using NFS protocol.
-
-config CMD_PING
-	bool "ping"
-	help
-	  Send ICMP ECHO_REQUEST to network host
-
-config CMD_CDP
-	bool "cdp"
-	help
-	  Perform CDP network configuration
-
-config CMD_SNTP
-	bool "sntp"
-	help
-	  Synchronize RTC via network
-
-config CMD_DNS
-	bool "dns"
-	help
-	  Lookup the IP of a hostname
-
-config CMD_DNS
-	bool "dns"
-	help
-	  Lookup the IP of a hostname
-
-config CMD_LINK_LOCAL
-	bool "linklocal"
-	help
-	  Acquire a network IP address using the link-local protocol
-
-endmenu
-
-menu "Misc commands"
-
-config CMD_TIME
-	bool "time"
-	help
-	  Run commands and summarize execution time.
-
-# TODO: rename to CMD_SLEEP
-config CMD_MISC
-	bool "sleep"
-	help
-	  Delay execution for some time
-
-config CMD_TIMER
-	bool "timer"
-	help
-	  Access the system timer.
-
-config CMD_SETGETDCR
-	bool "getdcr, setdcr, getidcr, setidcr"
-	depends on 4xx
-	help
-	  getdcr - Get an AMCC PPC 4xx DCR's value
-	  setdcr - Set an AMCC PPC 4xx DCR's value
-	  getidcr - Get a register value via indirect DCR addressing
-	  setidcr - Set a register value via indirect DCR addressing
-
-config CMD_ZYNQ_RSA
-	bool "Zynq RSA"
-	help
-	  Verifies the authenticated and encrypted zynq images.
-
-endmenu
-
-endmenu
+	  This option is used to disable support for parallel NOR flash.

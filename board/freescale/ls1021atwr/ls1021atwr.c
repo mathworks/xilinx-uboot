@@ -8,22 +8,28 @@
 #include <i2c.h>
 #include <asm/io.h>
 #include <asm/arch/immap_ls102xa.h>
-#include <asm/arch/ns_access.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
-#include <asm/arch/ls102xa_stream_id.h>
-#include <asm/pcie_layerscape.h>
+#include <asm/arch/ls102xa_devdis.h>
+#include <asm/arch/ls102xa_soc.h>
+#include <asm/arch/ls102xa_sata.h>
+#include <hwconfig.h>
 #include <mmc.h>
+#include <fsl_csu.h>
 #include <fsl_esdhc.h>
 #include <fsl_ifc.h>
+#include <fsl_immap.h>
 #include <netdev.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
 #include <fsl_sec.h>
+#include <fsl_devdis.h>
 #include <spl.h>
+#include "../common/sleep.h"
 #ifdef CONFIG_U_QE
-#include "../../../drivers/qe/qe.h"
+#include <fsl_qe.h>
 #endif
+#include <fsl_validate.h>
 
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -54,6 +60,17 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KEEP_STATUS		0x0
 #define NEED_RESET		0x1
 
+#define SOFT_MUX_ON_I2C3_IFC	0x2
+#define SOFT_MUX_ON_CAN3_USB2	0x8
+#define SOFT_MUX_ON_QE_LCD	0x10
+
+#define PIN_I2C3_IFC_MUX_I2C3	0x0
+#define PIN_I2C3_IFC_MUX_IFC	0x1
+#define PIN_CAN3_USB2_MUX_USB2	0x0
+#define PIN_CAN3_USB2_MUX_CAN3	0x1
+#define PIN_QE_LCD_MUX_LCD	0x0
+#define PIN_QE_LCD_MUX_QE	0x1
+
 struct cpld_data {
 	u8 cpld_ver;		/* cpld revision */
 	u8 cpld_ver_sub;	/* cpld sub revision */
@@ -74,7 +91,7 @@ struct cpld_data {
 	u8 rev2;		/* Reserved */
 };
 
-#ifndef CONFIG_QSPI_BOOT
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 static void convert_serdes_mux(int type, int need_reset);
 
 void cpld_show(void)
@@ -115,7 +132,7 @@ void cpld_show(void)
 int checkboard(void)
 {
 	puts("Board: LS1021ATWR\n");
-#ifndef CONFIG_QSPI_BOOT
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 	cpld_show();
 #endif
 
@@ -125,6 +142,7 @@ int checkboard(void)
 void ddrmc_init(void)
 {
 	struct ccsr_ddr *ddr = (struct ccsr_ddr *)CONFIG_SYS_FSL_DDR_ADDR;
+	u32 temp_sdram_cfg;
 
 	out_be32(&ddr->sdram_cfg, DDR_SDRAM_CFG);
 
@@ -138,7 +156,22 @@ void ddrmc_init(void)
 	out_be32(&ddr->timing_cfg_4, DDR_TIMING_CFG_4);
 	out_be32(&ddr->timing_cfg_5, DDR_TIMING_CFG_5);
 
-	out_be32(&ddr->sdram_cfg_2,  DDR_SDRAM_CFG_2);
+#ifdef CONFIG_DEEP_SLEEP
+	if (is_warm_boot()) {
+		out_be32(&ddr->sdram_cfg_2,
+			 DDR_SDRAM_CFG_2 & ~SDRAM_CFG2_D_INIT);
+		out_be32(&ddr->init_addr, CONFIG_SYS_SDRAM_BASE);
+		out_be32(&ddr->init_ext_addr, (1 << 31));
+
+		/* DRAM VRef will not be trained */
+		out_be32(&ddr->ddr_cdr2,
+			 DDR_DDR_CDR2 & ~DDR_CDR2_VREF_TRAIN_EN);
+	} else
+#endif
+	{
+		out_be32(&ddr->sdram_cfg_2, DDR_SDRAM_CFG_2);
+		out_be32(&ddr->ddr_cdr2, DDR_DDR_CDR2);
+	}
 
 	out_be32(&ddr->sdram_mode, DDR_SDRAM_MODE);
 	out_be32(&ddr->sdram_mode_2, DDR_SDRAM_MODE_2);
@@ -151,14 +184,35 @@ void ddrmc_init(void)
 	out_be32(&ddr->ddr_wrlvl_cntl_3, DDR_DDR_WRLVL_CNTL_3);
 
 	out_be32(&ddr->ddr_cdr1, DDR_DDR_CDR1);
-	out_be32(&ddr->ddr_cdr2, DDR_DDR_CDR2);
 
 	out_be32(&ddr->sdram_clk_cntl, DDR_SDRAM_CLK_CNTL);
 	out_be32(&ddr->ddr_zq_cntl, DDR_DDR_ZQ_CNTL);
 
 	out_be32(&ddr->cs0_config_2, DDR_CS0_CONFIG_2);
 	udelay(1);
-	out_be32(&ddr->sdram_cfg, DDR_SDRAM_CFG | DDR_SDRAM_CFG_MEM_EN);
+
+#ifdef CONFIG_DEEP_SLEEP
+	if (is_warm_boot()) {
+		/* enter self-refresh */
+		temp_sdram_cfg = in_be32(&ddr->sdram_cfg_2);
+		temp_sdram_cfg |= SDRAM_CFG2_FRC_SR;
+		out_be32(&ddr->sdram_cfg_2, temp_sdram_cfg);
+
+		temp_sdram_cfg = (DDR_SDRAM_CFG_MEM_EN | SDRAM_CFG_BI);
+	} else
+#endif
+		temp_sdram_cfg = (DDR_SDRAM_CFG_MEM_EN & ~SDRAM_CFG_BI);
+
+	out_be32(&ddr->sdram_cfg, DDR_SDRAM_CFG | temp_sdram_cfg);
+
+#ifdef CONFIG_DEEP_SLEEP
+	if (is_warm_boot()) {
+		/* exit self-refresh */
+		temp_sdram_cfg = in_be32(&ddr->sdram_cfg_2);
+		temp_sdram_cfg &= ~SDRAM_CFG2_FRC_SR;
+		out_be32(&ddr->sdram_cfg_2, temp_sdram_cfg);
+	}
+#endif
 }
 
 int dram_init(void)
@@ -168,6 +222,11 @@ int dram_init(void)
 #endif
 
 	gd->ram_size = get_ram_size((void *)PHYS_SDRAM, PHYS_SDRAM_SIZE);
+
+#if defined(CONFIG_DEEP_SLEEP) && !defined(CONFIG_SPL_BUILD)
+	fsl_dp_resume();
+#endif
+
 	return 0;
 }
 
@@ -184,9 +243,9 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
-#ifdef CONFIG_TSEC_ENET
 int board_eth_init(bd_t *bis)
 {
+#ifdef CONFIG_TSEC_ENET
 	struct fsl_pq_mdio_info mdio_info;
 	struct tsec_info_struct tsec_info[4];
 	int num = 0;
@@ -221,12 +280,12 @@ int board_eth_init(bd_t *bis)
 	fsl_pq_mdio_init(bis, &mdio_info);
 
 	tsec_eth_init(bis, tsec_info, num);
+#endif
 
 	return pci_eth_init(bis);
 }
-#endif
 
-#ifndef CONFIG_QSPI_BOOT
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 int config_serdes_mux(void)
 {
 	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
@@ -260,13 +319,75 @@ int config_serdes_mux(void)
 }
 #endif
 
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
+int config_board_mux(void)
+{
+	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
+	int conflict_flag;
+
+	conflict_flag = 0;
+	if (hwconfig("i2c3")) {
+		conflict_flag++;
+		cpld_data->soft_mux_on |= SOFT_MUX_ON_I2C3_IFC;
+		cpld_data->i2c3_ifc_mux = PIN_I2C3_IFC_MUX_I2C3;
+	}
+
+	if (hwconfig("ifc")) {
+		conflict_flag++;
+		/* some signals can not enable simultaneous*/
+		if (conflict_flag > 1)
+			goto conflict;
+		cpld_data->soft_mux_on |= SOFT_MUX_ON_I2C3_IFC;
+		cpld_data->i2c3_ifc_mux = PIN_I2C3_IFC_MUX_IFC;
+	}
+
+	conflict_flag = 0;
+	if (hwconfig("usb2")) {
+		conflict_flag++;
+		cpld_data->soft_mux_on |= SOFT_MUX_ON_CAN3_USB2;
+		cpld_data->can3_usb2_mux = PIN_CAN3_USB2_MUX_USB2;
+	}
+
+	if (hwconfig("can3")) {
+		conflict_flag++;
+		/* some signals can not enable simultaneous*/
+		if (conflict_flag > 1)
+			goto conflict;
+		cpld_data->soft_mux_on |= SOFT_MUX_ON_CAN3_USB2;
+		cpld_data->can3_usb2_mux = PIN_CAN3_USB2_MUX_CAN3;
+	}
+
+	conflict_flag = 0;
+	if (hwconfig("lcd")) {
+		conflict_flag++;
+		cpld_data->soft_mux_on |= SOFT_MUX_ON_QE_LCD;
+		cpld_data->qe_lcd_mux = PIN_QE_LCD_MUX_LCD;
+	}
+
+	if (hwconfig("qe")) {
+		conflict_flag++;
+		/* some signals can not enable simultaneous*/
+		if (conflict_flag > 1)
+			goto conflict;
+		cpld_data->soft_mux_on |= SOFT_MUX_ON_QE_LCD;
+		cpld_data->qe_lcd_mux = PIN_QE_LCD_MUX_QE;
+	}
+
+	return 0;
+
+conflict:
+	printf("WARNING: pin conflict! MUX setting may failed!\n");
+	return 0;
+}
+#endif
+
 int board_early_init_f(void)
 {
 	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
 
 #ifdef CONFIG_TSEC_ENET
-	out_be32(&scfg->etsecdmamcr, SCFG_ETSECDMAMCR_LE_BD_FR);
+	/* clear BD & FR bits for BE BD's and frame data */
+	clrbits_be32(&scfg->etsecdmamcr, SCFG_ETSECDMAMCR_LE_BD_FR);
 	out_be32(&scfg->etsecmcr, SCFG_ETSECCMCR_GE2_CLK125);
 #endif
 
@@ -274,27 +395,14 @@ int board_early_init_f(void)
 	init_early_memctl_regs();
 #endif
 
-#ifdef CONFIG_FSL_DCU_FB
-	out_be32(&scfg->pixclkcr, SCFG_PIXCLKCR_PXCKEN);
+	arch_soc_init();
+
+#if defined(CONFIG_DEEP_SLEEP)
+	if (is_warm_boot()) {
+		timer_init();
+		dram_init();
+	}
 #endif
-
-#ifdef CONFIG_FSL_QSPI
-	out_be32(&scfg->qspi_cfg, SCFG_QSPI_CLKSEL);
-#endif
-
-	/*
-	 * Enable snoop requests and DVM message requests for
-	 * Slave insterface S4 (A7 core cluster)
-	 */
-	out_le32(&cci->slave[4].snoop_ctrl,
-		 CCI400_DVM_MESSAGE_REQ_EN | CCI400_SNOOP_REQ_EN);
-
-	/*
-	 * Set CCI-400 Slave interface S1, S2 Shareable Override Register
-	 * All transactions are treated as non-shareable
-	 */
-	out_le32(&cci->slave[1].sha_ord, CCI400_SHAORD_NON_SHAREABLE);
-	out_le32(&cci->slave[2].sha_ord, CCI400_SHAORD_NON_SHAREABLE);
 
 	return 0;
 }
@@ -302,171 +410,134 @@ int board_early_init_f(void)
 #ifdef CONFIG_SPL_BUILD
 void board_init_f(ulong dummy)
 {
+	void (*second_uboot)(void);
+
 	/* Clear the BSS */
 	memset(__bss_start, 0, __bss_end - __bss_start);
 
 	get_clocks();
 
+#if defined(CONFIG_DEEP_SLEEP)
+	if (is_warm_boot())
+		fsl_dp_disable_console();
+#endif
+
 	preloader_console_init();
 
 	dram_init();
+
+	/* Allow OCRAM access permission as R/W */
+#ifdef CONFIG_LAYERSCAPE_NS_ACCESS
+	enable_layerscape_ns_access();
+	enable_layerscape_ns_access();
+#endif
+
+	/*
+	 * if it is woken up from deep sleep, then jump to second
+	 * stage uboot and continue executing without recopying
+	 * it from SD since it has already been reserved in memeory
+	 * in last boot.
+	 */
+	if (is_warm_boot()) {
+		second_uboot = (void (*)(void))CONFIG_SYS_TEXT_BASE;
+		second_uboot();
+	}
 
 	board_init_r(NULL, 0);
 }
 #endif
 
-#ifdef CONFIG_LS102XA_NS_ACCESS
-static struct csu_ns_dev ns_dev[] = {
-	{ CSU_CSLX_PCIE2_IO, CSU_ALL_RW },
-	{ CSU_CSLX_PCIE1_IO, CSU_ALL_RW },
-	{ CSU_CSLX_MG2TPR_IP, CSU_ALL_RW },
-	{ CSU_CSLX_IFC_MEM, CSU_ALL_RW },
-	{ CSU_CSLX_OCRAM, CSU_ALL_RW },
-	{ CSU_CSLX_GIC, CSU_ALL_RW },
-	{ CSU_CSLX_PCIE1, CSU_ALL_RW },
-	{ CSU_CSLX_OCRAM2, CSU_ALL_RW },
-	{ CSU_CSLX_QSPI_MEM, CSU_ALL_RW },
-	{ CSU_CSLX_PCIE2, CSU_ALL_RW },
-	{ CSU_CSLX_SATA, CSU_ALL_RW },
-	{ CSU_CSLX_USB3, CSU_ALL_RW },
-	{ CSU_CSLX_SERDES, CSU_ALL_RW },
-	{ CSU_CSLX_QDMA, CSU_ALL_RW },
-	{ CSU_CSLX_LPUART2, CSU_ALL_RW },
-	{ CSU_CSLX_LPUART1, CSU_ALL_RW },
-	{ CSU_CSLX_LPUART4, CSU_ALL_RW },
-	{ CSU_CSLX_LPUART3, CSU_ALL_RW },
-	{ CSU_CSLX_LPUART6, CSU_ALL_RW },
-	{ CSU_CSLX_LPUART5, CSU_ALL_RW },
-	{ CSU_CSLX_DSPI2, CSU_ALL_RW },
-	{ CSU_CSLX_DSPI1, CSU_ALL_RW },
-	{ CSU_CSLX_QSPI, CSU_ALL_RW },
-	{ CSU_CSLX_ESDHC, CSU_ALL_RW },
-	{ CSU_CSLX_2D_ACE, CSU_ALL_RW },
-	{ CSU_CSLX_IFC, CSU_ALL_RW },
-	{ CSU_CSLX_I2C1, CSU_ALL_RW },
-	{ CSU_CSLX_USB2, CSU_ALL_RW },
-	{ CSU_CSLX_I2C3, CSU_ALL_RW },
-	{ CSU_CSLX_I2C2, CSU_ALL_RW },
-	{ CSU_CSLX_DUART2, CSU_ALL_RW },
-	{ CSU_CSLX_DUART1, CSU_ALL_RW },
-	{ CSU_CSLX_WDT2, CSU_ALL_RW },
-	{ CSU_CSLX_WDT1, CSU_ALL_RW },
-	{ CSU_CSLX_EDMA, CSU_ALL_RW },
-	{ CSU_CSLX_SYS_CNT, CSU_ALL_RW },
-	{ CSU_CSLX_DMA_MUX2, CSU_ALL_RW },
-	{ CSU_CSLX_DMA_MUX1, CSU_ALL_RW },
-	{ CSU_CSLX_DDR, CSU_ALL_RW },
-	{ CSU_CSLX_QUICC, CSU_ALL_RW },
-	{ CSU_CSLX_DCFG_CCU_RCPM, CSU_ALL_RW },
-	{ CSU_CSLX_SECURE_BOOTROM, CSU_ALL_RW },
-	{ CSU_CSLX_SFP, CSU_ALL_RW },
-	{ CSU_CSLX_TMU, CSU_ALL_RW },
-	{ CSU_CSLX_SECURE_MONITOR, CSU_ALL_RW },
-	{ CSU_CSLX_RESERVED0, CSU_ALL_RW },
-	{ CSU_CSLX_ETSEC1, CSU_ALL_RW },
-	{ CSU_CSLX_SEC5_5, CSU_ALL_RW },
-	{ CSU_CSLX_ETSEC3, CSU_ALL_RW },
-	{ CSU_CSLX_ETSEC2, CSU_ALL_RW },
-	{ CSU_CSLX_GPIO2, CSU_ALL_RW },
-	{ CSU_CSLX_GPIO1, CSU_ALL_RW },
-	{ CSU_CSLX_GPIO4, CSU_ALL_RW },
-	{ CSU_CSLX_GPIO3, CSU_ALL_RW },
-	{ CSU_CSLX_PLATFORM_CONT, CSU_ALL_RW },
-	{ CSU_CSLX_CSU, CSU_ALL_RW },
-	{ CSU_CSLX_ASRC, CSU_ALL_RW },
-	{ CSU_CSLX_SPDIF, CSU_ALL_RW },
-	{ CSU_CSLX_FLEXCAN2, CSU_ALL_RW },
-	{ CSU_CSLX_FLEXCAN1, CSU_ALL_RW },
-	{ CSU_CSLX_FLEXCAN4, CSU_ALL_RW },
-	{ CSU_CSLX_FLEXCAN3, CSU_ALL_RW },
-	{ CSU_CSLX_SAI2, CSU_ALL_RW },
-	{ CSU_CSLX_SAI1, CSU_ALL_RW },
-	{ CSU_CSLX_SAI4, CSU_ALL_RW },
-	{ CSU_CSLX_SAI3, CSU_ALL_RW },
-	{ CSU_CSLX_FTM2, CSU_ALL_RW },
-	{ CSU_CSLX_FTM1, CSU_ALL_RW },
-	{ CSU_CSLX_FTM4, CSU_ALL_RW },
-	{ CSU_CSLX_FTM3, CSU_ALL_RW },
-	{ CSU_CSLX_FTM6, CSU_ALL_RW },
-	{ CSU_CSLX_FTM5, CSU_ALL_RW },
-	{ CSU_CSLX_FTM8, CSU_ALL_RW },
-	{ CSU_CSLX_FTM7, CSU_ALL_RW },
-	{ CSU_CSLX_COP_DCSR, CSU_ALL_RW },
-	{ CSU_CSLX_EPU, CSU_ALL_RW },
-	{ CSU_CSLX_GDI, CSU_ALL_RW },
-	{ CSU_CSLX_DDI, CSU_ALL_RW },
-	{ CSU_CSLX_RESERVED1, CSU_ALL_RW },
-	{ CSU_CSLX_USB3_PHY, CSU_ALL_RW },
-	{ CSU_CSLX_RESERVED2, CSU_ALL_RW },
-};
+#ifdef CONFIG_DEEP_SLEEP
+/* program the regulator (MC34VR500) to support deep sleep */
+void ls1twr_program_regulator(void)
+{
+	unsigned int i2c_bus;
+	u8 i2c_device_id;
+
+#define LS1TWR_I2C_BUS_MC34VR500	1
+#define MC34VR500_ADDR			0x8
+#define MC34VR500_DEVICEID		0x4
+#define MC34VR500_DEVICEID_MASK		0x0f
+
+	i2c_bus = i2c_get_bus_num();
+	i2c_set_bus_num(LS1TWR_I2C_BUS_MC34VR500);
+	i2c_device_id = i2c_reg_read(MC34VR500_ADDR, 0x0) &
+					MC34VR500_DEVICEID_MASK;
+	if (i2c_device_id != MC34VR500_DEVICEID) {
+		printf("The regulator (MC34VR500) does not exist. The device does not support deep sleep.\n");
+		return;
+	}
+
+	i2c_reg_write(MC34VR500_ADDR, 0x31, 0x4);
+	i2c_reg_write(MC34VR500_ADDR, 0x4d, 0x4);
+	i2c_reg_write(MC34VR500_ADDR, 0x6d, 0x38);
+	i2c_reg_write(MC34VR500_ADDR, 0x6f, 0x37);
+	i2c_reg_write(MC34VR500_ADDR, 0x71, 0x30);
+
+	i2c_set_bus_num(i2c_bus);
+}
 #endif
-
-struct liodn_id_table sec_liodn_tbl[] = {
-	SET_SEC_JR_LIODN_ENTRY(0, 0x10, 0x10),
-	SET_SEC_JR_LIODN_ENTRY(1, 0x10, 0x10),
-	SET_SEC_JR_LIODN_ENTRY(2, 0x10, 0x10),
-	SET_SEC_JR_LIODN_ENTRY(3, 0x10, 0x10),
-	SET_SEC_RTIC_LIODN_ENTRY(a, 0x10),
-	SET_SEC_RTIC_LIODN_ENTRY(b, 0x10),
-	SET_SEC_RTIC_LIODN_ENTRY(c, 0x10),
-	SET_SEC_RTIC_LIODN_ENTRY(d, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(0, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(1, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(2, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(3, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(4, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(5, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(6, 0x10, 0x10),
-	SET_SEC_DECO_LIODN_ENTRY(7, 0x10, 0x10),
-};
-
-struct smmu_stream_id dev_stream_id[] = {
-	{ 0x100, 0x01, "ETSEC MAC1" },
-	{ 0x104, 0x02, "ETSEC MAC2" },
-	{ 0x108, 0x03, "ETSEC MAC3" },
-	{ 0x10c, 0x04, "PEX1" },
-	{ 0x110, 0x05, "PEX2" },
-	{ 0x114, 0x06, "qDMA" },
-	{ 0x118, 0x07, "SATA" },
-	{ 0x11c, 0x08, "USB3" },
-	{ 0x120, 0x09, "QE" },
-	{ 0x124, 0x0a, "eSDHC" },
-	{ 0x128, 0x0b, "eMA" },
-	{ 0x14c, 0x0c, "2D-ACE" },
-	{ 0x150, 0x0d, "USB2" },
-	{ 0x18c, 0x0e, "DEBUG" },
-};
 
 int board_init(void)
 {
 #ifndef CONFIG_SYS_FSL_NO_SERDES
 	fsl_serdes_init();
-#ifndef CONFIG_QSPI_BOOT
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 	config_serdes_mux();
 #endif
 #endif
 
-	ls1021x_config_caam_stream_id(sec_liodn_tbl,
-				      ARRAY_SIZE(sec_liodn_tbl));
-	ls102xa_config_smmu_stream_id(dev_stream_id,
-				      ARRAY_SIZE(dev_stream_id));
+	ls102xa_smmu_stream_id_init();
 
-#ifdef CONFIG_LS102XA_NS_ACCESS
-	enable_devices_ns_access(ns_dev, ARRAY_SIZE(ns_dev));
+#ifdef CONFIG_LAYERSCAPE_NS_ACCESS
+	enable_layerscape_ns_access();
 #endif
 
 #ifdef CONFIG_U_QE
 	u_qe_init();
 #endif
 
+#ifdef CONFIG_DEEP_SLEEP
+	ls1twr_program_regulator();
+#endif
 	return 0;
 }
+
+#ifdef CONFIG_BOARD_LATE_INIT
+int board_late_init(void)
+{
+#ifdef CONFIG_SCSI_AHCI_PLAT
+	ls1021a_sata_init();
+#endif
+#ifdef CONFIG_CHAIN_OF_TRUST
+	fsl_setenv_chain_of_trust();
+#endif
+
+	return 0;
+}
+#endif
 
 #if defined(CONFIG_MISC_INIT_R)
 int misc_init_r(void)
 {
+#ifdef CONFIG_FSL_DEVICE_DISABLE
+	device_disable(devdis_tbl, ARRAY_SIZE(devdis_tbl));
+#endif
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
+	config_board_mux();
+#endif
+
 #ifdef CONFIG_FSL_CAAM
 	return sec_init();
+#endif
+}
+#endif
+
+#if defined(CONFIG_DEEP_SLEEP)
+void board_sleep_prepare(void)
+{
+#ifdef CONFIG_LAYERSCAPE_NS_ACCESS
+	enable_layerscape_ns_access();
 #endif
 }
 #endif
@@ -475,8 +546,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
-#ifdef CONFIG_PCIE_LAYERSCAPE
-	ft_pcie_setup(blob, bd);
+#ifdef CONFIG_PCI
+	ft_pci_setup(blob, bd);
 #endif
 
 	return 0;
@@ -501,7 +572,7 @@ u16 flash_read16(void *addr)
 	return (((val) >> 8) & 0x00ff) | (((val) << 8) & 0xff00);
 }
 
-#ifndef CONFIG_QSPI_BOOT
+#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 static void convert_flash_bank(char bank)
 {
 	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);

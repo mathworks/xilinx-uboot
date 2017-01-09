@@ -6,9 +6,6 @@
 
 ifdef CONFIG_SPL_BUILD
 obj-y	+= cpu.o
-else
-obj-$(CONFIG_PWM_TEGRA) += pwm.o
-obj-$(CONFIG_VIDEO_TEGRA) += display.o
 endif
 
 # The AVP is ARMv4T architecture so we must use special compiler

@@ -12,6 +12,7 @@
 #include <common.h>
 #include <spi.h>
 #include <spi_flash.h>
+#include <errno.h>
 #include <spl.h>
 
 #ifdef CONFIG_SPL_OS_BOOT
@@ -22,6 +23,8 @@
 static int spi_load_image_os(struct spi_flash *flash,
 			     struct image_header *header)
 {
+	int err;
+
 	/* Read for a header, parse or error out. */
 	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS, 0x40,
 		       (void *)header);
@@ -29,7 +32,9 @@ static int spi_load_image_os(struct spi_flash *flash,
 	if (image_get_magic(header) != IH_MAGIC)
 		return -1;
 
-	spl_parse_image_header(header);
+	err = spl_parse_image_header(header);
+	if (err)
+		return err;
 
 	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS,
 		       spl_image.size, (void *)spl_image.load_addr);
@@ -43,13 +48,26 @@ static int spi_load_image_os(struct spi_flash *flash,
 }
 #endif
 
+static ulong spl_spi_fit_read(struct spl_load_info *load, ulong sector,
+			      ulong count, void *buf)
+{
+	struct spi_flash *flash = load->dev;
+	ulong ret;
+
+	ret = spi_flash_read(flash, sector, count, buf);
+	if (!ret)
+		return count;
+	else
+		return 0;
+}
 /*
  * The main entry for SPI booting. It's necessary that SDRAM is already
  * configured and available since this code loads the main U-Boot image
  * from SPI into SDRAM and starts it from there.
  */
-void spl_spi_load_image(void)
+int spl_spi_load_image(void)
 {
+	int err = 0;
 	struct spi_flash *flash;
 	struct image_header *header;
 
@@ -63,7 +81,7 @@ void spl_spi_load_image(void)
 				CONFIG_SF_DEFAULT_MODE);
 	if (!flash) {
 		puts("SPI probe failed.\n");
-		hang();
+		return -ENODEV;
 	}
 
 	/* use CONFIG_SYS_TEXT_BASE as temporary storage area */
@@ -74,10 +92,32 @@ void spl_spi_load_image(void)
 #endif
 	{
 		/* Load u-boot, mkimage header is 64 bytes. */
-		spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS, 0x40,
-			       (void *)header);
-		spl_parse_image_header(header);
-		spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS,
-			       spl_image.size, (void *)spl_image.load_addr);
+		err = spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS, 0x40,
+				     (void *)header);
+		if (err)
+			return err;
+
+		if (IS_ENABLED(CONFIG_SPL_LOAD_FIT)) {
+			struct spl_load_info load;
+
+			debug("Found FIT\n");
+			load.dev = flash;
+			load.priv = NULL;
+			load.filename = NULL;
+			load.bl_len = 1;
+			load.read = spl_spi_fit_read;
+			err = spl_load_simple_fit(&load,
+						  CONFIG_SYS_SPI_U_BOOT_OFFS,
+						  header);
+		} else {
+			err = spl_parse_image_header(header);
+			if (err)
+				return err;
+			err = spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS,
+					     spl_image.size,
+					     (void *)spl_image.load_addr);
+		}
 	}
+
+	return err;
 }

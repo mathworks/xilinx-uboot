@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <errno.h>
 #include <os.h>
 #include <cli.h>
 #include <malloc.h>
@@ -77,18 +78,33 @@ int sandbox_main_loop_init(void)
 	struct sandbox_state *state = state_get_current();
 
 	/* Execute command if required */
-	if (state->cmd) {
-		int retval;
+	if (state->cmd || state->run_distro_boot) {
+		int retval = 0;
 
 		cli_init();
 
-		retval = run_command_list(state->cmd, -1, 0);
+#ifdef CONFIG_CMDLINE
+		if (state->cmd)
+			retval = run_command_list(state->cmd, -1, 0);
+
+		if (state->run_distro_boot)
+			retval = cli_simple_run_command("run distro_bootcmd",
+							0);
+#endif
 		if (!state->interactive)
 			os_exit(retval);
 	}
 
 	return 0;
 }
+
+static int sandbox_cmdline_cb_boot(struct sandbox_state *state,
+				      const char *arg)
+{
+	state->run_distro_boot = true;
+	return 0;
+}
+SANDBOX_CMDLINE_OPT_SHORT(boot, 'b', 0, "Run distro boot commands");
 
 static int sandbox_cmdline_cb_command(struct sandbox_state *state,
 				      const char *arg)
@@ -241,6 +257,21 @@ static int sandbox_cmdline_cb_terminal(struct sandbox_state *state,
 }
 SANDBOX_CMDLINE_OPT_SHORT(terminal, 't', 1,
 			  "Set terminal to raw/cooked mode");
+
+static int sandbox_cmdline_cb_verbose(struct sandbox_state *state,
+				      const char *arg)
+{
+	state->show_test_output = true;
+	return 0;
+}
+SANDBOX_CMDLINE_OPT_SHORT(verbose, 'v', 0, "Show test output");
+
+int board_run_command(const char *cmdline)
+{
+	printf("## Commands are disabled. Please enable CONFIG_CMDLINE.\n");
+
+	return 1;
+}
 
 int main(int argc, char *argv[])
 {

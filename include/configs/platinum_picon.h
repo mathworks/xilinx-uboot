@@ -12,16 +12,12 @@
 #define CONFIG_PLATINUM_PROJECT			"picon"
 #define CONFIG_PLATINUM_CPU			"imx6dl"
 
-#define CONFIG_MX6
-
 #include <configs/platinum.h>
 
 #define CONFIG_FEC_XCV_TYPE			RMII
 #define CONFIG_FEC_MXC_PHYADDR			0
 
 #define CONFIG_HOSTNAME				picon
-
-#define CONFIG_SYS_PROMPT			"picon > "
 
 #define CONFIG_PLATFORM_ENV_SETTINGS		"\0"
 

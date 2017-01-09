@@ -16,8 +16,35 @@ u32 fdt_getprop_u32_default_node(const void *fdt, int off, int cell,
 				const char *prop, const u32 dflt);
 u32 fdt_getprop_u32_default(const void *fdt, const char *path,
 				const char *prop, const u32 dflt);
+
+/**
+ * Add data to the root of the FDT before booting the OS.
+ *
+ * See doc/device-tree-bindings/root.txt
+ *
+ * @param fdt		FDT address in memory
+ * @return 0 if ok, or -FDT_ERR_... on error
+ */
+int fdt_root(void *fdt);
+
+/**
+ * Add chosen data the FDT before booting the OS.
+ *
+ * In particular, this adds the kernel command line (bootargs) to the FDT.
+ *
+ * @param fdt		FDT address in memory
+ * @return 0 if ok, or -FDT_ERR_... on error
+ */
 int fdt_chosen(void *fdt);
+
+/**
+ * Add initrd information to the FDT before booting the OS.
+ *
+ * @param fdt		FDT address in memory
+ * @return 0 if ok, or -FDT_ERR_... on error
+ */
 int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end);
+
 void do_fixup_by_path(void *fdt, const char *path, const char *prop,
 		      const void *val, int len, int create);
 void do_fixup_by_path_u32(void *fdt, const char *path, const char *prop,
@@ -40,18 +67,57 @@ void do_fixup_by_compat(void *fdt, const char *compat,
 			const char *prop, const void *val, int len, int create);
 void do_fixup_by_compat_u32(void *fdt, const char *compat,
 			    const char *prop, u32 val, int create);
+/**
+ * Setup the memory node in the DT. Creates one if none was existing before.
+ * Calls fdt_fixup_memory_banks() to populate a single reg pair covering the
+ * whole memory.
+ *
+ * @param blob		FDT blob to update
+ * @param start		Begin of DRAM mapping in physical memory
+ * @param size		Size of the single memory bank
+ * @return 0 if ok, or -1 or -FDT_ERR_... on error
+ */
 int fdt_fixup_memory(void *blob, u64 start, u64 size);
+
+/**
+ * Fill the DT memory node with multiple memory banks.
+ * Creates the node if none was existing before.
+ * If banks is 0, it will not touch the existing reg property. This allows
+ * boards to not mess with the existing DT setup, which may have been
+ * filled in properly before.
+ *
+ * @param blob		FDT blob to update
+ * @param start		Array of size <banks> to hold the start addresses.
+ * @param size		Array of size <banks> to hold the size of each region.
+ * @param banks		Number of memory banks to create. If 0, the reg
+ *			property will be left untouched.
+ * @return 0 if ok, or -1 or -FDT_ERR_... on error
+ */
 int fdt_fixup_memory_banks(void *blob, u64 start[], u64 size[], int banks);
+
 void fdt_fixup_ethernet(void *fdt);
 int fdt_find_and_setprop(void *fdt, const char *node, const char *prop,
 			 const void *val, int len, int create);
 void fdt_fixup_qe_firmware(void *fdt);
 
-#if defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_MPH_USB)
+/**
+ * Update native-mode property of display-timings node to the phandle
+ * of the timings matching a display by name (case insensitive).
+ *
+ * see kernel Documentation/devicetree/bindings/video/display-timing.txt
+ *
+ * @param blob		FDT blob to update
+ * @param path		path within dt
+ * @param display	name of display timing to match
+ * @return 0 if ok, or -FDT_ERR_... on error
+ */
+int fdt_fixup_display(void *blob, const char *path, const char *display);
+
+#if defined(CONFIG_USB_EHCI_FSL) || defined(CONFIG_USB_XHCI_FSL)
 void fdt_fixup_dr_usb(void *blob, bd_t *bd);
 #else
 static inline void fdt_fixup_dr_usb(void *blob, bd_t *bd) {}
-#endif /* defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_MPH_USB) */
+#endif /* defined(CONFIG_USB_EHCI_FSL) || defined(CONFIG_USB_XHCI_FSL) */
 
 #if defined(CONFIG_SYS_FSL_SEC_COMPAT)
 void fdt_fixup_crypto_node(void *blob, int sec_rev);

@@ -21,10 +21,11 @@
 	};
 
 	aliases {
-		/* this allow the ethaddr uboot environmnet variable contents
+		/* this allow the ethaddr uboot environment variable contents
 		 * to be added to the gmac1 device tree blob.
 		 */
 		ethernet0 = &gmac1;
+		udc0 = &usb1;
 	};
 
 	regulator_3_3v: 3-3-v-regulator {
@@ -32,6 +33,10 @@
 		regulator-name = "3.3V";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
+	};
+
+	soc {
+		u-boot,dm-pre-reloc;
 	};
 };
 
@@ -69,9 +74,34 @@
 };
 
 &mmc0 {
+	status = "okay";
+	u-boot,dm-pre-reloc;
+
 	cd-gpios = <&portb 18 0>;
 	vmmc-supply = <&regulator_3_3v>;
 	vqmmc-supply = <&regulator_3_3v>;
+};
+
+&qspi {
+	status = "okay";
+	u-boot,dm-pre-reloc;
+
+	flash0: n25q00@0 {
+		u-boot,dm-pre-reloc;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "n25q00";
+		reg = <0>;      /* chip select */
+		spi-max-frequency = <100000000>;
+		m25p,fast-read;
+		page-size = <256>;
+		block-size = <16>; /* 2^16, 64KB */
+		read-delay = <4>;  /* delay value in read data capture register */
+		tshsl-ns = <50>;
+		tsd2d-ns = <50>;
+		tchsh-ns = <4>;
+		tslch-ns = <4>;
+	};
 };
 
 &usb1 {

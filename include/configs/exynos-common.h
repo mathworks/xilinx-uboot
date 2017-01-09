@@ -16,8 +16,6 @@
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <linux/sizes.h>
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 #define CONFIG_ARCH_CPU_INIT
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -28,10 +26,10 @@
 #define CONFIG_USE_ARCH_MEMSET
 
 /* Keep L2 Cache Disabled */
-#define CONFIG_CMD_CACHE
 
 /* input clock of PLL: 24MHz input clock */
 #define CONFIG_SYS_CLK_FREQ		24000000
+#define CONFIG_TIMER_CLK_FREQ		CONFIG_SYS_CLK_FREQ
 
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_CMDLINE_TAG
@@ -53,18 +51,11 @@
 #define CONFIG_EXYNOS_DWMMC
 #define CONFIG_BOUNCE_BUFFER
 
-#define CONFIG_ZERO_BOOTDELAY_CHECK
-
 /* PWM */
 #define CONFIG_PWM
 
 /* Command definition*/
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_EXT4_WRITE
 #define CONFIG_FAT_WRITE
-#define CONFIG_CMD_FS_GENERIC
 
 #define CONFIG_CMD_PART
 #define CONFIG_PARTITION_UUIDS
@@ -79,7 +70,6 @@
 
 /* FLASH and environment organization */
 #define CONFIG_SYS_NO_FLASH
-#undef CONFIG_CMD_IMLS
 
 #include <config_distro_defaults.h>
 

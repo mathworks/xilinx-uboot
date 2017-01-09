@@ -39,9 +39,6 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-#define CONFIG_CMD_CACHE
-#undef CONFIG_CMD_NET
 
 #define CONFIG_SYS_LONGHELP				/* undef to save memory		*/
 
@@ -57,7 +54,6 @@
 #define CONFIG_SYS_DEVICE_NULLDEV	1	/* include nulldev device	*/
 #define CONFIG_SYS_CONSOLE_INFO_QUIET	1	/* don't print console @ startup	*/
 #define CONFIG_AUTO_COMPLETE	1	/* add autocompletion support	*/
-#define CONFIG_LOOPW		1	/* enable loopw command	*/
 #define CONFIG_MX_CYCLIC	1	/* enable mdc/mwc commands	*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x200000	/* default load address */
@@ -91,6 +87,11 @@
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_ENV_IS_IN_FLASH	1
+
+#define LDS_BOARD_TEXT \
+        . = DEFINED(env_offset) ? env_offset : .; \
+        common/env_embedded.o (.text);
+
 #define CONFIG_ENV_OFFSET		0x4000	/* Address of Environment Sector*/
 #define CONFIG_ENV_SIZE		0x2000	/* Total Size of Environment Sector	*/
 #define CONFIG_ENV_SECT_SIZE	0x2000 /* see README - env sector total size	*/

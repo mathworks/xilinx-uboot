@@ -1,9 +1,10 @@
 # Makefile version of include/config_uncmd_spl.h
 #
+# SPDX-License-Identifier:	GPL-2.0+
+#
 # TODO: Invent a better way
 
 ifdef CONFIG_SPL_BUILD
-CONFIG_OF_CONTROL=
 
 ifndef CONFIG_SPL_DM
 CONFIG_DM_SERIAL=
@@ -12,7 +13,5 @@ CONIFG_DM_I2C=
 CONFIG_DM_SPI=
 CONFIG_DM_SPI_FLASH=
 endif
-
-CONFIG_DM_DEVICE_REMOVE=
 
 endif

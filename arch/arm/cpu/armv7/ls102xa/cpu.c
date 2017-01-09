@@ -13,6 +13,8 @@
 #include <tsec.h>
 #include <netdev.h>
 #include <fsl_esdhc.h>
+#include <config.h>
+#include <fsl_wdog.h>
 
 #include "fsl_epu.h"
 
@@ -216,6 +218,14 @@ void enable_caches(void)
 }
 #endif /* #ifndef CONFIG_SYS_DCACHE_OFF */
 
+
+uint get_svr(void)
+{
+	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+
+	return in_be32(&gur->svr);
+}
+
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo(void)
 {
@@ -299,6 +309,7 @@ int arch_cpu_init(void)
 	void *epu_base = (void *)(CONFIG_SYS_DCSRBAR + EPU_BLOCK_OFFSET);
 	void *rcpm2_base =
 		(void *)(CONFIG_SYS_DCSRBAR + DCSR_RCPM2_BLOCK_OFFSET);
+	struct ccsr_scfg *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
 	u32 state;
 
 	/*
@@ -326,10 +337,12 @@ int arch_cpu_init(void)
 	 */
 	fsl_epu_clean(epu_base);
 
+	setbits_be32(&scfg->snpcnfgcr, SCFG_SNPCNFGCR_SEC_RD_WR);
+
 	return 0;
 }
 
-#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+#ifdef CONFIG_ARMV7_NONSEC
 /* Set the address at which the secondary core starts from.*/
 void smp_set_core_boot_addr(unsigned long addr, int corenr)
 {
@@ -344,5 +357,36 @@ void smp_kick_all_cpus(void)
 	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
 
 	out_be32(&gur->brrl, 0x2);
+
+	/*
+	 * LS1 STANDBYWFE is not captured outside the ARM module in the soc.
+	 * So add a delay to wait bootrom execute WFE.
+	 */
+	udelay(1);
+
+	asm volatile("sev");
 }
 #endif
+
+void reset_cpu(ulong addr)
+{
+	struct watchdog_regs *wdog = (struct watchdog_regs *)WDOG1_BASE_ADDR;
+
+	clrbits_be16(&wdog->wcr, WCR_SRS);
+
+	while (1) {
+		/*
+		 * Let the watchdog trigger
+		 */
+	}
+}
+
+void arch_preboot_os(void)
+{
+	unsigned long ctrl;
+
+	/* Disable PL1 Physical Timer */
+	asm("mrc p15, 0, %0, c14, c2, 1" : "=r" (ctrl));
+	ctrl &= ~ARCH_TIMER_CTRL_ENABLE;
+	asm("mcr p15, 0, %0, c14, c2, 1" : : "r" (ctrl));
+}

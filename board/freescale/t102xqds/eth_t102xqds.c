@@ -21,7 +21,7 @@
 #include <fsl_mdio.h>
 #include <miiphy.h>
 #include <phy.h>
-#include <asm/fsl_dtsec.h>
+#include <fsl_dtsec.h>
 #include <asm/fsl_serdes.h>
 #include "../common/qixis.h"
 #include "../common/fman.h"
@@ -148,7 +148,7 @@ static int t1024qds_mdio_init(char *realbusname, u8 muxval)
 	bus->read = t1024qds_mdio_read;
 	bus->write = t1024qds_mdio_write;
 	bus->reset = t1024qds_mdio_reset;
-	sprintf(bus->name, t1024qds_mdio_name_for_muxval(muxval));
+	strcpy(bus->name, t1024qds_mdio_name_for_muxval(muxval));
 
 	pmdio->realbus = miiphy_get_dev_by_name(realbusname);
 
@@ -172,8 +172,8 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 	if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_RGMII) {
 		if (port == FM1_DTSEC3) {
 			fdt_set_phy_handle(fdt, compat, addr, "rgmii_phy2");
-			fdt_setprop(fdt, offset, "phy-connection-type",
-				    "rgmii", 5);
+			fdt_setprop_string(fdt, offset, "phy-connection-type",
+					   "rgmii");
 			fdt_status_okay_by_alias(fdt, "emi1_rgmii1");
 		}
 	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_SGMII) {
@@ -207,7 +207,8 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 			break;
 		}
 		fdt_delprop(fdt, offset, "phy-connection-type");
-		fdt_setprop(fdt, offset, "phy-connection-type", "qsgmii", 6);
+		fdt_setprop_string(fdt, offset, "phy-connection-type",
+				   "qsgmii");
 		fdt_status_okay_by_alias(fdt, "emi1_slot2");
 	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_XGMII) {
 		/* XFI interface */
@@ -219,7 +220,7 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 		/* no PHY for XFI */
 		fdt_delprop(fdt, offset, "phy-handle");
 		fdt_setprop(fdt, offset, "fixed-link", &f_link, sizeof(f_link));
-		fdt_setprop(fdt, offset, "phy-connection-type", "xgmii", 5);
+		fdt_setprop_string(fdt, offset, "phy-connection-type", "xgmii");
 	}
 }
 
@@ -309,7 +310,7 @@ int board_eth_init(bd_t *bis)
 	case 0x95:
 	case 0x99:
 		/*
-		 * XFI does not need a PHY to work, but to avoid U-boot use
+		 * XFI does not need a PHY to work, but to avoid U-Boot use
 		 * default PHY address which is zero to a MAC when it found
 		 * a MAC has no PHY address, we give a PHY address to XFI
 		 * MAC, and should not use a real XAUI PHY address, since

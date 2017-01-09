@@ -1,9 +1,7 @@
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef FSL_DDR_MAIN_H
@@ -34,9 +32,7 @@
 #define ddr_clrsetbits32(a, clear, set)	clrsetbits_be32(a, clear, set)
 #endif
 
-#define _DDR_ADDR CONFIG_SYS_FSL_DDR_ADDR
-
-u32 fsl_ddr_get_version(void);
+u32 fsl_ddr_get_version(unsigned int ctrl_num);
 
 #if defined(CONFIG_DDR_SPD) || defined(CONFIG_SPD_EEPROM)
 /*
@@ -105,7 +101,7 @@ unsigned int compute_lowest_common_dimm_parameters(
 				const dimm_params_t *dimm_params,
 				common_timing_params_t *outpdimm,
 				unsigned int number_of_dimms);
-unsigned int populate_memctl_options(int all_dimms_registered,
+unsigned int populate_memctl_options(const common_timing_params_t *common_dimm,
 				memctl_options_t *popts,
 				dimm_params_t *pdimm,
 				unsigned int ctrl_num);
@@ -133,9 +129,13 @@ void board_add_ram_info(int use_default);
 /* processor specific function */
 void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 				   unsigned int ctrl_num, int step);
+void remove_unused_controllers(fsl_ddr_info_t *info);
 
 /* board specific function */
 int fsl_ddr_get_dimm_params(dimm_params_t *pdimm,
 			unsigned int controller_number,
 			unsigned int dimm_number);
+void update_spd_address(unsigned int ctrl_num,
+			unsigned int slot,
+			unsigned int *addr);
 #endif

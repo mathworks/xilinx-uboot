@@ -1,5 +1,5 @@
 /*
- * U-boot - main board file for BCT brettl2
+ * U-Boot - main board file for BCT brettl2
  *
  * Copyright (c) 2010 BCT Electronic GmbH
  *
@@ -29,13 +29,6 @@ int checkboard(void)
 }
 
 #ifdef CONFIG_BFIN_MAC
-static void board_init_enetaddr(uchar *mac_addr)
-{
-	puts("Warning: Generating 'random' MAC address\n");
-	eth_random_addr(mac_addr);
-	eth_setenv_enetaddr("ethaddr", mac_addr);
-}
-
 int board_eth_init(bd_t *bis)
 {
 	int retry = 3;
@@ -107,12 +100,6 @@ static void turn_leds_off(void)
 /* miscellaneous platform dependent initialisations */
 int misc_init_r(void)
 {
-#ifdef CONFIG_BFIN_MAC
-	uchar enetaddr[6];
-	if (!eth_getenv_enetaddr("ethaddr", enetaddr))
-		board_init_enetaddr(enetaddr);
-#endif
-
 	gpio_cfi_flash_init();
 	init_tlv320aic31();
 	init_mute_pin();

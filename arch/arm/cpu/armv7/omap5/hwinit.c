@@ -27,18 +27,29 @@ DECLARE_GLOBAL_DATA_PTR;
 
 u32 *const omap_si_rev = (u32 *)OMAP_SRAM_SCRATCH_OMAP_REV;
 
+#ifndef CONFIG_DM_GPIO
 static struct gpio_bank gpio_bank_54xx[8] = {
-	{ (void *)OMAP54XX_GPIO1_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO2_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO3_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO4_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO5_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO6_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO7_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP54XX_GPIO8_BASE, METHOD_GPIO_24XX },
+	{ (void *)OMAP54XX_GPIO1_BASE },
+	{ (void *)OMAP54XX_GPIO2_BASE },
+	{ (void *)OMAP54XX_GPIO3_BASE },
+	{ (void *)OMAP54XX_GPIO4_BASE },
+	{ (void *)OMAP54XX_GPIO5_BASE },
+	{ (void *)OMAP54XX_GPIO6_BASE },
+	{ (void *)OMAP54XX_GPIO7_BASE },
+	{ (void *)OMAP54XX_GPIO8_BASE },
 };
 
 const struct gpio_bank *const omap_gpio_bank = gpio_bank_54xx;
+#endif
+
+void do_set_mux32(u32 base, struct pad_conf_entry const *array, int size)
+{
+	int i;
+	struct pad_conf_entry *pad = (struct pad_conf_entry *)array;
+
+	for (i = 0; i < size; i++, pad++)
+		writel(pad->val, base + pad->offset);
+}
 
 #ifdef CONFIG_SPL_BUILD
 /* LPDDR2 specific IO settings */
@@ -75,16 +86,20 @@ static void io_settings_ddr3(void)
 
 	writel(ioregs->ctrl_ddrio_0, (*ctrl)->control_ddrio_0);
 	writel(ioregs->ctrl_ddrio_1, (*ctrl)->control_ddrio_1);
-	writel(ioregs->ctrl_ddrio_2, (*ctrl)->control_ddrio_2);
+
+	if (!is_dra7xx()) {
+		writel(ioregs->ctrl_ddrio_2, (*ctrl)->control_ddrio_2);
+		writel(ioregs->ctrl_lpddr2ch, (*ctrl)->control_lpddr2ch1_1);
+	}
 
 	/* omap5432 does not use lpddr2 */
 	writel(ioregs->ctrl_lpddr2ch, (*ctrl)->control_lpddr2ch1_0);
-	writel(ioregs->ctrl_lpddr2ch, (*ctrl)->control_lpddr2ch1_1);
 
 	writel(ioregs->ctrl_emif_sdram_config_ext,
 	       (*ctrl)->control_emif1_sdram_config_ext);
-	writel(ioregs->ctrl_emif_sdram_config_ext,
-	       (*ctrl)->control_emif2_sdram_config_ext);
+	if (!is_dra72x())
+		writel(ioregs->ctrl_emif_sdram_config_ext,
+		       (*ctrl)->control_emif2_sdram_config_ext);
 
 	if (is_omap54xx()) {
 		/* Disable DLL select */
@@ -109,6 +124,7 @@ static void io_settings_ddr3(void)
 void do_io_settings(void)
 {
 	u32 io_settings = 0, mask = 0;
+	struct emif_reg_struct *emif = (struct emif_reg_struct *)EMIF1_BASE;
 
 	/* Impedance settings EMMC, C2C 1,2, hsi2 */
 	mask = (ds_mask << 2) | (ds_mask << 8) |
@@ -164,7 +180,7 @@ void do_io_settings(void)
 		       (sc_fast << 17) | (sc_fast << 14);
 	writel(io_settings, (*ctrl)->control_smart3io_padconf_1);
 
-	if (emif_sdram_type() == EMIF_SDRAM_TYPE_LPDDR2)
+	if (emif_sdram_type(emif->emif_sdram_config) == EMIF_SDRAM_TYPE_LPDDR2)
 		io_settings_lpddr2();
 	else
 		io_settings_ddr3();
@@ -351,13 +367,27 @@ void init_omap_revision(void)
 	case DRA752_CONTROL_ID_CODE_ES1_1:
 		*omap_si_rev = DRA752_ES1_1;
 		break;
+	case DRA752_CONTROL_ID_CODE_ES2_0:
+		*omap_si_rev = DRA752_ES2_0;
+		break;
 	case DRA722_CONTROL_ID_CODE_ES1_0:
 		*omap_si_rev = DRA722_ES1_0;
+		break;
+	case DRA722_CONTROL_ID_CODE_ES2_0:
+		*omap_si_rev = DRA722_ES2_0;
 		break;
 	default:
 		*omap_si_rev = OMAP5430_SILICON_ID_INVALID;
 	}
 	init_cpu_configuration();
+}
+
+void omap_die_id(unsigned int *die_id)
+{
+	die_id[0] = readl((*ctrl)->control_std_fuse_die_id_0);
+	die_id[1] = readl((*ctrl)->control_std_fuse_die_id_1);
+	die_id[2] = readl((*ctrl)->control_std_fuse_die_id_2);
+	die_id[3] = readl((*ctrl)->control_std_fuse_die_id_3);
 }
 
 void reset_cpu(ulong ignored)
@@ -403,4 +433,21 @@ void v7_arch_cp15_set_l2aux_ctrl(u32 l2auxctrl, u32 cpu_midr,
 				 u32 cpu_rev)
 {
 	omap_smc1(OMAP5_SERVICE_L2ACTLR_SET, l2auxctrl);
+}
+
+void v7_arch_cp15_set_acr(u32 acr, u32 cpu_midr, u32 cpu_rev_comb,
+			  u32 cpu_variant, u32 cpu_rev)
+{
+
+#ifdef CONFIG_ARM_ERRATA_801819
+	/*
+	 * DRA72x processors are uniprocessors and DONOT have
+	 * ACP (Accelerator Coherency Port) hooked to ACE (AXI Coherency
+	 * Extensions) Hence the erratum workaround is not applicable for
+	 * DRA72x processors.
+	 */
+	if (is_dra72x())
+		acr &= ~((0x3 << 23) | (0x3 << 25));
+#endif
+	omap_smc1(OMAP5_SERVICE_ACR_SET, acr);
 }

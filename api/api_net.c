@@ -25,7 +25,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define errf(fmt, args...) do { printf("ERROR @ %s(): ", __func__); printf(fmt, ##args); } while (0)
 
-#ifdef CONFIG_CMD_NET
+#if defined(CONFIG_CMD_NET) && !defined(CONFIG_DM_ETH)
 
 static int dev_valid_net(void *cookie)
 {
@@ -37,7 +37,7 @@ int dev_open_net(void *cookie)
 	if (!dev_valid_net(cookie))
 		return API_ENODEV;
 
-	if (eth_init(gd->bd) < 0)
+	if (eth_init() < 0)
 		return API_EIO;
 
 	return 0;

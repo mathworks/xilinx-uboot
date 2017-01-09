@@ -225,7 +225,7 @@ int mac_read_from_eeprom(void)
 		break;
 	}
 
-	if (mac && is_valid_ether_addr(mac)) {
+	if (mac && is_valid_ethaddr(mac)) {
 		eth_setenv_enetaddr("ethaddr", mac);
 		if (mac_diag) {
 			mac_txt = getenv("ethaddr");
@@ -607,11 +607,11 @@ int checkboard(void)
 	return 0;
 }
 
-#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+#ifdef CONFIG_OF_BOARD_SETUP
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 	return 0;
 }
-#endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */
+#endif /* CONFIG_OF_BOARD_SETUP */

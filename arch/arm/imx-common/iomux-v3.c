@@ -11,10 +11,8 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-#if !defined(CONFIG_MX25) && !defined(CONFIG_VF610)
-#include <asm/arch/sys_proto.h>
-#endif
 #include <asm/imx-common/iomux-v3.h>
+#include <asm/imx-common/sys_proto.h>
 
 static void *base = (void *)IOMUXC_BASE_ADDR;
 
@@ -41,7 +39,19 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 	}
 #endif
 
-	if (mux_ctrl_ofs)
+#ifdef CONFIG_IOMUX_LPSR
+	u32 lpsr = (pad & MUX_MODE_LPSR) >> MUX_MODE_SHIFT;
+
+	if (lpsr == IOMUX_CONFIG_LPSR) {
+		base = (void *)IOMUXC_LPSR_BASE_ADDR;
+		mux_mode &= ~IOMUX_CONFIG_LPSR;
+		/* set daisy chain sel_input */
+		if (sel_input_ofs)
+			sel_input_ofs += IOMUX_LPSR_SEL_INPUT_OFS;
+	}
+#endif
+
+	if (is_soc_type(MXC_SOC_MX7) || mux_ctrl_ofs)
 		__raw_writel(mux_mode, base + mux_ctrl_ofs);
 
 	if (sel_input_ofs)
@@ -55,6 +65,12 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 	if (!(pad_ctrl & NO_PAD_CTRL) && pad_ctrl_ofs)
 		__raw_writel(pad_ctrl, base + pad_ctrl_ofs);
 #endif
+
+#ifdef CONFIG_IOMUX_LPSR
+	if (lpsr == IOMUX_CONFIG_LPSR)
+		base = (void *)IOMUXC_BASE_ADDR;
+#endif
+
 }
 
 /* configures a list of pads within declared with IOMUX_PADS macro */
@@ -67,7 +83,7 @@ void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 
 #if defined(CONFIG_MX6QDL)
 	stride = 2;
-	if (!is_cpu_type(MXC_CPU_MX6Q) && !is_cpu_type(MXC_CPU_MX6D))
+	if (!is_mx6dq())
 		p += 1;
 #else
 	stride = 1;
@@ -92,3 +108,29 @@ void imx_iomux_set_gpr_register(int group, int start_bit,
 	reg |= (value << start_bit);
 	writel(reg, base + group * 4);
 }
+
+#ifdef CONFIG_IOMUX_SHARE_CONF_REG
+void imx_iomux_gpio_set_direction(unsigned int gpio,
+				unsigned int direction)
+{
+	u32 reg;
+	/*
+	 * Only on Vybrid the input/output buffer enable flags
+	 * are part of the shared mux/conf register.
+	 */
+	reg = readl(base + (gpio << 2));
+
+	if (direction)
+		reg |= 0x2;
+	else
+		reg &= ~0x2;
+
+	writel(reg, base + (gpio << 2));
+}
+
+void imx_iomux_gpio_get_function(unsigned int gpio, u32 *gpio_state)
+{
+	*gpio_state = readl(base + (gpio << 2)) &
+		((0X07 << PAD_MUX_MODE_SHIFT) | PAD_CTL_OBE_IBE_ENABLE);
+}
+#endif

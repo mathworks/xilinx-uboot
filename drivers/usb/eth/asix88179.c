@@ -12,6 +12,7 @@
 #include <linux/mii.h>
 #include "usb_ether.h"
 #include <malloc.h>
+#include <memalign.h>
 #include <errno.h>
 
 /* ASIX AX88179 based USB 3.0 Ethernet Devices */
@@ -496,7 +497,7 @@ static int asix_send(struct eth_device *eth, void *packet, int length)
 				length + sizeof(packet_len) + sizeof(tx_hdr2),
 				&actual_len,
 				USB_BULK_SEND_TIMEOUT);
-	debug("Tx: len = %u, actual = %u, err = %d\n",
+	debug("Tx: len = %zu, actual = %u, err = %d\n",
 	      length + sizeof(packet_len), actual_len, err);
 
 	return err;
@@ -558,7 +559,7 @@ static int asix_recv(struct eth_device *eth)
 
 		frame_pos += 2;
 
-		NetReceive(recv_buf + frame_pos, pkt_len);
+		net_process_received_packet(recv_buf + frame_pos, pkt_len);
 
 		pkt_hdr++;
 		frame_pos += ((pkt_len + 7) & 0xFFF8)-2;

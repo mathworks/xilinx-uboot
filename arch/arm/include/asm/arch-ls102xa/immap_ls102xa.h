@@ -11,11 +11,16 @@
 #define SVR_MIN(svr)		(((svr) >>  0) & 0xf)
 #define SVR_SOC_VER(svr)	(((svr) >> 8) & 0x7ff)
 #define IS_E_PROCESSOR(svr)	(svr & 0x80000)
+#define IS_SVR_REV(svr, maj, min) \
+		((SVR_MAJ(svr) == maj) && (SVR_MIN(svr) == min))
 
 #define SOC_VER_SLS1020		0x00
 #define SOC_VER_LS1020		0x10
 #define SOC_VER_LS1021		0x11
 #define SOC_VER_LS1022		0x12
+
+#define SOC_MAJOR_VER_1_0	0x1
+#define SOC_MAJOR_VER_2_0	0x2
 
 #define CCSR_BRR_OFFSET		0xe4
 #define CCSR_SCRATCHRW1_OFFSET	0x200
@@ -28,7 +33,7 @@
 #define RCWSR4_SRDS1_PRTCL_SHIFT	24
 #define RCWSR4_SRDS1_PRTCL_MASK		0xff000000
 
-#define TIMER_COMP_VAL			0xffffffff
+#define TIMER_COMP_VAL			0xffffffffffffffffull
 #define ARCH_TIMER_CTRL_ENABLE		(1 << 0)
 #define SYS_COUNTER_CTRL_ENABLE		(1 << 24)
 
@@ -115,6 +120,8 @@ struct ccsr_gur {
 	u32	brrl;		/* Boot release */
 	u8      res_0e8[0x100-0xe8];
 	u32     rcwsr[16];      /* Reset control word status */
+#define RCW_SB_EN_REG_INDEX	7
+#define RCW_SB_EN_MASK		0x00200000
 	u8      res_140[0x200-0x140];
 	u32     scratchrw[4];  /* Scratch Read/Write */
 	u8      res_210[0x300-0x210];
@@ -140,12 +147,20 @@ struct ccsr_gur {
 	u32	sdhcpcr;
 };
 
-#define SCFG_ETSECDMAMCR_LE_BD_FR	0xf8001a0f
+#define SCFG_ETSECDMAMCR_LE_BD_FR	0x00000c00
+#define SCFG_SNPCNFGCR_SEC_RD_WR	0xc0000000
 #define SCFG_ETSECCMCR_GE2_CLK125	0x04000000
 #define SCFG_ETSECCMCR_GE0_CLK125	0x00000000
 #define SCFG_ETSECCMCR_GE1_CLK125	0x08000000
 #define SCFG_PIXCLKCR_PXCKEN		0x80000000
 #define SCFG_QSPI_CLKSEL		0xc0100000
+#define SCFG_SNPCNFGCR_SEC_RD_WR	0xc0000000
+#define SCFG_SNPCNFGCR_DCU_RD_WR	0x03000000
+#define SCFG_SNPCNFGCR_SATA_RD_WR	0x00c00000
+#define SCFG_SNPCNFGCR_USB3_RD_WR	0x00300000
+#define SCFG_SNPCNFGCR_DBG_RD_WR	0x000c0000
+#define SCFG_SNPCNFGCR_EDMA_SNP		0x00020000
+#define SCFG_ENDIANCR_LE		0x80000000
 
 /* Supplemental Configuration Unit */
 struct ccsr_scfg {
@@ -204,7 +219,7 @@ struct ccsr_scfg {
 	u32 qos2;
 	u32 qos3;
 	u32 cci_cfg;
-	u32 resv8[1];
+	u32 endiancr;
 	u32 etsecdmamcr;
 	u32 usb3prm3cr;
 	u32 resv9[1];
@@ -217,7 +232,7 @@ struct ccsr_scfg {
 	u32 scfgrevcr;
 	u32 coresrencr;
 	u32 pex2pmrdsr;
-	u32 ddrc1cr;
+	u32 eddrtqcfg;
 	u32 ddrc2cr;
 	u32 ddrc3cr;
 	u32 ddrc4cr;
@@ -345,152 +360,6 @@ struct ccsr_serdes {
 	u8	res_a00[0x1000-0xa00];	/* from 0xa00 to 0xfff */
 };
 
-#define DDR_SDRAM_CFG			0x470c0008
-#define DDR_CS0_BNDS			0x008000bf
-#define DDR_CS0_CONFIG			0x80014302
-#define DDR_TIMING_CFG_0		0x50550004
-#define DDR_TIMING_CFG_1		0xbcb38c56
-#define DDR_TIMING_CFG_2		0x0040d120
-#define DDR_TIMING_CFG_3		0x010e1000
-#define DDR_TIMING_CFG_4		0x00000001
-#define DDR_TIMING_CFG_5		0x03401400
-#define DDR_SDRAM_CFG_2			0x00401010
-#define DDR_SDRAM_MODE			0x00061c60
-#define DDR_SDRAM_MODE_2		0x00180000
-#define DDR_SDRAM_INTERVAL		0x18600618
-#define DDR_DDR_WRLVL_CNTL		0x8655f605
-#define DDR_DDR_WRLVL_CNTL_2		0x05060607
-#define DDR_DDR_WRLVL_CNTL_3		0x05050505
-#define DDR_DDR_CDR1			0x80040000
-#define DDR_DDR_CDR2			0x00000001
-#define DDR_SDRAM_CLK_CNTL		0x02000000
-#define DDR_DDR_ZQ_CNTL			0x89080600
-#define DDR_CS0_CONFIG_2		0
-#define DDR_SDRAM_CFG_MEM_EN		0x80000000
-
-/* DDR memory controller registers */
-struct ccsr_ddr {
-	u32 cs0_bnds;			/* Chip Select 0 Memory Bounds */
-	u32 resv1[1];
-	u32 cs1_bnds;			/* Chip Select 1 Memory Bounds */
-	u32 resv2[1];
-	u32 cs2_bnds;			/* Chip Select 2 Memory Bounds */
-	u32 resv3[1];
-	u32 cs3_bnds;			/* Chip Select 3 Memory Bounds */
-	u32 resv4[25];
-	u32 cs0_config;			/* Chip Select Configuration */
-	u32 cs1_config;			/* Chip Select Configuration */
-	u32 cs2_config;			/* Chip Select Configuration */
-	u32 cs3_config;			/* Chip Select Configuration */
-	u32 resv5[12];
-	u32 cs0_config_2;		/* Chip Select Configuration 2 */
-	u32 cs1_config_2;		/* Chip Select Configuration 2 */
-	u32 cs2_config_2;		/* Chip Select Configuration 2 */
-	u32 cs3_config_2;		/* Chip Select Configuration 2 */
-	u32 resv6[12];
-	u32 timing_cfg_3;		/* SDRAM Timing Configuration 3 */
-	u32 timing_cfg_0;		/* SDRAM Timing Configuration 0 */
-	u32 timing_cfg_1;		/* SDRAM Timing Configuration 1 */
-	u32 timing_cfg_2;		/* SDRAM Timing Configuration 2 */
-	u32 sdram_cfg;			/* SDRAM Control Configuration */
-	u32 sdram_cfg_2;		/* SDRAM Control Configuration 2 */
-	u32 sdram_mode;			/* SDRAM Mode Configuration */
-	u32 sdram_mode_2;		/* SDRAM Mode Configuration 2 */
-	u32 sdram_md_cntl;		/* SDRAM Mode Control */
-	u32 sdram_interval;		/* SDRAM Interval Configuration */
-	u32 sdram_data_init;		/* SDRAM Data initialization */
-	u32 resv7[1];
-	u32 sdram_clk_cntl;		/* SDRAM Clock Control */
-	u32 resv8[5];
-	u32 init_addr;			/* training init addr */
-	u32 init_ext_addr;		/* training init extended addr */
-	u32 resv9[4];
-	u32 timing_cfg_4;		/* SDRAM Timing Configuration 4 */
-	u32 timing_cfg_5;		/* SDRAM Timing Configuration 5 */
-	u32 timing_cfg_6;		/* SDRAM Timing Configuration 6 */
-	u32 timing_cfg_7;		/* SDRAM Timing Configuration 7 */
-	u32 ddr_zq_cntl;		/* ZQ calibration control*/
-	u32 ddr_wrlvl_cntl;		/* write leveling control*/
-	u32 resv10[1];
-	u32 ddr_sr_cntr;		/* self refresvh counter */
-	u32 ddr_sdram_rcw_1;		/* Control Words 1 */
-	u32 ddr_sdram_rcw_2;		/* Control Words 2 */
-	u32 resv11[2];
-	u32 ddr_wrlvl_cntl_2;		/* write leveling control 2 */
-	u32 ddr_wrlvl_cntl_3;		/* write leveling control 3 */
-	u32 resv12[2];
-	u32 ddr_sdram_rcw_3;		/* Control Words 3 */
-	u32 ddr_sdram_rcw_4;		/* Control Words 4 */
-	u32 ddr_sdram_rcw_5;		/* Control Words 5 */
-	u32 ddr_sdram_rcw_6;		/* Control Words 6 */
-	u32 resv13[20];
-	u32 sdram_mode_3;		/* SDRAM Mode Configuration 3 */
-	u32 sdram_mode_4;		/* SDRAM Mode Configuration 4 */
-	u32 sdram_mode_5;		/* SDRAM Mode Configuration 5 */
-	u32 sdram_mode_6;		/* SDRAM Mode Configuration 6 */
-	u32 sdram_mode_7;		/* SDRAM Mode Configuration 7 */
-	u32 sdram_mode_8;		/* SDRAM Mode Configuration 8 */
-	u32 sdram_mode_9;		/* SDRAM Mode Configuration 9 */
-	u32 sdram_mode_10;		/* SDRAM Mode Configuration 10 */
-	u32 sdram_mode_11;		/* SDRAM Mode Configuration 11 */
-	u32 sdram_mode_12;		/* SDRAM Mode Configuration 12 */
-	u32 sdram_mode_13;		/* SDRAM Mode Configuration 13 */
-	u32 sdram_mode_14;		/* SDRAM Mode Configuration 14 */
-	u32 sdram_mode_15;		/* SDRAM Mode Configuration 15 */
-	u32 sdram_mode_16;		/* SDRAM Mode Configuration 16 */
-	u32 resv14[4];
-	u32 timing_cfg_8;		/* SDRAM Timing Configuration 8 */
-	u32 timing_cfg_9;		/* SDRAM Timing Configuration 9 */
-	u32 resv15[2];
-	u32 sdram_cfg_3;		/* SDRAM Control Configuration 3 */
-	u32 resv16[15];
-	u32 deskew_cntl;		/* SDRAM Deskew Control */
-	u32 resv17[545];
-	u32 ddr_dsr1;			/* Debug Status 1 */
-	u32 ddr_dsr2;			/* Debug Status 2 */
-	u32 ddr_cdr1;			/* Control Driver 1 */
-	u32 ddr_cdr2;			/* Control Driver 2 */
-	u32 resv18[50];
-	u32 ip_rev1;			/* IP Block Revision 1 */
-	u32 ip_rev2;			/* IP Block Revision 2 */
-	u32 eor;			/* Enhanced Optimization Register */
-	u32 resv19[63];
-	u32 mtcr;			/* Memory Test Control Register */
-	u32 resv20[7];
-	u32 mtp1;			/* Memory Test Pattern 1 */
-	u32 mtp2;			/* Memory Test Pattern 2 */
-	u32 mtp3;			/* Memory Test Pattern 3 */
-	u32 mtp4;			/* Memory Test Pattern 4 */
-	u32 mtp5;			/* Memory Test Pattern 5 */
-	u32 mtp6;			/* Memory Test Pattern 6 */
-	u32 mtp7;			/* Memory Test Pattern 7 */
-	u32 mtp8;			/* Memory Test Pattern 8 */
-	u32 mtp9;			/* Memory Test Pattern 9 */
-	u32 mtp10;			/* Memory Test Pattern 10 */
-	u32 resv21[6];
-	u32 ddr_mt_st_ext_addr;		/* Memory Test Start Extended Address */
-	u32 ddr_mt_st_addr;		/* Memory Test Start Address */
-	u32 ddr_mt_end_ext_addr;	/* Memory Test End Extended Address */
-	u32 ddr_mt_end_addr;		/* Memory Test End Address */
-	u32 resv22[36];
-	u32 data_err_inject_hi;		/* Data Path Err Injection Mask High */
-	u32 data_err_inject_lo;		/* Data Path Err Injection Mask Low */
-	u32 ecc_err_inject;		/* Data Path Err Injection Mask ECC */
-	u32 resv23[5];
-	u32 capture_data_hi;		/* Data Path Read Capture High */
-	u32 capture_data_lo;		/* Data Path Read Capture Low */
-	u32 capture_ecc;		/* Data Path Read Capture ECC */
-	u32 resv24[5];
-	u32 err_detect;			/* Error Detect */
-	u32 err_disable;		/* Error Disable */
-	u32 err_int_en;
-	u32 capture_attributes;		/* Error Attrs Capture */
-	u32 capture_address;		/* Error Addr Capture */
-	u32 capture_ext_address;	/* Error Extended Addr Capture */
-	u32 err_sbe;			/* Single-Bit ECC Error Management */
-	u32 resv25[105];
-};
-
 #define CCI400_CTRLORD_TERM_BARRIER	0x00000008
 #define CCI400_CTRLORD_EN_BARRIER	0
 #define CCI400_SHAORD_NON_SHAREABLE	0x00000002
@@ -538,4 +407,32 @@ struct ccsr_cci400 {
 	} pcounter[4];			/* Performance Counter */
 	u8 res_e004[0x10000 - 0xe004];
 };
+
+/* AHCI (sata) register map */
+struct ccsr_ahci {
+	u32 res1[0xa4/4];	/* 0x0 - 0xa4 */
+	u32 pcfg;	/* port config */
+	u32 ppcfg;	/* port phy1 config */
+	u32 pp2c;	/* port phy2 config */
+	u32 pp3c;	/* port phy3 config */
+	u32 pp4c;	/* port phy4 config */
+	u32 pp5c;	/* port phy5 config */
+	u32 paxic;	/* port AXI config */
+	u32 axicc;	/* AXI cache control */
+	u32 axipc;	/* AXI PROT control */
+	u32 ptc;	/* port Trans Config */
+	u32 pts;	/* port Trans Status */
+	u32 plc;	/* port link config */
+	u32 plc1;	/* port link config1 */
+	u32 plc2;	/* port link config2 */
+	u32 pls;	/* port link status */
+	u32 pls1;	/* port link status1 */
+	u32 pcmdc;	/* port CMD config */
+	u32 ppcs;	/* port phy control status */
+	u32 pberr;	/* port 0/1 BIST error */
+	u32 cmds;	/* port 0/1 CMD status error */
+};
+
+uint get_svr(void);
+
 #endif	/* __ASM_ARCH_LS102XA_IMMAP_H_ */

@@ -153,8 +153,11 @@ turnoff_wtdog:
  * $sp must be 8-byte alignment for ABI compliance.
  */
 call_board_init_f:
-	li	$sp, CONFIG_SYS_INIT_SP_ADDR
-	li	$r0, 0x00000000
+	li		$sp, CONFIG_SYS_INIT_SP_ADDR
+	li		$r10, GD_SIZE	/* get GD size */
+	sub		$sp, $sp, $r10	/* GD start addr */
+	move	$r10, $sp
+	li		$r0, 0x00000000
 
 #ifdef __PIC__
 #ifdef __NDS32_N1213_43U1H__
@@ -397,7 +400,7 @@ end_flush_dcache:
 	! FIXME: Other way to get PC?
 	! FIXME: Update according to the newest spec!!
 1:
-	la	 $r28, 1
+	li	 $r28, 1
 	push $r28
 	mfsr $r28, PSW			! $PSW
 	push $r28

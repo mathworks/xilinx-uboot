@@ -6,17 +6,7 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#define AXP221_CHIP_ADDR 0x68
-#define AXP221_CTRL_ADDR 0x3e
-#define AXP221_INIT_DATA 0x3e
-
-#define AXP223_DEVICE_ADDR 0x3a3
-#define AXP223_RUNTIME_ADDR 0x2d
-
 /* Page 0 addresses */
-#define AXP221_POWER_STATUS	0x00
-#define AXP221_POWER_STATUS_VBUS_AVAIL	(1 << 5)
-#define AXP221_POWER_STATUS_VBUS_USABLE	(1 << 4)
 #define AXP221_CHIP_ID		0x03
 #define AXP221_OUTPUT_CTRL1	0x10
 #define AXP221_OUTPUT_CTRL1_DCDC0_EN	(1 << 0)
@@ -53,36 +43,24 @@
 #define AXP221_ALDO1_CTRL	0x28
 #define AXP221_ALDO2_CTRL	0x29
 #define AXP221_ALDO3_CTRL	0x2a
-#define AXP221_VBUS_IPSOUT	0x30
-#define AXP221_VBUS_IPSOUT_DRIVEBUS	(1 << 2)
-#define AXP221_MISC_CTRL	0x8f
-#define AXP221_MISC_CTRL_N_VBUSEN_FUNC	(1 << 4)
+#define AXP221_SHUTDOWN		0x32
+#define AXP221_SHUTDOWN_POWEROFF	(1 << 7)
 #define AXP221_PAGE		0xff
 
 /* Page 1 addresses */
 #define AXP221_SID		0x20
 
-/* We support vbus detection */
-#define AXP_VBUS_DETECT
-
-/* We support drivebus control */
-#define AXP_DRIVEBUS
-
-int axp221_set_dcdc1(unsigned int mvolt);
-int axp221_set_dcdc2(unsigned int mvolt);
-int axp221_set_dcdc3(unsigned int mvolt);
-int axp221_set_dcdc4(unsigned int mvolt);
-int axp221_set_dcdc5(unsigned int mvolt);
-int axp221_set_dldo1(unsigned int mvolt);
-int axp221_set_dldo2(unsigned int mvolt);
-int axp221_set_dldo3(unsigned int mvolt);
-int axp221_set_dldo4(unsigned int mvolt);
-int axp221_set_aldo1(unsigned int mvolt);
-int axp221_set_aldo2(unsigned int mvolt);
-int axp221_set_aldo3(unsigned int mvolt);
-int axp221_set_eldo(int eldo_num, unsigned int mvolt);
-int axp221_init(void);
-int axp221_get_sid(unsigned int *sid);
-int axp_get_vbus(void);
-int axp_drivebus_enable(void);
-int axp_drivebus_disable(void);
+/* For axp_gpio.c */
+#define AXP_POWER_STATUS		0x00
+#define AXP_POWER_STATUS_VBUS_PRESENT		(1 << 5)
+#define AXP_VBUS_IPSOUT			0x30
+#define AXP_VBUS_IPSOUT_DRIVEBUS		(1 << 2)
+#define AXP_MISC_CTRL			0x8f
+#define AXP_MISC_CTRL_N_VBUSEN_FUNC		(1 << 4)
+#define AXP_GPIO0_CTRL			0x90
+#define AXP_GPIO1_CTRL			0x92
+#define AXP_GPIO_CTRL_OUTPUT_LOW		0x00 /* Drive pin low */
+#define AXP_GPIO_CTRL_OUTPUT_HIGH		0x01 /* Drive pin high */
+#define AXP_GPIO_CTRL_INPUT			0x02 /* Input */
+#define AXP_GPIO_STATE			0x94
+#define AXP_GPIO_STATE_OFFSET			0

@@ -13,6 +13,15 @@
 #include <asm/arch/at91_pmc.h>
 #include <asm/global_data.h>
 
+#define GCK_CSS_SLOW_CLK	0
+#define GCK_CSS_MAIN_CLK	1
+#define GCK_CSS_PLLA_CLK	2
+#define GCK_CSS_UPLL_CLK	3
+#define GCK_CSS_MCK_CLK		4
+#define GCK_CSS_AUDIO_CLK	5
+
+#define AT91_UTMI_PLL_CLK_FREQ	480000000
+
 static inline unsigned long get_cpu_clk_rate(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
@@ -119,4 +128,15 @@ static inline unsigned long get_pit_clk_rate(void)
 int at91_clock_init(unsigned long main_clock);
 void at91_periph_clk_enable(int id);
 void at91_periph_clk_disable(int id);
+int at91_enable_periph_generated_clk(u32 id, u32 clk_source, u32 div);
+u32 at91_get_periph_generated_clk(u32 id);
+void at91_system_clk_enable(int sys_clk);
+void at91_system_clk_disable(int sys_clk);
+int at91_upll_clk_enable(void);
+int at91_upll_clk_disable(void);
+void at91_usb_clk_init(u32 value);
+int at91_pllb_clk_enable(u32 pllbr);
+int at91_pllb_clk_disable(void);
+void at91_pllicpr_init(u32 icpr);
+
 #endif /* __ASM_ARM_ARCH_CLK_H__ */

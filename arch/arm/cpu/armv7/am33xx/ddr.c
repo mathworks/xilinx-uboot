@@ -123,30 +123,33 @@ void config_sdram_emif4d5(const struct emif_regs *regs, int nr)
 	writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl);
 	writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl_shdw);
 
-	/* Perform hardware leveling. */
-	udelay(1000);
-	writel(readl(&emif_reg[nr]->emif_ddr_ext_phy_ctrl_36) |
-	       0x100, &emif_reg[nr]->emif_ddr_ext_phy_ctrl_36);
-	writel(readl(&emif_reg[nr]->emif_ddr_ext_phy_ctrl_36_shdw) |
-	       0x100, &emif_reg[nr]->emif_ddr_ext_phy_ctrl_36_shdw);
+	/* Perform hardware leveling for DDR3 */
+	if (emif_sdram_type(regs->sdram_config) == EMIF_SDRAM_TYPE_DDR3) {
+		udelay(1000);
+		writel(readl(&emif_reg[nr]->emif_ddr_ext_phy_ctrl_36) |
+		       0x100, &emif_reg[nr]->emif_ddr_ext_phy_ctrl_36);
+		writel(readl(&emif_reg[nr]->emif_ddr_ext_phy_ctrl_36_shdw) |
+		       0x100, &emif_reg[nr]->emif_ddr_ext_phy_ctrl_36_shdw);
 
-	writel(0x80000000, &emif_reg[nr]->emif_rd_wr_lvl_rmp_ctl);
+		writel(0x80000000, &emif_reg[nr]->emif_rd_wr_lvl_rmp_ctl);
 
-	/* Enable read leveling */
-	writel(0x80000000, &emif_reg[nr]->emif_rd_wr_lvl_ctl);
+		/* Enable read leveling */
+		writel(0x80000000, &emif_reg[nr]->emif_rd_wr_lvl_ctl);
 
-	/*
-	 * Enable full read and write leveling.  Wait for read and write
-	 * leveling bit to clear RDWRLVLFULL_START bit 31
-	 */
-	while((readl(&emif_reg[nr]->emif_rd_wr_lvl_ctl) & 0x80000000) != 0)
-		;
+		/*
+		 * Enable full read and write leveling.  Wait for read and write
+		 * leveling bit to clear RDWRLVLFULL_START bit 31
+		 */
+		while ((readl(&emif_reg[nr]->emif_rd_wr_lvl_ctl) & 0x80000000)
+		      != 0)
+			;
 
-	/* Check the timeout register to see if leveling is complete */
-	if((readl(&emif_reg[nr]->emif_status) & 0x70) != 0)
-		puts("DDR3 H/W leveling incomplete with errors\n");
+		/* Check the timeout register to see if leveling is complete */
+		if ((readl(&emif_reg[nr]->emif_status) & 0x70) != 0)
+			puts("DDR3 H/W leveling incomplete with errors\n");
 
-	if (emif_sdram_type() == EMIF_SDRAM_TYPE_LPDDR2) {
+	} else {
+		/* DDR2 */
 		configure_mr(nr, 0);
 		configure_mr(nr, 1);
 	}
@@ -161,6 +164,13 @@ void config_sdram(const struct emif_regs *regs, int nr)
 		writel(regs->zq_config, &emif_reg[nr]->emif_zq_config);
 		writel(regs->sdram_config, &cstat->secure_emif_sdram_config);
 		writel(regs->sdram_config, &emif_reg[nr]->emif_sdram_config);
+
+		/* Trigger initialization */
+		writel(0x00003100, &emif_reg[nr]->emif_sdram_ref_ctrl);
+		/* Wait 1ms because of L3 timeout error */
+		udelay(1000);
+
+		/* Write proper sdram_ref_cref_ctrl value */
 		writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl);
 		writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl_shdw);
 	}
@@ -183,9 +193,49 @@ void set_sdram_timings(const struct emif_regs *regs, int nr)
 }
 
 /*
+ * Configure EXT PHY registers for software leveling
+ */
+static void ext_phy_settings_swlvl(const struct emif_regs *regs, int nr)
+{
+	u32 *ext_phy_ctrl_base = 0;
+	u32 *emif_ext_phy_ctrl_base = 0;
+	__maybe_unused const u32 *ext_phy_ctrl_const_regs;
+	u32 i = 0;
+	__maybe_unused u32 size;
+
+	ext_phy_ctrl_base = (u32 *)&(regs->emif_ddr_ext_phy_ctrl_1);
+	emif_ext_phy_ctrl_base =
+			(u32 *)&(emif_reg[nr]->emif_ddr_ext_phy_ctrl_1);
+
+	/* Configure external phy control timing registers */
+	for (i = 0; i < EMIF_EXT_PHY_CTRL_TIMING_REG; i++) {
+		writel(*ext_phy_ctrl_base, emif_ext_phy_ctrl_base++);
+		/* Update shadow registers */
+		writel(*ext_phy_ctrl_base++, emif_ext_phy_ctrl_base++);
+	}
+
+#ifdef CONFIG_AM43XX
+	/*
+	 * External phy 6-24 registers do not change with ddr frequency.
+	 * These only need to be set on DDR2 on AM43xx.
+	 */
+	emif_get_ext_phy_ctrl_const_regs(&ext_phy_ctrl_const_regs, &size);
+
+	if (!size)
+		return;
+
+	for (i = 0; i < size; i++) {
+		writel(ext_phy_ctrl_const_regs[i], emif_ext_phy_ctrl_base++);
+		/* Update shadow registers */
+		writel(ext_phy_ctrl_const_regs[i], emif_ext_phy_ctrl_base++);
+	}
+#endif
+}
+
+/*
  * Configure EXT PHY registers for hardware leveling
  */
-static void ext_phy_settings(const struct emif_regs *regs, int nr)
+static void ext_phy_settings_hwlvl(const struct emif_regs *regs, int nr)
 {
 	/*
 	 * Enable hardware leveling on the EMIF.  For details about these
@@ -249,15 +299,21 @@ void config_ddr_phy(const struct emif_regs *regs, int nr)
 		     EMIF_REG_INITREF_DIS_MASK);
 #endif
 	if (regs->zq_config)
-		writel(0x80003100, &emif_reg[nr]->emif_sdram_ref_ctrl);
+		/* Set time between rising edge of DDR_RESET to rising
+		 * edge of DDR_CKE to > 500us per memory spec. */
+		writel(0x00003100, &emif_reg[nr]->emif_sdram_ref_ctrl);
 
 	writel(regs->emif_ddr_phy_ctlr_1,
 		&emif_reg[nr]->emif_ddr_phy_ctrl_1);
 	writel(regs->emif_ddr_phy_ctlr_1,
 		&emif_reg[nr]->emif_ddr_phy_ctrl_1_shdw);
 
-	if (get_emif_rev((u32)emif_reg[nr]) == EMIF_4D5)
-		ext_phy_settings(regs, nr);
+	if (get_emif_rev((u32)emif_reg[nr]) == EMIF_4D5) {
+		if (emif_sdram_type(regs->sdram_config) == EMIF_SDRAM_TYPE_DDR3)
+			ext_phy_settings_hwlvl(regs, nr);
+		else
+			ext_phy_settings_swlvl(regs, nr);
+	}
 }
 
 /**

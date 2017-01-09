@@ -10,10 +10,20 @@
 #ifndef _ATMEL_LCD_H_
 #define _ATMEL_LCD_H_
 
+/**
+ * struct atmel_lcd_platdata - platform data for Atmel LCDs with driver model
+ *
+ * @timing_index:	Index of LCD timing to use in device tree node
+ */
+struct atmel_lcd_platdata {
+	int timing_index;
+};
+
 typedef struct vidinfo {
 	ushort vl_col;		/* Number of columns (i.e. 640) */
 	ushort vl_row;		/* Number of rows (i.e. 480) */
-	u_long vl_clk;	/* pixel clock in ps    */
+	ushort vl_rot;		/* Rotation of Display (0, 1, 2, 3) */
+	u_long vl_clk;		/* pixel clock in ps    */
 
 	/* LCD configuration register */
 	u_long vl_sync;		/* Horizontal / vertical sync */

@@ -12,6 +12,8 @@ import threading
 import command
 import gitutil
 
+RETURN_CODE_RETRY = -1
+
 def Mkdir(dirname, parents = False):
     """Make a directory if it doesn't already exist.
 
@@ -78,11 +80,13 @@ class BuilderThread(threading.Thread):
         thread_num: Our thread number (0-n-1), used to decide on a
                 temporary directory
     """
-    def __init__(self, builder, thread_num):
+    def __init__(self, builder, thread_num, incremental, per_board_out_dir):
         """Set up a new builder thread"""
         threading.Thread.__init__(self)
         self.builder = builder
         self.thread_num = thread_num
+        self.incremental = incremental
+        self.per_board_out_dir = per_board_out_dir
 
     def Make(self, commit, brd, stage, cwd, *args, **kwargs):
         """Run 'make' on a particular commit and board.
@@ -134,7 +138,11 @@ class BuilderThread(threading.Thread):
         if self.builder.in_tree:
             out_dir = work_dir
         else:
-            out_dir = os.path.join(work_dir, 'build')
+            if self.per_board_out_dir:
+                out_rel_dir = os.path.join('..', brd.target)
+            else:
+                out_rel_dir = 'build'
+            out_dir = os.path.join(work_dir, out_rel_dir)
 
         # Check if the job was already completed last time
         done_file = self.builder.GetDoneFile(commit_upto, brd.target)
@@ -145,7 +153,11 @@ class BuilderThread(threading.Thread):
             # Get the return code from that build and use it
             with open(done_file, 'r') as fd:
                 result.return_code = int(fd.readline())
-            if will_build:
+
+            # Check the signal that the build needs to be retried
+            if result.return_code == RETURN_CODE_RETRY:
+                will_build = True
+            elif will_build:
                 err_file = self.builder.GetErrFile(commit_upto, brd.target)
                 if os.path.exists(err_file) and os.stat(err_file).st_size:
                     result.stderr = 'bad'
@@ -191,13 +203,15 @@ class BuilderThread(threading.Thread):
                         #
                         # Symlinks can confuse U-Boot's Makefile since
                         # we may use '..' in our path, so remove them.
-                        work_dir = os.path.realpath(work_dir)
-                        args.append('O=%s/build' % work_dir)
+                        out_dir = os.path.realpath(out_dir)
+                        args.append('O=%s' % out_dir)
                         cwd = None
                         src_dir = os.getcwd()
                     else:
-                        args.append('O=build')
-                if not self.builder.verbose_build:
+                        args.append('O=%s' % out_rel_dir)
+                if self.builder.verbose_build:
+                    args.append('V=1')
+                else:
                     args.append('-s')
                 if self.builder.num_jobs is not None:
                     args.extend(['-j', str(self.builder.num_jobs)])
@@ -207,16 +221,21 @@ class BuilderThread(threading.Thread):
 
                 # If we need to reconfigure, do that now
                 if do_config:
-                    result = self.Make(commit, brd, 'mrproper', cwd,
-                            'mrproper', *args, env=env)
+                    config_out = ''
+                    if not self.incremental:
+                        result = self.Make(commit, brd, 'mrproper', cwd,
+                                'mrproper', *args, env=env)
+                        config_out += result.combined
                     result = self.Make(commit, brd, 'config', cwd,
                             *(args + config_args), env=env)
-                    config_out = result.combined
+                    config_out += result.combined
                     do_config = False   # No need to configure next time
                 if result.return_code == 0:
                     result = self.Make(commit, brd, 'build', cwd, *args,
                             env=env)
                 result.stderr = result.stderr.replace(src_dir + '/', '')
+                if self.builder.verbose_build:
+                    result.stdout = config_out + result.stdout
             else:
                 result.return_code = 1
                 result.stderr = 'No tool chain for %s\n' % brd.arch
@@ -240,9 +259,10 @@ class BuilderThread(threading.Thread):
         if result.return_code < 0:
             return
 
-        # Aborted?
-        if result.stderr and 'No child processes' in result.stderr:
-            return
+        # If we think this might have been aborted with Ctrl-C, record the
+        # failure but not that we are 'done' with this board. A retry may fix
+        # it.
+        maybe_aborted =  result.stderr and 'No child processes' in result.stderr
 
         if result.already_done:
             return
@@ -272,7 +292,11 @@ class BuilderThread(threading.Thread):
             done_file = self.builder.GetDoneFile(result.commit_upto,
                     result.brd.target)
             with open(done_file, 'w') as fd:
-                fd.write('%s' % result.return_code)
+                if maybe_aborted:
+                    # Special code to indicate we need to retry
+                    fd.write('%s' % RETURN_CODE_RETRY)
+                else:
+                    fd.write('%s' % result.return_code)
             with open(os.path.join(build_dir, 'toolchain'), 'w') as fd:
                 print >>fd, 'gcc', result.toolchain.gcc
                 print >>fd, 'path', result.toolchain.path
@@ -331,16 +355,37 @@ class BuilderThread(threading.Thread):
                 with open(sizes, 'w') as fd:
                     print >>fd, '\n'.join(lines)
 
+        # Write out the configuration files, with a special case for SPL
+        for dirname in ['', 'spl', 'tpl']:
+            self.CopyFiles(result.out_dir, build_dir, dirname, ['u-boot.cfg',
+                'spl/u-boot-spl.cfg', 'tpl/u-boot-tpl.cfg', '.config',
+                'include/autoconf.mk', 'include/generated/autoconf.h'])
+
         # Now write the actual build output
         if keep_outputs:
-            patterns = ['u-boot', '*.bin', 'u-boot.dtb', '*.map', '*.img',
-                        'include/autoconf.mk', 'spl/u-boot-spl',
-                        'spl/u-boot-spl.bin']
-            for pattern in patterns:
-                file_list = glob.glob(os.path.join(result.out_dir, pattern))
-                for fname in file_list:
-                    shutil.copy(fname, build_dir)
+            self.CopyFiles(result.out_dir, build_dir, '', ['u-boot*', '*.bin',
+                '*.map', '*.img', 'MLO', 'SPL', 'include/autoconf.mk',
+                'spl/u-boot-spl*'])
 
+    def CopyFiles(self, out_dir, build_dir, dirname, patterns):
+        """Copy files from the build directory to the output.
+
+        Args:
+            out_dir: Path to output directory containing the files
+            build_dir: Place to copy the files
+            dirname: Source directory, '' for normal U-Boot, 'spl' for SPL
+            patterns: A list of filenames (strings) to copy, each relative
+               to the build directory
+        """
+        for pattern in patterns:
+            file_list = glob.glob(os.path.join(out_dir, dirname, pattern))
+            for fname in file_list:
+                target = os.path.basename(fname)
+                if dirname:
+                    base, ext = os.path.splitext(target)
+                    if ext:
+                        target = '%s-%s%s' % (base, dirname, ext)
+                shutil.copy(fname, os.path.join(build_dir, target))
 
     def RunJob(self, job):
         """Run a single job

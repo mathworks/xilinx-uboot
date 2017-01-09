@@ -12,11 +12,11 @@
 #include "asm/errno.h"
 #include "asm/io.h"
 #include "linux/immap_qe.h"
-#include "qe.h"
 #include "uccf.h"
 #include "uec.h"
 #include "uec_phy.h"
 #include "miiphy.h"
+#include <fsl_qe.h>
 #include <phy.h>
 
 /* Default UTBIPAR SMI address */
@@ -1333,7 +1333,7 @@ static int uec_recv(struct eth_device* dev)
 		if (!(status & RxBD_ERROR)) {
 			data = BD_DATA(bd);
 			len = BD_LENGTH(bd);
-			NetReceive(data, len);
+			net_process_received_packet(data, len);
 		} else {
 			printf("%s: Rx error\n", dev->name);
 		}

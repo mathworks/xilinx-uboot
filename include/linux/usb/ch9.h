@@ -229,6 +229,8 @@ struct usb_ctrlrequest {
 #define USB_DT_PIPE_USAGE		0x24
 /* From the USB 3.0 spec */
 #define	USB_DT_SS_ENDPOINT_COMP		0x30
+/* From HID 1.11 spec */
+#define USB_DT_HID_REPORT		0x22
 
 /* Conventional codes for class-specific descriptors.  The convention is
  * defined in the USB "Common Class" Spec (3.11).  Individual class specs
@@ -379,6 +381,29 @@ struct usb_endpoint_descriptor {
 #define USB_DT_ENDPOINT_SIZE		7
 #define USB_DT_ENDPOINT_AUDIO_SIZE	9	/* Audio extension */
 
+/* Used to access common fields */
+struct usb_generic_descriptor {
+	__u8  bLength;
+	__u8  bDescriptorType;
+};
+
+struct __packed usb_class_hid_descriptor {
+	u8 bLength;
+	u8 bDescriptorType;
+	u16 bcdCDC;
+	u8 bCountryCode;
+	u8 bNumDescriptors;	/* 0x01 */
+	u8 bDescriptorType0;
+	u16 wDescriptorLength0;
+	/* optional descriptors are not supported. */
+};
+
+struct __packed usb_class_report_descriptor {
+	u8 bLength;	/* dummy */
+	u8 bDescriptorType;
+	u16 wLength;
+	u8 bData[0];
+};
 
 /*
  * Endpoints
@@ -1001,5 +1026,18 @@ struct usb_set_sel_req {
  * http://compliance.usb.org/index.asp?UpdateFile=Electrical&Format=Standard#34
  */
 #define USB_SELF_POWER_VBUS_MAX_DRAW		100
+
+/**
+ * struct usb_string - wraps a C string and its USB id
+ * @id:the (nonzero) ID for this string
+ * @s:the string, in UTF-8 encoding
+ *
+ * If you're using usb_gadget_get_string(), use this to wrap a string
+ * together with its ID.
+ */
+struct usb_string {
+	u8 id;
+	const char *s;
+};
 
 #endif /* __LINUX_USB_CH9_H */

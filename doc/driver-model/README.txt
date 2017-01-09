@@ -90,68 +90,137 @@ The intent with driver model is that the core portion has 100% test coverage
 in sandbox, and every uclass has its own test. As a move towards this, tests
 are provided in test/dm. To run them, try:
 
-   ./test/dm/test-dm.sh
+   ./test/py/test.py --bd sandbox --build -k ut_dm -v
 
 You should see something like this:
 
-    <...U-Boot banner...>
-    Running 29 driver model tests
-    Test: dm_test_autobind
-    Test: dm_test_autoprobe
-    Test: dm_test_bus_children
-    Device 'd-test': seq 3 is in use by 'b-test'
-    Device 'c-test@0': seq 0 is in use by 'a-test'
-    Device 'c-test@1': seq 1 is in use by 'd-test'
-    Test: dm_test_bus_children_funcs
-    Test: dm_test_bus_children_iterators
-    Test: dm_test_bus_parent_data
-    Test: dm_test_bus_parent_ops
-    Test: dm_test_children
-    Test: dm_test_fdt
-    Device 'd-test': seq 3 is in use by 'b-test'
-    Test: dm_test_fdt_offset
-    Test: dm_test_fdt_pre_reloc
-    Test: dm_test_fdt_uclass_seq
-    Device 'd-test': seq 3 is in use by 'b-test'
-    Device 'a-test': seq 0 is in use by 'd-test'
-    Test: dm_test_gpio
-    extra-gpios: get_value: error: gpio b5 not reserved
-    Test: dm_test_gpio_anon
-    Test: dm_test_gpio_copy
-    Test: dm_test_gpio_leak
-    extra-gpios: get_value: error: gpio b5 not reserved
-    Test: dm_test_gpio_requestf
-    Test: dm_test_leak
-    Test: dm_test_lifecycle
-    Test: dm_test_operations
-    Test: dm_test_ordering
-    Test: dm_test_platdata
-    Test: dm_test_pre_reloc
-    Test: dm_test_remove
-    Test: dm_test_spi_find
-    Invalid chip select 0:0 (err=-19)
-    SF: Failed to get idcodes
-    Device 'name-emul': seq 0 is in use by 'name-emul'
-    SF: Detected M25P16 with page size 256 Bytes, erase size 64 KiB, total 2 MiB
-    Test: dm_test_spi_flash
-    2097152 bytes written in 0 ms
-    SF: Detected M25P16 with page size 256 Bytes, erase size 64 KiB, total 2 MiB
-    SPI flash test:
-    0 erase: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    1 check: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    2 write: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    3 read: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    Test passed
-    0 erase: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    1 check: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    2 write: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    3 read: 0 ticks, 65536000 KiB/s 524288.000 Mbps
-    Test: dm_test_spi_xfer
-    SF: Detected M25P16 with page size 256 Bytes, erase size 64 KiB, total 2 MiB
-    Test: dm_test_uclass
-    Test: dm_test_uclass_before_ready
-    Failures: 0
+(venv)$ ./test/py/test.py --bd sandbox --build -k ut_dm -v
++make O=/root/u-boot/build-sandbox -s sandbox_defconfig
++make O=/root/u-boot/build-sandbox -s -j8
+============================= test session starts ==============================
+platform linux2 -- Python 2.7.5, pytest-2.9.0, py-1.4.31, pluggy-0.3.1 -- /root/u-boot/venv/bin/python
+cachedir: .cache
+rootdir: /root/u-boot, inifile:
+collected 199 items
 
+test/py/tests/test_ut.py::test_ut_dm_init PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_bind] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_multi_channel_conversion] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_multi_channel_shot] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_single_channel_conversion] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_single_channel_shot] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_supply] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_adc_wrong_channel_selection] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_autobind] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_autobind_uclass_pdata_alloc] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_autobind_uclass_pdata_valid] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_autoprobe] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_child_post_bind] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_child_post_bind_uclass] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_child_pre_probe_uclass] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_children] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_children_funcs] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_children_iterators] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_parent_data] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_parent_data_uclass] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_parent_ops] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_parent_platdata] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_bus_parent_platdata_uclass] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_children] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_clk_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_clk_periph] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_device_get_uclass_id] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_eth] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_eth_act] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_eth_alias] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_eth_prime] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_eth_rotate] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_fdt] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_fdt_offset] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_fdt_pre_reloc] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_fdt_uclass_seq] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_gpio] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_gpio_anon] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_gpio_copy] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_gpio_leak] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_gpio_phandles] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_gpio_requestf] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_bytewise] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_find] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_offset] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_offset_len] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_probe_empty] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_read_write] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_i2c_speed] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_leak] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_led_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_led_gpio] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_led_label] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_lifecycle] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_mmc_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_net_retry] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_operations] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_ordering] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_pci_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_pci_busnum] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_pci_swapcase] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_platdata] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_pmic_get] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_pmic_io] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_autoset] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_autoset_list] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_get] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_set_get_current] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_set_get_enable] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_set_get_mode] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_power_regulator_set_get_voltage] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_pre_reloc] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_ram_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_regmap_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_regmap_syscon] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_remoteproc_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_remove] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_reset_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_reset_walk] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_rtc_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_rtc_dual] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_rtc_reset] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_rtc_set_get] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_spi_find] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_spi_flash] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_spi_xfer] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_syscon_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_syscon_by_driver_data] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_timer_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_uclass] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_uclass_before_ready] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_uclass_devices_find] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_uclass_devices_find_by_name] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_uclass_devices_get] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_uclass_devices_get_by_name] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_flash] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_keyb] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_multi] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_remove] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_tree] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_tree_remove] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_usb_tree_reorder] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_base] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_bmp] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_bmp_comp] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_chars] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_context] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_rotation1] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_rotation2] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_rotation3] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_text] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_truetype] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_truetype_bs] PASSED
+test/py/tests/test_ut.py::test_ut[ut_dm_video_truetype_scroll] PASSED
+
+======================= 84 tests deselected by '-kut_dm' =======================
+================== 115 passed, 84 deselected in 3.77 seconds ===================
 
 What is going on?
 -----------------
@@ -259,6 +328,15 @@ device tree) and probe.
 Platform Data
 -------------
 
+*** Note: platform data is the old way of doing things. It is
+*** basically a C structure which is passed to drivers to tell them about
+*** platform-specific settings like the address of its registers, bus
+*** speed, etc. Device tree is now the preferred way of handling this.
+*** Unless you have a good reason not to use device tree (the main one
+*** being you need serial support in SPL and don't have enough SRAM for
+*** the cut-down device tree and libfdt libraries) you should stay away
+*** from platform data.
+
 Platform data is like Linux platform data, if you are familiar with that.
 It provides the board-specific information to start up a device.
 
@@ -324,8 +402,12 @@ Device Tree
 -----------
 
 While platdata is useful, a more flexible way of providing device data is
-by using device tree. With device tree we replace the above code with the
-following device tree fragment:
+by using device tree. In U-Boot you should use this where possible. Avoid
+sending patches which make use of the U_BOOT_DEVICE() macro unless strictly
+necessary.
+
+With device tree we replace the above code with the following device tree
+fragment:
 
 	red-square {
 		compatible = "demo-shape";
@@ -524,19 +606,24 @@ methods actually defined.
 
 1. Bind stage
 
-A device and its driver are bound using one of these two methods:
+U-Boot discovers devices using one of these two methods:
 
-   - Scan the U_BOOT_DEVICE() definitions. U-Boot It looks up the
-name specified by each, to find the appropriate driver. It then calls
-device_bind() to create a new device and bind' it to its driver. This will
-call the device's bind() method.
+   - Scan the U_BOOT_DEVICE() definitions. U-Boot looks up the name specified
+by each, to find the appropriate U_BOOT_DRIVER() definition. In this case,
+there is no path by which driver_data may be provided, but the U_BOOT_DEVICE()
+may provide platdata.
 
    - Scan through the device tree definitions. U-Boot looks at top-level
 nodes in the the device tree. It looks at the compatible string in each node
-and uses the of_match part of the U_BOOT_DRIVER() structure to find the
-right driver for each node. It then calls device_bind() to bind the
-newly-created device to its driver (thereby creating a device structure).
-This will also call the device's bind() method.
+and uses the of_match table of the U_BOOT_DRIVER() structure to find the
+right driver for each node. In this case, the of_match table may provide a
+driver_data value, but platdata cannot be provided until later.
+
+For each device that is discovered, U-Boot then calls device_bind() to create a
+new device, initializes various core fields of the device object such as name,
+uclass & driver, initializes any optional fields of the device object that are
+applicable such as of_offset, driver_data & platdata, and finally calls the
+driver's bind() method if one is defined.
 
 At this point all the devices are known, and bound to their drivers. There
 is a 'struct udevice' allocated for all devices. However, nothing has been

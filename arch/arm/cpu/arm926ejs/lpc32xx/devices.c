@@ -5,12 +5,14 @@
  */
 
 #include <common.h>
-#include <asm/arch/cpu.h>
+#include <dm.h>
+#include <ns16550.h>
+#include <dm/platform_data/lpc32xx_hsuart.h>
+
 #include <asm/arch/clk.h>
 #include <asm/arch/uart.h>
 #include <asm/arch/mux.h>
 #include <asm/io.h>
-#include <dm.h>
 
 static struct clk_pm_regs    *clk  = (struct clk_pm_regs *)CLK_PM_BASE;
 static struct uart_ctrl_regs *ctrl = (struct uart_ctrl_regs *)UART_CTRL_BASE;
@@ -41,17 +43,71 @@ void lpc32xx_uart_init(unsigned int uart_id)
 	       &clk->u3clk + (uart_id - 3));
 }
 
+#if !CONFIG_IS_ENABLED(OF_CONTROL)
+static const struct ns16550_platdata lpc32xx_uart[] = {
+	{ .base = UART3_BASE, .reg_shift = 2, .clock = CONFIG_SYS_NS16550_CLK },
+	{ .base = UART4_BASE, .reg_shift = 2, .clock = CONFIG_SYS_NS16550_CLK },
+	{ .base = UART5_BASE, .reg_shift = 2, .clock = CONFIG_SYS_NS16550_CLK },
+	{ .base = UART6_BASE, .reg_shift = 2, .clock = CONFIG_SYS_NS16550_CLK },
+};
+
+#if defined(CONFIG_LPC32XX_HSUART)
+static const struct lpc32xx_hsuart_platdata lpc32xx_hsuart[] = {
+	{ HS_UART1_BASE, },
+	{ HS_UART2_BASE, },
+	{ HS_UART7_BASE, },
+};
+#endif
+
+U_BOOT_DEVICES(lpc32xx_uarts) = {
+#if defined(CONFIG_LPC32XX_HSUART)
+	{ "lpc32xx_hsuart", &lpc32xx_hsuart[0], },
+	{ "lpc32xx_hsuart", &lpc32xx_hsuart[1], },
+#endif
+	{ "ns16550_serial", &lpc32xx_uart[0], },
+	{ "ns16550_serial", &lpc32xx_uart[1], },
+	{ "ns16550_serial", &lpc32xx_uart[2], },
+	{ "ns16550_serial", &lpc32xx_uart[3], },
+#if defined(CONFIG_LPC32XX_HSUART)
+	{ "lpc32xx_hsuart", &lpc32xx_hsuart[2], },
+#endif
+};
+#endif
+
+void lpc32xx_dma_init(void)
+{
+	/* Enable DMA interface */
+	writel(CLK_DMA_ENABLE, &clk->dmaclk_ctrl);
+}
+
 void lpc32xx_mac_init(void)
 {
 	/* Enable MAC interface */
 	writel(CLK_MAC_REG | CLK_MAC_SLAVE | CLK_MAC_MASTER
-		| CLK_MAC_MII, &clk->macclk_ctrl);
+#if defined(CONFIG_RMII)
+		| CLK_MAC_RMII,
+#else
+		| CLK_MAC_MII,
+#endif
+		&clk->macclk_ctrl);
 }
 
 void lpc32xx_mlc_nand_init(void)
 {
 	/* Enable NAND interface */
 	writel(CLK_NAND_MLC | CLK_NAND_MLC_INT, &clk->flashclk_ctrl);
+}
+
+void lpc32xx_slc_nand_init(void)
+{
+	/* Enable SLC NAND interface */
+	writel(CLK_NAND_SLC | CLK_NAND_SLC_SELECT, &clk->flashclk_ctrl);
+}
+
+void lpc32xx_usb_init(void)
+{
+	/* Do not route the UART 5 Tx/Rx pins to the USB D+ and USB D- pins. */
+	clrbits_le32(&ctrl->ctrl, UART_CTRL_UART5_USB_MODE);
 }
 
 void lpc32xx_i2c_init(unsigned int devnum)

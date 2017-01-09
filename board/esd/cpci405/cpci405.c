@@ -5,6 +5,7 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <console.h>
 #include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>
@@ -470,7 +471,7 @@ int pci_pre_init(struct pci_controller *hose)
 }
 #endif /* defined(CONFIG_PCI) */
 
-#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+#ifdef CONFIG_OF_BOARD_SETUP
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	int rc;
@@ -492,4 +493,4 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	return 0;
 }
-#endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */
+#endif /* CONFIG_OF_BOARD_SETUP */

@@ -8,7 +8,6 @@
 #include <fdtdec.h>
 #include <fpga.h>
 #include <mmc.h>
-#include <netdev.h>
 #include <zynqpl.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
@@ -20,7 +19,10 @@ DECLARE_GLOBAL_DATA_PTR;
 static xilinx_desc fpga;
 
 /* It can be done differently */
+static xilinx_desc fpga007s = XILINX_XC7Z007S_DESC(0x7);
 static xilinx_desc fpga010 = XILINX_XC7Z010_DESC(0x10);
+static xilinx_desc fpga012s = XILINX_XC7Z012S_DESC(0x12);
+static xilinx_desc fpga014s = XILINX_XC7Z014S_DESC(0x14);
 static xilinx_desc fpga015 = XILINX_XC7Z015_DESC(0x15);
 static xilinx_desc fpga020 = XILINX_XC7Z020_DESC(0x20);
 static xilinx_desc fpga030 = XILINX_XC7Z030_DESC(0x30);
@@ -41,8 +43,17 @@ int board_init(void)
 	idcode = zynq_slcr_get_idcode();
 
 	switch (idcode) {
+	case XILINX_ZYNQ_7007S:
+		fpga = fpga007s;
+		break;
 	case XILINX_ZYNQ_7010:
 		fpga = fpga010;
+		break;
+	case XILINX_ZYNQ_7012S:
+		fpga = fpga012s;
+		break;
+	case XILINX_ZYNQ_7014S:
+		fpga = fpga014s;
 		break;
 	case XILINX_ZYNQ_7015:
 		fpga = fpga015;
@@ -106,88 +117,152 @@ int board_late_init(void)
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
-	puts("Board:\tXilinx Zynq\n");
+	puts("Board: Xilinx Zynq\n");
 	return 0;
 }
 #endif
 
-int board_eth_init(bd_t *bis)
+int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
 {
-	u32 ret = 0;
-
-#ifdef CONFIG_XILINX_AXIEMAC
-	ret |= xilinx_axiemac_initialize(bis, XILINX_AXIEMAC_BASEADDR,
-						XILINX_AXIDMA_BASEADDR);
-#endif
-#ifdef CONFIG_XILINX_EMACLITE
-	u32 txpp = 0;
-	u32 rxpp = 0;
-# ifdef CONFIG_XILINX_EMACLITE_TX_PING_PONG
-	txpp = 1;
-# endif
-# ifdef CONFIG_XILINX_EMACLITE_RX_PING_PONG
-	rxpp = 1;
-# endif
-	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR,
-			txpp, rxpp);
+#if defined(CONFIG_ZYNQ_GEM_EEPROM_ADDR) && \
+    defined(CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET)
+	if (eeprom_read(CONFIG_ZYNQ_GEM_EEPROM_ADDR,
+			CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET,
+			ethaddr, 6))
+		printf("I2C EEPROM MAC address read failed\n");
 #endif
 
-#if defined(CONFIG_ZYNQ_GEM)
-# if defined(CONFIG_ZYNQ_GEM0)
-	ret |= zynq_gem_initialize(bis, ZYNQ_GEM_BASEADDR0,
-				   CONFIG_ZYNQ_GEM_PHY_ADDR0,
-				   CONFIG_ZYNQ_GEM_EMIO0);
-# endif
-# if defined(CONFIG_ZYNQ_GEM1)
-	ret |= zynq_gem_initialize(bis, ZYNQ_GEM_BASEADDR1,
-				   CONFIG_ZYNQ_GEM_PHY_ADDR1,
-				   CONFIG_ZYNQ_GEM_EMIO1);
-# endif
-#endif
-	return ret;
+	return 0;
 }
 
-#ifdef CONFIG_CMD_MMC
-int board_mmc_init(bd_t *bd)
+#if !defined(CONFIG_SYS_SDRAM_BASE) && !defined(CONFIG_SYS_SDRAM_SIZE)
+/*
+ * fdt_get_reg - Fill buffer by information from DT
+ */
+static phys_size_t fdt_get_reg(const void *fdt, int nodeoffset, void *buf,
+			       const u32 *cell, int n)
 {
-	int ret = 0;
+	int i = 0, b, banks;
+	int parent_offset = fdt_parent_offset(fdt, nodeoffset);
+	int address_cells = fdt_address_cells(fdt, parent_offset);
+	int size_cells = fdt_size_cells(fdt, parent_offset);
+	char *p = buf;
+	u64 val;
+	u64 vals;
 
-#if defined(CONFIG_ZYNQ_SDHCI)
-# if defined(CONFIG_ZYNQ_SDHCI0)
-	ret = zynq_sdhci_init(ZYNQ_SDHCI_BASEADDR0);
-# endif
-# if defined(CONFIG_ZYNQ_SDHCI1)
-	ret |= zynq_sdhci_init(ZYNQ_SDHCI_BASEADDR1);
-# endif
-#endif
-	return ret;
+	debug("%s: addr_cells=%x, size_cell=%x, buf=%p, cell=%p\n",
+	      __func__, address_cells, size_cells, buf, cell);
+
+	/* Check memory bank setup */
+	banks = n % (address_cells + size_cells);
+	if (banks)
+		panic("Incorrect memory setup cells=%d, ac=%d, sc=%d\n",
+		      n, address_cells, size_cells);
+
+	banks = n / (address_cells + size_cells);
+
+	for (b = 0; b < banks; b++) {
+		debug("%s: Bank #%d:\n", __func__, b);
+		if (address_cells == 2) {
+			val = cell[i + 1];
+			val <<= 32;
+			val |= cell[i];
+			val = fdt64_to_cpu(val);
+			debug("%s: addr64=%llx, ptr=%p, cell=%p\n",
+			      __func__, val, p, &cell[i]);
+			*(phys_addr_t *)p = val;
+		} else {
+			debug("%s: addr32=%x, ptr=%p\n",
+			      __func__, fdt32_to_cpu(cell[i]), p);
+			*(phys_addr_t *)p = fdt32_to_cpu(cell[i]);
+		}
+		p += sizeof(phys_addr_t);
+		i += address_cells;
+
+		debug("%s: pa=%p, i=%x, size=%zu\n", __func__, p, i,
+		      sizeof(phys_addr_t));
+
+		if (size_cells == 2) {
+			vals = cell[i + 1];
+			vals <<= 32;
+			vals |= cell[i];
+			vals = fdt64_to_cpu(vals);
+
+			debug("%s: size64=%llx, ptr=%p, cell=%p\n",
+			      __func__, vals, p, &cell[i]);
+			*(phys_size_t *)p = vals;
+		} else {
+			debug("%s: size32=%x, ptr=%p\n",
+			      __func__, fdt32_to_cpu(cell[i]), p);
+			*(phys_size_t *)p = fdt32_to_cpu(cell[i]);
+		}
+		p += sizeof(phys_size_t);
+		i += size_cells;
+
+		debug("%s: ps=%p, i=%x, size=%zu\n",
+		      __func__, p, i, sizeof(phys_size_t));
+	}
+
+	/* Return the first address size */
+	return *(phys_size_t *)((char *)buf + sizeof(phys_addr_t));
 }
-#endif
+
+#define FDT_REG_SIZE  sizeof(u32)
+/* Temp location for sharing data for storing */
+/* Up to 64-bit address + 64-bit size */
+static u8 tmp[CONFIG_NR_DRAM_BANKS * 16];
+
+void dram_init_banksize(void)
+{
+	int bank;
+
+	memcpy(&gd->bd->bi_dram[0], &tmp, sizeof(tmp));
+
+	for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
+		debug("Bank #%d: start %llx\n", bank,
+		      (unsigned long long)gd->bd->bi_dram[bank].start);
+		debug("Bank #%d: size %llx\n", bank,
+		      (unsigned long long)gd->bd->bi_dram[bank].size);
+	}
+}
 
 int dram_init(void)
 {
-#ifdef CONFIG_OF_CONTROL
-	int node;
-	fdt_addr_t addr;
-	fdt_size_t size;
+	int node, len;
 	const void *blob = gd->fdt_blob;
+	const u32 *cell;
 
-	node = fdt_node_offset_by_prop_value(blob, -1, "device_type",
-					     "memory", 7);
-	if (node == -FDT_ERR_NOTFOUND) {
-		debug("ZYNQ DRAM: Can't get memory node\n");
+	memset(&tmp, 0, sizeof(tmp));
+
+	/* find or create "/memory" node. */
+	node = fdt_subnode_offset(blob, 0, "memory");
+	if (node < 0) {
+		printf("%s: Can't get memory node\n", __func__);
+		return node;
+	}
+
+	/* Get pointer to cells and lenght of it */
+	cell = fdt_getprop(blob, node, "reg", &len);
+	if (!cell) {
+		printf("%s: Can't get reg property\n", __func__);
 		return -1;
 	}
-	addr = fdtdec_get_addr_size(blob, node, "reg", &size);
-	if (addr == FDT_ADDR_T_NONE || size == 0) {
-		debug("ZYNQ DRAM: Can't get base address or size\n");
-		return -1;
-	}
-	gd->ram_size = size;
-#else
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
-#endif
+
+	gd->ram_size = fdt_get_reg(blob, node, &tmp, cell, len / FDT_REG_SIZE);
+
+	debug("%s: Initial DRAM size %llx\n", __func__, (u64)gd->ram_size);
+
 	zynq_ddrc_init();
 
 	return 0;
 }
+#else
+int dram_init(void)
+{
+	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+
+	zynq_ddrc_init();
+
+	return 0;
+}
+#endif

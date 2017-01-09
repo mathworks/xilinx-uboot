@@ -1,5 +1,5 @@
 /*
-* (C) Copyright 2010-2014
+* (C) Copyright 2010-2015
 * NVIDIA Corporation <www.nvidia.com>
 *
  * SPDX-License-Identifier:	GPL-2.0+
@@ -8,8 +8,10 @@
 /* Tegra AP (Application Processor) code */
 
 #include <common.h>
+#include <linux/bug.h>
 #include <asm/io.h>
 #include <asm/arch/gp_padctrl.h>
+#include <asm/arch/mc.h>
 #include <asm/arch-tegra/ap.h>
 #include <asm/arch-tegra/clock.h>
 #include <asm/arch-tegra/fuse.h>
@@ -91,6 +93,13 @@ int tegra_get_chip_sku(void)
 			return TEGRA_SOC_T124;
 		}
 		break;
+	case CHIPID_TEGRA210:
+		switch (sku_id) {
+		case SKU_ID_T210_ENG:
+		default:
+			return TEGRA_SOC_T210;
+		}
+		break;
 	}
 
 	/* unknown chip/sku id */
@@ -99,6 +108,7 @@ int tegra_get_chip_sku(void)
 	return TEGRA_SOC_UNKNOWN;
 }
 
+#ifndef CONFIG_ARM64
 static void enable_scu(void)
 {
 	struct scu_ctlr *scu = (struct scu_ctlr *)NV_PA_ARM_PERIPHBASE;
@@ -130,8 +140,8 @@ static u32 get_odmdata(void)
 	 * on BCTs for currently supported SoCs, which are locked down.
 	 * If this changes in new chips, we can revisit this algorithm.
 	 */
-
-	u32 bct_start, odmdata;
+	unsigned long bct_start;
+	u32 odmdata;
 
 	bct_start = readl(NV_PA_BASE_SRAM + NVBOOTINFOTABLE_BCTPTR);
 	odmdata = readl(bct_start + BCT_ODMDATA_OFFSET);
@@ -154,6 +164,57 @@ static void init_pmc_scratch(void)
 	writel(odmdata, &pmc->pmc_scratch20);
 }
 
+#ifdef CONFIG_ARMV7_SECURE_RESERVE_SIZE
+void protect_secure_section(void)
+{
+	struct mc_ctlr *mc = (struct mc_ctlr *)NV_PA_MC_BASE;
+
+	/* Must be MB aligned */
+	BUILD_BUG_ON(CONFIG_ARMV7_SECURE_BASE & 0xFFFFF);
+	BUILD_BUG_ON(CONFIG_ARMV7_SECURE_RESERVE_SIZE & 0xFFFFF);
+
+	writel(CONFIG_ARMV7_SECURE_BASE, &mc->mc_security_cfg0);
+	writel(CONFIG_ARMV7_SECURE_RESERVE_SIZE >> 20, &mc->mc_security_cfg1);
+}
+#endif
+
+#if defined(CONFIG_ARMV7_NONSEC)
+static void smmu_flush(struct mc_ctlr *mc)
+{
+	(void)readl(&mc->mc_smmu_config);
+}
+
+static void smmu_enable(void)
+{
+	struct mc_ctlr *mc = (struct mc_ctlr *)NV_PA_MC_BASE;
+	u32 value;
+
+	/*
+	 * Enable translation for all clients since access to this register
+	 * is restricted to TrustZone-secured requestors. The kernel will use
+	 * the per-SWGROUP enable bits to enable or disable translations.
+	 */
+	writel(0xffffffff, &mc->mc_smmu_translation_enable_0);
+	writel(0xffffffff, &mc->mc_smmu_translation_enable_1);
+	writel(0xffffffff, &mc->mc_smmu_translation_enable_2);
+	writel(0xffffffff, &mc->mc_smmu_translation_enable_3);
+
+	/*
+	 * Enable SMMU globally since access to this register is restricted
+	 * to TrustZone-secured requestors.
+	 */
+	value = readl(&mc->mc_smmu_config);
+	value |= TEGRA_MC_SMMU_CONFIG_ENABLE;
+	writel(value, &mc->mc_smmu_config);
+
+	smmu_flush(mc);
+}
+#else
+static void smmu_enable(void)
+{
+}
+#endif
+
 void s_init(void)
 {
 	/* Init PMC scratch memory */
@@ -164,6 +225,7 @@ void s_init(void)
 	/* init the cache */
 	config_cache();
 
-	/* init vpr */
-	config_vpr();
+	/* enable SMMU */
+	smmu_enable();
 }
+#endif

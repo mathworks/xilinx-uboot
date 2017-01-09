@@ -24,6 +24,7 @@
 #include <ext4fs.h>
 #include <inttypes.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <stddef.h>
 #include <linux/stat.h>
 #include <linux/time.h>
@@ -80,29 +81,20 @@ void put_ext4(uint64_t off, void *buf, uint32_t size)
 	}
 
 	if (remainder) {
-		if (fs->dev_desc->block_read) {
-			fs->dev_desc->block_read(fs->dev_desc->dev,
-						 startblock, 1, sec_buf);
-			temp_ptr = sec_buf;
-			memcpy((temp_ptr + remainder),
-			       (unsigned char *)buf, size);
-			fs->dev_desc->block_write(fs->dev_desc->dev,
-						  startblock, 1, sec_buf);
-		}
+		blk_dread(fs->dev_desc, startblock, 1, sec_buf);
+		temp_ptr = sec_buf;
+		memcpy((temp_ptr + remainder), (unsigned char *)buf, size);
+		blk_dwrite(fs->dev_desc, startblock, 1, sec_buf);
 	} else {
 		if (size >> log2blksz != 0) {
-			fs->dev_desc->block_write(fs->dev_desc->dev,
-						  startblock,
-						  size >> log2blksz,
-						  (unsigned long *)buf);
+			blk_dwrite(fs->dev_desc, startblock, size >> log2blksz,
+				   (unsigned long *)buf);
 		} else {
-			fs->dev_desc->block_read(fs->dev_desc->dev,
-						 startblock, 1, sec_buf);
+			blk_dread(fs->dev_desc, startblock, 1, sec_buf);
 			temp_ptr = sec_buf;
 			memcpy(temp_ptr, buf, size);
-			fs->dev_desc->block_write(fs->dev_desc->dev,
-						  startblock, 1,
-						  (unsigned long *)sec_buf);
+			blk_dwrite(fs->dev_desc, startblock, 1,
+				   (unsigned long *)sec_buf);
 		}
 	}
 }
@@ -614,8 +606,7 @@ static int parse_path(char **arr, char *dirname)
 	arr[i] = zalloc(strlen("/") + 1);
 	if (!arr[i])
 		return -ENOMEM;
-
-	arr[i++] = "/";
+	memcpy(arr[i++], "/", strlen("/"));
 
 	/* add each path entry after root */
 	while (token != NULL) {
@@ -745,6 +736,11 @@ end:
 fail:
 	free(depth_dirname);
 	free(parse_dirname);
+	for (i = 0; i < depth; i++) {
+		if (!ptr[i])
+			break;
+		free(ptr[i]);
+	}
 	free(ptr);
 	free(parent_inode);
 	free(first_inode);
@@ -765,6 +761,7 @@ static int check_filename(char *filename, unsigned int blknr)
 	struct ext2_dirent *previous_dir = NULL;
 	char *ptr = NULL;
 	struct ext_filesystem *fs = get_fs();
+	int ret = -1;
 
 	/* get the first block of root */
 	first_block_no_of_root = blknr;
@@ -818,12 +815,12 @@ static int check_filename(char *filename, unsigned int blknr)
 		if (ext4fs_put_metadata(root_first_block_addr,
 					first_block_no_of_root))
 			goto fail;
-		return inodeno;
+		ret = inodeno;
 	}
 fail:
 	free(root_first_block_buffer);
 
-	return -1;
+	return ret;
 }
 
 int ext4fs_filename_check(char *filename)
@@ -1281,11 +1278,11 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 		ti_gp_blockno = ext4fs_get_new_blk_no();
 		if (ti_gp_blockno == -1) {
 			printf("no block left to assign\n");
-			goto fail;
+			return;
 		}
 		ti_gp_buff = zalloc(fs->blksz);
 		if (!ti_gp_buff)
-			goto fail;
+			return;
 
 		ti_gp_buff_start_addr = ti_gp_buff;
 		(*no_blks_reqd)++;
@@ -1315,11 +1312,11 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 				ti_child_blockno = ext4fs_get_new_blk_no();
 				if (ti_child_blockno == -1) {
 					printf("no block left assign\n");
-					goto fail;
+					goto fail1;
 				}
 				ti_child_buff = zalloc(fs->blksz);
 				if (!ti_child_buff)
-					goto fail;
+					goto fail1;
 
 				ti_cbuff_start_addr = ti_child_buff;
 				*ti_parent_buff = ti_child_blockno;
@@ -1335,7 +1332,8 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 					    ext4fs_get_new_blk_no();
 					if (actual_block_no == -1) {
 						printf("no block left\n");
-						goto fail;
+						free(ti_cbuff_start_addr);
+						goto fail1;
 					}
 					*ti_child_buff = actual_block_no;
 					debug("TIAB %ld: %u\n", actual_block_no,
@@ -1367,7 +1365,11 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 		put_ext4(((uint64_t) ((uint64_t)ti_gp_blockno * (uint64_t)fs->blksz)),
 			 ti_gp_buff_start_addr, fs->blksz);
 		file_inode->b.blocks.triple_indir_block = ti_gp_blockno;
+		free(ti_gp_buff_start_addr);
+		return;
 	}
+fail1:
+	free(ti_pbuff_start_addr);
 fail:
 	free(ti_gp_buff_start_addr);
 }
@@ -1914,6 +1916,11 @@ int ext4fs_iterate_dir(struct ext2fs_node *dir, char *name,
 		if (status < 0)
 			return 0;
 
+		if (dirent.direntlen == 0) {
+			printf("Failed to iterate over directory %s\n", name);
+			return 0;
+		}
+
 		if (dirent.namelen != 0) {
 			char filename[dirent.namelen + 1];
 			struct ext2fs_node *fdiro;
@@ -2033,14 +2040,14 @@ static char *ext4fs_read_symlink(struct ext2fs_node *node)
 	if (!symlink)
 		return 0;
 
-	if (__le32_to_cpu(diro->inode.size) <= 60) {
+	if (__le32_to_cpu(diro->inode.size) < sizeof(diro->inode.b.symlink)) {
 		strncpy(symlink, diro->inode.b.symlink,
 			 __le32_to_cpu(diro->inode.size));
 	} else {
 		status = ext4fs_read_file(diro, 0,
 					   __le32_to_cpu(diro->inode.size),
 					   symlink, &actread);
-		if (status == 0) {
+		if ((status < 0) || (actread == 0)) {
 			free(symlink);
 			return 0;
 		}

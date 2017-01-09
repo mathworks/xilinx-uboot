@@ -3,6 +3,7 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
+import math
 import os
 import re
 import shutil
@@ -375,7 +376,7 @@ def GetMetaDataForList(commit_range, git_dir=None, count=None,
     if not series:
         series = Series()
     series.allow_overwrite = allow_overwrite
-    params = gitutil.LogCmd(commit_range,reverse=True, count=count,
+    params = gitutil.LogCmd(commit_range, reverse=True, count=count,
                             git_dir=git_dir)
     stdout = command.RunPipe([params], capture=True).stdout
     ps = PatchStream(series, is_log=True)
@@ -468,8 +469,10 @@ def InsertCoverLetter(fname, series, count):
     prefix = series.GetPatchPrefix()
     for line in lines:
         if line.startswith('Subject:'):
-            # TODO: if more than 10 patches this should save 00/xx, not 0/xx
-            line = 'Subject: [%s 0/%d] %s\n' % (prefix, count, text[0])
+            # if more than 10 or 100 patches, it should say 00/xx, 000/xxx, etc
+            zero_repeat = int(math.log10(count)) + 1
+            zero = '0' * zero_repeat
+            line = 'Subject: [%s %s/%d] %s\n' % (prefix, zero, count, text[0])
 
         # Insert our cover letter
         elif line.startswith('*** BLURB HERE ***'):

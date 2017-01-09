@@ -17,7 +17,7 @@
 #include <ld9040.h>
 #include <power/pmic.h>
 #include <usb.h>
-#include <usb/s3c_udc.h>
+#include <usb/dwc2_udc.h>
 #include <asm/arch/cpu.h>
 #include <power/max8998_pmic.h>
 #include <libtizen.h>
@@ -179,7 +179,7 @@ static int s5pc210_phy_control(int on)
 	return 0;
 }
 
-struct s3c_plat_otg_data s5pc210_otg_data = {
+struct dwc2_plat_otg_data s5pc210_otg_data = {
 	.phy_control = s5pc210_phy_control,
 	.regs_phy = EXYNOS4_USBPHY_BASE,
 	.regs_otg = EXYNOS4_USBOTG_BASE,
@@ -191,7 +191,7 @@ struct s3c_plat_otg_data s5pc210_otg_data = {
 int board_usb_init(int index, enum usb_init_type init)
 {
 	debug("USB_udc_probe\n");
-	return s3c_udc_probe(&s5pc210_otg_data);
+	return dwc2_udc_probe(&s5pc210_otg_data);
 }
 
 int exynos_early_init_f(void)
@@ -355,10 +355,10 @@ int exynos_init(void)
 	}
 
 	/* Request soft I2C gpios */
-	sprintf(buf, "soft_i2c_scl");
+	strcpy(buf, "soft_i2c_scl");
 	gpio_request(CONFIG_SOFT_I2C_GPIO_SCL, buf);
 
-	sprintf(buf, "soft_i2c_sda");
+	strcpy(buf, "soft_i2c_sda");
 	gpio_request(CONFIG_SOFT_I2C_GPIO_SDA, buf);
 
 	check_hw_revision();
@@ -367,6 +367,7 @@ int exynos_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_LCD
 void exynos_lcd_misc_init(vidinfo_t *vid)
 {
 #ifdef CONFIG_TIZEN
@@ -379,3 +380,4 @@ void exynos_lcd_misc_init(vidinfo_t *vid)
 
 	setenv("lcdinfo", "lcd=ld9040");
 }
+#endif

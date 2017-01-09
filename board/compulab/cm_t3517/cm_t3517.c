@@ -50,12 +50,12 @@ static struct omap_musb_board_data cm_t3517_musb_board_data = {
 };
 
 static struct musb_hdrc_platform_data cm_t3517_musb_pdata = {
-#if defined(CONFIG_MUSB_HOST)
+#if defined(CONFIG_USB_MUSB_HOST)
 	.mode           = MUSB_HOST,
-#elif defined(CONFIG_MUSB_GADGET)
+#elif defined(CONFIG_USB_MUSB_GADGET)
 	.mode		= MUSB_PERIPHERAL,
 #else
-#error "Please define either CONFIG_MUSB_HOST or CONFIG_MUSB_GADGET"
+#error "Please define either CONFIG_USB_MUSB_HOST or CONFIG_USB_MUSB_GADGET"
 #endif
 	.config         = &cm_t3517_musb_config,
 	.power          = 250,
@@ -98,10 +98,19 @@ int board_init(void)
 	return 0;
 }
 
+/*
+ * Routine: get_board_rev
+ * Description: read system revision
+ */
+u32 get_board_rev(void)
+{
+	return cl_eeprom_get_board_rev(CONFIG_SYS_I2C_EEPROM_BUS);
+};
+
 int misc_init_r(void)
 {
 	cl_print_pcb_info();
-	dieid_num_r();
+	omap_die_id_display();
 
 	return 0;
 }
@@ -132,7 +141,7 @@ static int am3517_get_efuse_enetaddr(u8 *enetaddr)
 	enetaddr[4] = (u8)((lsb >> 8)  & 0xff);
 	enetaddr[5] = (u8)(lsb & 0xff);
 
-	return is_valid_ether_addr(enetaddr);
+	return is_valid_ethaddr(enetaddr);
 }
 
 static inline int cm_t3517_init_emac(bd_t *bis)
@@ -170,7 +179,7 @@ static int cm_t3517_handle_mac_address(void)
 			return ret;
 	}
 
-	if (!is_valid_ether_addr(enetaddr))
+	if (!is_valid_ethaddr(enetaddr))
 		return -1;
 
 	return eth_setenv_enetaddr("ethaddr", enetaddr);

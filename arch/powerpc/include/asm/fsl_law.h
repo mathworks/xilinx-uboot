@@ -1,15 +1,14 @@
 /*
  * Copyright 2008-2011 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _FSL_LAW_H_
 #define _FSL_LAW_H_
 
 #include <asm/io.h>
+#include <linux/log2.h>
 
 #define LAW_EN	0x80000000
 
