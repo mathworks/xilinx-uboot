@@ -7,8 +7,6 @@
 #include <common.h>
 #include <dwmmc.h>
 #include <malloc.h>
-#include <netdev.h>
-#include <phy.h>
 #include "axs10x.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -30,20 +28,10 @@ int board_mmc_init(bd_t *bis)
 	host->dev_index = 0;
 	host->bus_hz = 50000000;
 
-	add_dwmci(host, host->bus_hz, 400000);
+	add_dwmci(host, host->bus_hz / 2, 400000);
 
 	return 0;
 }
-
-int board_eth_init(bd_t *bis)
-{
-	if (designware_initialize(ARC_DWGMAC_BASE,
-				  PHY_INTERFACE_MODE_RGMII) >= 0)
-		return 1;
-
-	return 0;
-}
-
 
 #define AXS_MB_CREG	0xE0011000
 
@@ -66,7 +54,7 @@ void smp_set_core_boot_addr(unsigned long addr, int corenr)
 	writel(addr, (void __iomem *)RESET_VECTOR_ADDR);
 
 	/* Make sure other cores see written value in memory */
-	flush_dcache_range(RESET_VECTOR_ADDR, RESET_VECTOR_ADDR + sizeof(int));
+	flush_dcache_all();
 }
 
 void smp_kick_all_cpus(void)

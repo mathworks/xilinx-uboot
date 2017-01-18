@@ -7,18 +7,10 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __SYS_PROTO_H__
-#define __SYS_PROTO_H__
+#ifndef __MXS_SYS_PROTO_H__
+#define __MXS_SYS_PROTO_H__
 
-#include <asm/imx-common/regs-common.h>
-
-int mxs_reset_block(struct mxs_register_32 *reg);
-int mxs_wait_mask_set(struct mxs_register_32 *reg,
-		       uint32_t mask,
-		       unsigned int timeout);
-int mxs_wait_mask_clr(struct mxs_register_32 *reg,
-		       uint32_t mask,
-		       unsigned int timeout);
+#include <asm/imx-common/sys_proto.h>
 
 int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
 
@@ -33,6 +25,8 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
 void mxs_common_spl_init(const uint32_t arg, const uint32_t *resptr,
 			 const iomux_cfg_t *iomux_setup,
 			 const unsigned int iomux_size);
+
+void mxs_power_switch_dcdc_clocksource(uint32_t freqsel);
 #endif
 
 struct mxs_pair {

@@ -352,6 +352,7 @@ struct vcores_data omap5430_volts_es2 = {
 	.mpu.value = VDD_MPU_ES2,
 	.mpu.addr = SMPS_REG_ADDR_12_MPU,
 	.mpu.pmic = &palmas,
+	.mpu.abb_tx_done_mask = OMAP_ABB_MPU_TXDONE_MASK,
 
 	.core.value = VDD_CORE_ES2,
 	.core.addr = SMPS_REG_ADDR_8_CORE,
@@ -360,74 +361,7 @@ struct vcores_data omap5430_volts_es2 = {
 	.mm.value = VDD_MM_ES2,
 	.mm.addr = SMPS_REG_ADDR_45_IVA,
 	.mm.pmic = &palmas,
-};
-
-struct vcores_data dra752_volts = {
-	.mpu.value	= VDD_MPU_DRA752,
-	.mpu.efuse.reg	= STD_FUSE_OPP_VMIN_MPU_NOM,
-	.mpu.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.mpu.addr	= TPS659038_REG_ADDR_SMPS12,
-	.mpu.pmic	= &tps659038,
-
-	.eve.value	= VDD_EVE_DRA752,
-	.eve.efuse.reg	= STD_FUSE_OPP_VMIN_DSPEVE_NOM,
-	.eve.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.eve.addr	= TPS659038_REG_ADDR_SMPS45,
-	.eve.pmic	= &tps659038,
-
-	.gpu.value	= VDD_GPU_DRA752,
-	.gpu.efuse.reg	= STD_FUSE_OPP_VMIN_GPU_NOM,
-	.gpu.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.gpu.addr	= TPS659038_REG_ADDR_SMPS6,
-	.gpu.pmic	= &tps659038,
-
-	.core.value	= VDD_CORE_DRA752,
-	.core.efuse.reg	= STD_FUSE_OPP_VMIN_CORE_NOM,
-	.core.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.core.addr	= TPS659038_REG_ADDR_SMPS7,
-	.core.pmic	= &tps659038,
-
-	.iva.value	= VDD_IVA_DRA752,
-	.iva.efuse.reg	= STD_FUSE_OPP_VMIN_IVA_NOM,
-	.iva.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.iva.addr	= TPS659038_REG_ADDR_SMPS8,
-	.iva.pmic	= &tps659038,
-};
-
-struct vcores_data dra722_volts = {
-	.mpu.value	= VDD_MPU_DRA72x,
-	.mpu.efuse.reg	= STD_FUSE_OPP_VMIN_MPU_NOM,
-	.mpu.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.mpu.addr	= TPS65917_REG_ADDR_SMPS1,
-	.mpu.pmic	= &tps659038,
-
-	.core.value	= VDD_CORE_DRA72x,
-	.core.efuse.reg	= STD_FUSE_OPP_VMIN_CORE_NOM,
-	.core.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.core.addr	= TPS65917_REG_ADDR_SMPS2,
-	.core.pmic	= &tps659038,
-
-	/*
-	 * The DSPEVE, GPU and IVA rails are usually grouped on DRA72x
-	 * designs and powered by TPS65917 SMPS3, as on the J6Eco EVM.
-	 */
-	.gpu.value	= VDD_GPU_DRA72x,
-	.gpu.efuse.reg	= STD_FUSE_OPP_VMIN_GPU_NOM,
-	.gpu.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.gpu.addr	= TPS65917_REG_ADDR_SMPS3,
-	.gpu.pmic	= &tps659038,
-
-	.eve.value	= VDD_EVE_DRA72x,
-	.eve.efuse.reg	= STD_FUSE_OPP_VMIN_DSPEVE_NOM,
-	.eve.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.eve.addr	= TPS65917_REG_ADDR_SMPS3,
-	.eve.pmic	= &tps659038,
-
-	.iva.value	= VDD_IVA_DRA72x,
-	.iva.efuse.reg	= STD_FUSE_OPP_VMIN_IVA_NOM,
-	.iva.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.iva.addr	= TPS65917_REG_ADDR_SMPS3,
-	.iva.pmic	= &tps659038,
+	.mm.abb_tx_done_mask = OMAP_ABB_MM_TXDONE_MASK,
 };
 
 /*
@@ -460,10 +394,6 @@ void enable_basic_clocks(void)
 		(*prcm)->cm_l4per_gpio6_clkctrl,
 		(*prcm)->cm_l4per_gpio7_clkctrl,
 		(*prcm)->cm_l4per_gpio8_clkctrl,
-#if defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP)
-		(*prcm)->cm_l3init_ocp2scp1_clkctrl,
-		(*prcm)->cm_l3init_usb_otg_ss1_clkctrl,
-#endif
 		0
 	};
 
@@ -494,16 +424,6 @@ void enable_basic_clocks(void)
 			HSMMC_CLKCTRL_CLKSEL_MASK);
 	setbits_le32((*prcm)->cm_l3init_hsmmc2_clkctrl,
 			HSMMC_CLKCTRL_CLKSEL_MASK);
-
-#if defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP)
-	/* Enable 960 MHz clock for dwc3 */
-	setbits_le32((*prcm)->cm_l3init_usb_otg_ss1_clkctrl,
-		     OPTFCLKEN_REFCLK960M);
-
-	/* Enable 32 KHz clock for dwc3 */
-	setbits_le32((*prcm)->cm_coreaon_usb_phy1_core_clkctrl,
-		     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
-#endif
 
 	/* Set the correct clock dividers for mmc */
 	setbits_le32((*prcm)->cm_l3init_hsmmc1_clkctrl,
@@ -565,6 +485,154 @@ void enable_basic_uboot_clocks(void)
 			 1);
 }
 
+#ifdef CONFIG_TI_EDMA3
+void enable_edma3_clocks(void)
+{
+	u32 const clk_domains_edma3[] = {
+		0
+	};
+
+	u32 const clk_modules_hw_auto_edma3[] = {
+		(*prcm)->cm_l3main1_tptc1_clkctrl,
+		(*prcm)->cm_l3main1_tptc2_clkctrl,
+		0
+	};
+
+	u32 const clk_modules_explicit_en_edma3[] = {
+		0
+	};
+
+	do_enable_clocks(clk_domains_edma3,
+			 clk_modules_hw_auto_edma3,
+			 clk_modules_explicit_en_edma3,
+			 1);
+}
+
+void disable_edma3_clocks(void)
+{
+	u32 const clk_domains_edma3[] = {
+		0
+	};
+
+	u32 const clk_modules_disable_edma3[] = {
+		(*prcm)->cm_l3main1_tptc1_clkctrl,
+		(*prcm)->cm_l3main1_tptc2_clkctrl,
+		0
+	};
+
+	do_disable_clocks(clk_domains_edma3,
+			  clk_modules_disable_edma3,
+			  1);
+}
+#endif
+
+#if defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP)
+void enable_usb_clocks(int index)
+{
+	u32 cm_l3init_usb_otg_ss_clkctrl = 0;
+
+	if (index == 0) {
+		cm_l3init_usb_otg_ss_clkctrl =
+			(*prcm)->cm_l3init_usb_otg_ss1_clkctrl;
+		/* Enable 960 MHz clock for dwc3 */
+		setbits_le32((*prcm)->cm_l3init_usb_otg_ss1_clkctrl,
+			     OPTFCLKEN_REFCLK960M);
+
+		/* Enable 32 KHz clock for USB_PHY1 */
+		setbits_le32((*prcm)->cm_coreaon_usb_phy1_core_clkctrl,
+			     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
+
+		/* Enable 32 KHz clock for USB_PHY3 */
+		if (is_dra7xx())
+			setbits_le32((*prcm)->cm_coreaon_usb_phy3_core_clkctrl,
+				     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
+	} else if (index == 1) {
+		cm_l3init_usb_otg_ss_clkctrl =
+			(*prcm)->cm_l3init_usb_otg_ss2_clkctrl;
+		/* Enable 960 MHz clock for dwc3 */
+		setbits_le32((*prcm)->cm_l3init_usb_otg_ss2_clkctrl,
+			     OPTFCLKEN_REFCLK960M);
+
+		/* Enable 32 KHz clock for dwc3 */
+		setbits_le32((*prcm)->cm_coreaon_usb_phy2_core_clkctrl,
+			     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
+
+		/* Enable 60 MHz clock for USB2PHY2 */
+		setbits_le32((*prcm)->cm_coreaon_l3init_60m_gfclk_clkctrl,
+			     L3INIT_CLKCTRL_OPTFCLKEN_60M_GFCLK);
+	}
+
+	u32 const clk_domains_usb[] = {
+		0
+	};
+
+	u32 const clk_modules_hw_auto_usb[] = {
+		(*prcm)->cm_l3init_ocp2scp1_clkctrl,
+		cm_l3init_usb_otg_ss_clkctrl,
+		0
+	};
+
+	u32 const clk_modules_explicit_en_usb[] = {
+		0
+	};
+
+	do_enable_clocks(clk_domains_usb,
+			 clk_modules_hw_auto_usb,
+			 clk_modules_explicit_en_usb,
+			 1);
+}
+
+void disable_usb_clocks(int index)
+{
+	u32 cm_l3init_usb_otg_ss_clkctrl = 0;
+
+	if (index == 0) {
+		cm_l3init_usb_otg_ss_clkctrl =
+			(*prcm)->cm_l3init_usb_otg_ss1_clkctrl;
+		/* Disable 960 MHz clock for dwc3 */
+		clrbits_le32((*prcm)->cm_l3init_usb_otg_ss1_clkctrl,
+			     OPTFCLKEN_REFCLK960M);
+
+		/* Disable 32 KHz clock for USB_PHY1 */
+		clrbits_le32((*prcm)->cm_coreaon_usb_phy1_core_clkctrl,
+			     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
+
+		/* Disable 32 KHz clock for USB_PHY3 */
+		if (is_dra7xx())
+			clrbits_le32((*prcm)->cm_coreaon_usb_phy3_core_clkctrl,
+				     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
+	} else if (index == 1) {
+		cm_l3init_usb_otg_ss_clkctrl =
+			(*prcm)->cm_l3init_usb_otg_ss2_clkctrl;
+		/* Disable 960 MHz clock for dwc3 */
+		clrbits_le32((*prcm)->cm_l3init_usb_otg_ss2_clkctrl,
+			     OPTFCLKEN_REFCLK960M);
+
+		/* Disable 32 KHz clock for dwc3 */
+		clrbits_le32((*prcm)->cm_coreaon_usb_phy2_core_clkctrl,
+			     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
+
+		/* Disable 60 MHz clock for USB2PHY2 */
+		clrbits_le32((*prcm)->cm_coreaon_l3init_60m_gfclk_clkctrl,
+			     L3INIT_CLKCTRL_OPTFCLKEN_60M_GFCLK);
+	}
+
+	u32 const clk_domains_usb[] = {
+		0
+	};
+
+	u32 const clk_modules_disable[] = {
+		(*prcm)->cm_l3init_ocp2scp1_clkctrl,
+		cm_l3init_usb_otg_ss_clkctrl,
+		0
+	};
+
+	do_disable_clocks(clk_domains_usb,
+			  clk_modules_disable,
+			  1);
+}
+#endif
+
 const struct ctrl_ioregs ioregs_omap5430 = {
 	.ctrl_ddrch = DDR_IO_I_34OHM_SR_FASTEST_WD_DQ_NO_PULL_DQS_PULL_DOWN,
 	.ctrl_lpddr2ch = DDR_IO_I_34OHM_SR_FASTEST_WD_CK_CKE_NCS_CA_PULL_DOWN,
@@ -619,6 +687,18 @@ const struct ctrl_ioregs ioregs_dra72x_es1 = {
 	.ctrl_ddr_ctrl_ext_0 = 0xA2000000,
 };
 
+const struct ctrl_ioregs ioregs_dra72x_es2 = {
+	.ctrl_ddrch = 0x40404040,
+	.ctrl_lpddr2ch = 0x40404040,
+	.ctrl_ddr3ch = 0x60606060,
+	.ctrl_ddrio_0 = 0x00094A40,
+	.ctrl_ddrio_1 = 0x00000000,
+	.ctrl_ddrio_2 = 0x00000000,
+	.ctrl_emif_sdram_config_ext = 0x0001C1A7,
+	.ctrl_emif_sdram_config_ext_final = 0x0001C1A7,
+	.ctrl_ddr_ctrl_ext_0 = 0xA2000000,
+};
+
 void __weak hw_data_init(void)
 {
 	u32 omap_rev = omap_revision();
@@ -643,16 +723,16 @@ void __weak hw_data_init(void)
 
 	case DRA752_ES1_0:
 	case DRA752_ES1_1:
+	case DRA752_ES2_0:
 	*prcm = &dra7xx_prcm;
 	*dplls_data = &dra7xx_dplls;
-	*omap_vcores = &dra752_volts;
 	*ctrl = &dra7xx_ctrl;
 	break;
 
 	case DRA722_ES1_0:
+	case DRA722_ES2_0:
 	*prcm = &dra7xx_prcm;
 	*dplls_data = &dra72x_dplls;
-	*omap_vcores = &dra722_volts;
 	*ctrl = &dra7xx_ctrl;
 	break;
 
@@ -678,10 +758,14 @@ void get_ioregs(const struct ctrl_ioregs **regs)
 		break;
 	case DRA752_ES1_0:
 	case DRA752_ES1_1:
+	case DRA752_ES2_0:
 		*regs = &ioregs_dra7xx_es1;
 		break;
 	case DRA722_ES1_0:
 		*regs = &ioregs_dra72x_es1;
+		break;
+	case DRA722_ES2_0:
+		*regs = &ioregs_dra72x_es2;
 		break;
 
 	default:

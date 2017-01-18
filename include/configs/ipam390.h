@@ -18,7 +18,6 @@
 /*
  * Board
  */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_BARIX_IPAM390
 
@@ -91,7 +90,6 @@
 #define CONFIG_SYS_DA850_DDR2_SDBCR2	0x00000004
 #define CONFIG_SYS_DA850_DDR2_PBBPR	0x00000020
 
-
 #define CONFIG_SYS_DA850_DDR2_SDTIMR (		\
 	(13 << DV_DDR_SDTMR1_RFC_SHIFT) |	\
 	(2 << DV_DDR_SDTMR1_RP_SHIFT) |		\
@@ -130,11 +128,9 @@
 				DAVINCI_ABCR_TA(0)	| \
 				DAVINCI_ABCR_ASIZE_8BIT)
 
-
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART0_BASE /* Base address of UART0 */
@@ -207,7 +203,6 @@
 #define CONFIG_MISC_INIT_R
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT	"U-Boot > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS	16 /* max number of command args */
@@ -215,7 +210,6 @@
 #define CONFIG_SYS_LOAD_ADDR	(PHYS_SDRAM_1 + 0x700000)
 #define CONFIG_VERSION_VARIABLE
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CRC32_VERIFY
@@ -229,7 +223,6 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	2
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"defbootargs=setenv bootargs mem=128M console=ttyS0,115200n8 " \
 		"root=/dev/mtdblock5 rw noinitrd " \
@@ -256,11 +249,7 @@
  * U-Boot commands
  */
 #define CONFIG_CMD_ENV
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
 
 #ifdef CONFIG_CMD_BDI
@@ -268,9 +257,6 @@
 #endif
 
 #ifndef CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_CMD_DHCP
-#undef CONFIG_CMD_MII
-#undef CONFIG_CMD_PING
 #endif
 
 #define CONFIG_CMD_NAND

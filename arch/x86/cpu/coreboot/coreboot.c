@@ -8,7 +8,6 @@
 
 #include <common.h>
 #include <fdtdec.h>
-#include <netdev.h>
 #include <asm/io.h>
 #include <asm/msr.h>
 #include <asm/mtrr.h>
@@ -40,20 +39,7 @@ int print_cpuinfo(void)
 	return default_print_cpuinfo();
 }
 
-int last_stage_init(void)
-{
-	if (gd->flags & GD_FLG_COLD_BOOT)
-		timestamp_add_to_bootstage();
-
-	return 0;
-}
-
-int board_eth_init(bd_t *bis)
-{
-	return pci_eth_init(bis);
-}
-
-void board_final_cleanup(void)
+static void board_final_cleanup(void)
 {
 	/*
 	 * Un-cache the ROM so the kernel has one
@@ -83,6 +69,16 @@ void board_final_cleanup(void)
 		printf("Finalizing coreboot\n");
 		outb(0xcb, 0xb2);
 	}
+}
+
+int last_stage_init(void)
+{
+	if (gd->flags & GD_FLG_COLD_BOOT)
+		timestamp_add_to_bootstage();
+
+	board_final_cleanup();
+
+	return 0;
 }
 
 int misc_init_r(void)

@@ -68,13 +68,13 @@ static struct {
 } expansion_config = {0x0};
 
 static const struct ns16550_platdata overo_serial = {
-	OMAP34XX_UART3,
-	2,
-	V_NS16550_CLK
+	.base = OMAP34XX_UART3,
+	.reg_shift = 2,
+	.clock = V_NS16550_CLK
 };
 
 U_BOOT_DEVICE(overo_uart) = {
-	"serial_omap",
+	"ns16550_serial",
 	&overo_serial
 };
 
@@ -285,7 +285,7 @@ int misc_init_r(void)
 	if (expansion_config.content == 1)
 		setenv(expansion_config.env_var, expansion_config.env_setting);
 
-	dieid_num_r();
+	omap_die_id_display();
 
 	if (get_cpu_family() == CPU_OMAP34XX)
 		setenv("boardname", "overo");

@@ -35,15 +35,8 @@
 #define CONFIG_BOOTP_HOSTNAME
 
 /* Command line configuration */
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
-
 
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
@@ -83,7 +76,6 @@
 #define CONFIG_SYS_I2C_PINMUX_SET	(GPIO_PAR_FECI2C_SCL_I2CSCL | GPIO_PAR_FECI2C_SDA_I2CSDA)
 
 /* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
-#define CONFIG_BOOTDELAY	1	/* autoboot after 5 seconds */
 #define CONFIG_BOOTFILE		"u-boot.bin"
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_IPADDR	192.162.1.2
@@ -106,7 +98,6 @@
 	""
 
 #define CONFIG_PRAM		512	/* 512 KB */
-#define CONFIG_SYS_PROMPT		"-> "
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 #if defined(CONFIG_KGDB)

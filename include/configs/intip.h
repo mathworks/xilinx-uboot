@@ -45,12 +45,8 @@
 #define CONFIG_BOARD_EARLY_INIT_F	1	/* Call board_early_init_f */
 #define CONFIG_BOARD_EARLY_INIT_R	1	/* Call board_early_init_r */
 #define CONFIG_MISC_INIT_R		1	/* Call misc_init_r */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_BOARD_TYPES		1	/* support board types */
-#define CONFIG_FIT
 #define CFG_ALT_MEMTEST
-
-#undef CONFIG_ZERO_BOOTDELAY_CHECK     /* ignore keypress on bootdelay==0 */
 
 /*
  * Base addresses -- Note these are effective addresses where the
@@ -215,7 +211,6 @@
  */
 #define CONFIG_SYS_I2C_PPC4XX_SPEED_0		400000
 
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 #define CONFIG_SYS_I2C_EEPROM_ADDR		(0xa8>>1)
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	3
@@ -284,12 +279,8 @@
 #define CONFIG_CMD_CHIP_CONFIG
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DTT
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
 #define CONFIG_CMD_PCI
 #define CONFIG_CMD_SDRAM
-#define CONFIG_CMD_SNTP
-#define CONFIG_CMD_USB
 
 /* Partitions */
 #define CONFIG_MAC_PARTITION
@@ -314,7 +305,6 @@
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x1014	/* IBM */
 #define CONFIG_SYS_PCI_SUBSYS_DEVICEID 0xcafe	/* Whatever */
 
-
 /*
  * External Bus Controller (EBC) Setup
  */
@@ -328,7 +318,6 @@
  *
  * 0xfc00.0000 -> 4.cc00.0000
  */
-
 
 /* Memory Bank 0 (NOR-FLASH) initialization */
 #define CONFIG_SYS_EBC_PB0AP		0x10055e00

@@ -5,6 +5,9 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <aes.h>
+#include <stdint.h>
+
 /* Pull in the current config to define the default environment */
 #include <linux/kconfig.h>
 
@@ -54,12 +57,22 @@
 	"bootm"
 #endif
 
-extern int   fw_printenv(int argc, char *argv[]);
-extern char *fw_getenv  (char *name);
-extern int fw_setenv  (int argc, char *argv[]);
-extern int fw_parse_script(char *fname);
-extern int fw_env_open(void);
-extern int fw_env_write(char *name, char *value);
-extern int fw_env_close(void);
+struct env_opts {
+#ifdef CONFIG_FILE
+	char *config_file;
+#endif
+	int aes_flag; /* Is AES encryption used? */
+	uint8_t aes_key[AES_KEY_LENGTH];
+};
 
-extern unsigned	long  crc32	 (unsigned long, const unsigned char *, unsigned);
+int parse_aes_key(char *key, uint8_t *bin_key);
+
+int fw_printenv(int argc, char *argv[], int value_only, struct env_opts *opts);
+char *fw_getenv(char *name);
+int fw_setenv(int argc, char *argv[], struct env_opts *opts);
+int fw_parse_script(char *fname, struct env_opts *opts);
+int fw_env_open(struct env_opts *opts);
+int fw_env_write(char *name, char *value);
+int fw_env_close(struct env_opts *opts);
+
+unsigned long crc32(unsigned long, const unsigned char *, unsigned);

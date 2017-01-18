@@ -15,7 +15,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		cpu@0 {
+		cpu0: cpu@0 {
 			compatible = "arm,cortex-a9";
 			device_type = "cpu";
 			reg = <0>;
@@ -29,7 +29,7 @@
 			>;
 		};
 
-		cpu@1 {
+		cpu1: cpu@1 {
 			compatible = "arm,cortex-a9";
 			device_type = "cpu";
 			reg = <1>;
@@ -54,6 +54,7 @@
 	};
 
 	amba: amba {
+		u-boot,dm-pre-reloc;
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -97,6 +98,8 @@
 			#gpio-cells = <2>;
 			clocks = <&clkc 42>;
 			gpio-controller;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 			interrupt-parent = <&intc>;
 			interrupts = <0 20 4>;
 			reg = <0xe000a000 0x1000>;
@@ -180,7 +183,6 @@
 			interrupts = <0 26 4>;
 			clocks = <&clkc 25>, <&clkc 34>;
 			clock-names = "ref_clk", "pclk";
-			spi-max-frequency = <166666700>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
@@ -193,7 +195,6 @@
 			interrupts = <0 49 4>;
 			clocks = <&clkc 26>, <&clkc 35>;
 			clock-names = "ref_clk", "pclk";
-			spi-max-frequency = <166666700>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
@@ -231,7 +232,7 @@
 			nor0: flash@e2000000 {
 				status = "disabled";
 				compatible = "cfi-flash";
-				reg = <0xe2000000 0x1000>;
+				reg = <0xe2000000 0x2000000>;
 				#address-cells = <1>;
 				#size-cells = <1>;
 			};
@@ -282,7 +283,7 @@
 		slcr: slcr@f8000000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
-			compatible = "xlnx,zynq-slcr", "syscon", "simple-bus";
+			compatible = "xlnx,zynq-slcr", "syscon", "simple-mfd";
 			reg = <0xF8000000 0x1000>;
 			ranges;
 			clkc: clkc@100 {
@@ -301,6 +302,13 @@
 						"gpio_aper", "lqspi_aper", "smc_aper", "swdt",
 						"dbg_trc", "dbg_apb";
 				reg = <0x100 0x100>;
+			};
+
+			rstc: rstc@200 {
+				compatible = "xlnx,zynq-reset";
+				reg = <0x200 0x48>;
+				#reset-cells = <1>;
+				syscon = <&slcr>;
 			};
 
 			pinctrl0: pinctrl@700 {
@@ -329,12 +337,13 @@
 		};
 
 		devcfg: devcfg@f8007000 {
-			clock-names = "ref_clk", "fclk0", "fclk1", "fclk2", "fclk3";
-			clocks = <&clkc 12>, <&clkc 15>, <&clkc 16>, <&clkc 17>, <&clkc 18>;
 			compatible = "xlnx,zynq-devcfg-1.0";
 			interrupt-parent = <&intc>;
 			interrupts = <0 8 4>;
 			reg = <0xf8007000 0x100>;
+			clocks = <&clkc 12>, <&clkc 15>, <&clkc 16>, <&clkc 17>, <&clkc 18>;
+			clock-names = "ref_clk", "fclk0", "fclk1", "fclk2", "fclk3";
+			syscon = <&slcr>;
 		};
 
 		global_timer: timer@f8f00200 {

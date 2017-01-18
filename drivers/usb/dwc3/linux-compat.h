@@ -17,8 +17,6 @@
 #define dev_WARN(dev, format, arg...)	debug(format, ##arg)
 #define WARN_ON_ONCE(val)		debug("Error %d\n", val)
 
-#define BUILD_BUG_ON_NOT_POWER_OF_2(n)
-
 static inline size_t strlcat(char *dest, const char *src, size_t n)
 {
 	strcat(dest, src);
@@ -29,10 +27,5 @@ static inline void *devm_kzalloc(struct device *dev, unsigned int size,
 				 unsigned int flags)
 {
 	return kzalloc(size, flags);
-}
-
-static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
-{
-	return kzalloc(n * size, flags);
 }
 #endif

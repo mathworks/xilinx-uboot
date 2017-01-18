@@ -16,7 +16,6 @@
 #define CONFIG_MPC837x		1 /* MPC837x CPU specific */
 #define CONFIG_MPC837XERDB	1
 #define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define	CONFIG_SYS_TEXT_BASE	0xFE000000
 
@@ -330,7 +329,6 @@
  * Serial Port
  */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -345,14 +343,6 @@
 #define CONFIG_FSL_SERDES
 #define CONFIG_FSL_SERDES1	0xe3000
 #define CONFIG_FSL_SERDES2	0xe3100
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* Pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT	1
-#define CONFIG_OF_BOARD_SETUP	1
-#define CONFIG_OF_STDOUT_VIA_ALIAS 1
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -466,7 +456,6 @@
 #define CONFIG_LBA48
 #define CONFIG_CMD_SATA
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_EXT2
 #endif
 
 /*
@@ -496,13 +485,9 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_DATE
 
 #if defined(CONFIG_PCI)
@@ -520,10 +505,7 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_ESDHC_PIN_MUX
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC83xx_ESDHC_ADDR
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
 #endif
 
@@ -680,7 +662,6 @@
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_HAS_FSL_DR_USB
-#define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_FSL
@@ -698,7 +679,6 @@
 
 				/* default location for tftp and bootm */
 #define CONFIG_LOADADDR		800000
-#define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
 #define CONFIG_BAUDRATE		115200
 
 #define CONFIG_EXTRA_ENV_SETTINGS \

@@ -67,8 +67,34 @@ void do_fixup_by_compat(void *fdt, const char *compat,
 			const char *prop, const void *val, int len, int create);
 void do_fixup_by_compat_u32(void *fdt, const char *compat,
 			    const char *prop, u32 val, int create);
+/**
+ * Setup the memory node in the DT. Creates one if none was existing before.
+ * Calls fdt_fixup_memory_banks() to populate a single reg pair covering the
+ * whole memory.
+ *
+ * @param blob		FDT blob to update
+ * @param start		Begin of DRAM mapping in physical memory
+ * @param size		Size of the single memory bank
+ * @return 0 if ok, or -1 or -FDT_ERR_... on error
+ */
 int fdt_fixup_memory(void *blob, u64 start, u64 size);
+
+/**
+ * Fill the DT memory node with multiple memory banks.
+ * Creates the node if none was existing before.
+ * If banks is 0, it will not touch the existing reg property. This allows
+ * boards to not mess with the existing DT setup, which may have been
+ * filled in properly before.
+ *
+ * @param blob		FDT blob to update
+ * @param start		Array of size <banks> to hold the start addresses.
+ * @param size		Array of size <banks> to hold the size of each region.
+ * @param banks		Number of memory banks to create. If 0, the reg
+ *			property will be left untouched.
+ * @return 0 if ok, or -1 or -FDT_ERR_... on error
+ */
 int fdt_fixup_memory_banks(void *blob, u64 start[], u64 size[], int banks);
+
 void fdt_fixup_ethernet(void *fdt);
 int fdt_find_and_setprop(void *fdt, const char *node, const char *prop,
 			 const void *val, int len, int create);
@@ -87,11 +113,11 @@ void fdt_fixup_qe_firmware(void *fdt);
  */
 int fdt_fixup_display(void *blob, const char *path, const char *display);
 
-#if defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_MPH_USB)
+#if defined(CONFIG_USB_EHCI_FSL) || defined(CONFIG_USB_XHCI_FSL)
 void fdt_fixup_dr_usb(void *blob, bd_t *bd);
 #else
 static inline void fdt_fixup_dr_usb(void *blob, bd_t *bd) {}
-#endif /* defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_MPH_USB) */
+#endif /* defined(CONFIG_USB_EHCI_FSL) || defined(CONFIG_USB_XHCI_FSL) */
 
 #if defined(CONFIG_SYS_FSL_SEC_COMPAT)
 void fdt_fixup_crypto_node(void *blob, int sec_rev);

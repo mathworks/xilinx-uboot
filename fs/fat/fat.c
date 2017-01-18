@@ -10,12 +10,14 @@
  */
 
 #include <common.h>
+#include <blk.h>
 #include <config.h>
 #include <exports.h>
 #include <fat.h>
 #include <asm/byteorder.h>
 #include <part.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <linux/compiler.h>
 #include <linux/ctype.h>
 
@@ -36,7 +38,7 @@ static void downcase(char *str)
 	}
 }
 
-static block_dev_desc_t *cur_dev;
+static struct blk_desc *cur_dev;
 static disk_partition_t cur_part_info;
 
 #define DOS_BOOT_MAGIC_OFFSET	0x1fe
@@ -45,14 +47,20 @@ static disk_partition_t cur_part_info;
 
 static int disk_read(__u32 block, __u32 nr_blocks, void *buf)
 {
-	if (!cur_dev || !cur_dev->block_read)
+	ulong ret;
+
+	if (!cur_dev)
 		return -1;
 
-	return cur_dev->block_read(cur_dev->dev,
-			cur_part_info.start + block, nr_blocks, buf);
+	ret = blk_dread(cur_dev, cur_part_info.start + block, nr_blocks, buf);
+
+	if (nr_blocks && ret == 0)
+		return -1;
+
+	return ret;
 }
 
-int fat_set_blk_dev(block_dev_desc_t *dev_desc, disk_partition_t *info)
+int fat_set_blk_dev(struct blk_desc *dev_desc, disk_partition_t *info)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(unsigned char, buffer, dev_desc->blksz);
 
@@ -81,7 +89,7 @@ int fat_set_blk_dev(block_dev_desc_t *dev_desc, disk_partition_t *info)
 	return -1;
 }
 
-int fat_register_device(block_dev_desc_t *dev_desc, int part_no)
+int fat_register_device(struct blk_desc *dev_desc, int part_no)
 {
 	disk_partition_t info;
 
@@ -89,10 +97,10 @@ int fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 	cur_dev = NULL;
 
 	/* Read the partition table, if present */
-	if (get_partition_info(dev_desc, part_no, &info)) {
+	if (part_get_info(dev_desc, part_no, &info)) {
 		if (part_no != 0) {
 			printf("** Partition %d not valid on device %d **\n",
-					part_no, dev_desc->dev);
+					part_no, dev_desc->devnum);
 			return -1;
 		}
 
@@ -320,9 +328,6 @@ get_cluster(fsdata *mydata, __u32 clustnum, __u8 *buffer, unsigned long size)
  * Update the number of bytes read in *gotsize or return -1 on fatal errors.
  */
 #ifndef CONFIG_ZYNQ_OCM
-#if defined(CONFIG_ARCH_ZYNQ) && defined(CONFIG_SPL_BUILD)
-__section(.ddr)
-#endif
 __u8 get_contents_vfatname_block[MAX_CLUSTSIZE]
 	__aligned(ARCH_DMA_MINALIGN);
 #else
@@ -579,9 +584,6 @@ static __u8 mkcksum(const char name[8], const char ext[3])
  * starting at 'startsect'
  */
 #ifndef CONFIG_ZYNQ_OCM
-#if defined(CONFIG_ARCH_ZYNQ) && defined(CONFIG_SPL_BUILD)
-__section(.ddr)
-#endif
 __u8 get_dentfromdir_block[MAX_CLUSTSIZE]
 	__aligned(ARCH_DMA_MINALIGN);
 #endif
@@ -820,9 +822,6 @@ exit:
 }
 
 #ifndef CONFIG_ZYNQ_OCM
-#if defined(CONFIG_ARCH_ZYNQ) && defined(CONFIG_SPL_BUILD)
-__section(.ddr)
-#endif
 __u8 do_fat_read_at_block[MAX_CLUSTSIZE]
 	__aligned(ARCH_DMA_MINALIGN);
 #endif
@@ -920,6 +919,7 @@ int do_fat_read_at(const char *filename, loff_t pos, void *buffer,
 	strcpy(fnamecopy, filename);
 	downcase(fnamecopy);
 
+root_reparse:
 	if (*fnamecopy == '\0') {
 		if (!dols)
 			goto exit;
@@ -1205,6 +1205,34 @@ rootdir_done:
 		if (isdir && !(dentptr->attr & ATTR_DIR))
 			goto exit;
 
+		/*
+		 * If we are looking for a directory, and found a directory
+		 * type entry, and the entry is for the root directory (as
+		 * denoted by a cluster number of 0), jump back to the start
+		 * of the function, since at least on FAT12/16, the root dir
+		 * lives in a hard-coded location and needs special handling
+		 * to parse, rather than simply following the cluster linked
+		 * list in the FAT, like other directories.
+		 */
+		if (isdir && (dentptr->attr & ATTR_DIR) && !START(dentptr)) {
+			/*
+			 * Modify the filename to remove the prefix that gets
+			 * back to the root directory, so the initial root dir
+			 * parsing code can continue from where we are without
+			 * confusion.
+			 */
+			strcpy(fnamecopy, nextname ?: "");
+			/*
+			 * Set up state the same way as the function does when
+			 * first started. This is required for the root dir
+			 * parsing code operates in its expected environment.
+			 */
+			subname = "";
+			cursect = mydata->rootdir_sect;
+			isdir = 0;
+			goto root_reparse;
+		}
+
 		if (idx >= 0)
 			subname = nextname;
 	}
@@ -1242,7 +1270,7 @@ int file_fat_detectfs(void)
 
 #if defined(CONFIG_CMD_IDE) || \
     defined(CONFIG_CMD_SATA) || \
-    defined(CONFIG_CMD_SCSI) || \
+    defined(CONFIG_SCSI) || \
     defined(CONFIG_CMD_USB) || \
     defined(CONFIG_MMC)
 	printf("Interface:  ");
@@ -1272,7 +1300,7 @@ int file_fat_detectfs(void)
 		printf("Unknown");
 	}
 
-	printf("\n  Device %d: ", cur_dev->dev);
+	printf("\n  Device %d: ", cur_dev->devnum);
 	dev_print(cur_dev);
 #endif
 

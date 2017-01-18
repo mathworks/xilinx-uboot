@@ -18,12 +18,12 @@
  */
 
 #include <common.h>
-#include <watchdog.h>
-#include <serial.h>
 #include <asm/arch/pxa-regs.h>
 #include <asm/arch/regs-uart.h>
 #include <asm/io.h>
 #include <linux/compiler.h>
+#include <serial.h>
+#include <watchdog.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -156,6 +156,10 @@ void pxa_putc_dev(unsigned int uart_index, const char c)
 {
 	struct pxa_uart_regs *uart_regs;
 
+	/* If \n, also do \r */
+	if (c == '\n')
+		pxa_putc_dev(uart_index, '\r');
+
 	uart_regs = pxa_uart_index_to_regs(uart_index);
 	if (!uart_regs)
 		hang();
@@ -163,10 +167,6 @@ void pxa_putc_dev(unsigned int uart_index, const char c)
 	while (!(readl(&uart_regs->lsr) & LSR_TEMT))
 		WATCHDOG_RESET();
 	writel(c, &uart_regs->thr);
-
-	/* If \n, also do \r */
-	if (c == '\n')
-		pxa_putc_dev (uart_index,'\r');
 }
 
 /*

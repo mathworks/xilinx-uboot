@@ -9,24 +9,14 @@
 #ifndef __RCAR_GEN2_COMMON_H
 #define __RCAR_GEN2_COMMON_H
 
+#define CONFIG_SYS_CACHELINE_SIZE 64
+
 #include <asm/arch/rmobile.h>
 
 #define CONFIG_CMD_DFL
 #define CONFIG_CMD_SDRAM
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_CMD_USB
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
 
 #define CONFIG_SYS_THUMB_BUILD
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* Support File sytems */
 #define CONFIG_FAT_WRITE
@@ -39,10 +29,8 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 #define CONFIG_CMDLINE_EDITING
-#define CONFIG_OF_LIBFDT
 
 #define CONFIG_BAUDRATE		38400
-#define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTARGS		""
 
 #define CONFIG_VERSION_VARIABLE

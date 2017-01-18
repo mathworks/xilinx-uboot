@@ -20,7 +20,6 @@
 #ifndef _CONFIG_KM_ARM_H
 #define _CONFIG_KM_ARM_H
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* We got removed from Linux mach-types.h */
 #define MACH_TYPE_KM_KIRKWOOD          2255
@@ -42,7 +41,6 @@
 #include "keymile-common.h"
 
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_SF
 
 /* SPI NOR Flash default params, used by sf commands */
 #define CONFIG_SF_DEFAULT_SPEED		8100000
@@ -83,18 +81,20 @@
 	"u-boot="__stringify(CONFIG_HOSTNAME) "/u-boot.kwb\0"		\
 	CONFIG_KM_UPDATE_UBOOT						\
 	"set_fdthigh=setenv fdt_high ${kernelmem}\0"			\
+	"checkfdt="							\
+		"if cramfsls fdt_0x${IVM_BoardId}_0x${IVM_HWKey}.dtb; "	\
+		"then true; else setenv cramfsloadfdt true; "		\
+		"setenv boot bootm ${load_addr_r}; "			\
+		"echo No FDT found, booting with the kernel "		\
+		"appended one; fi\0"					\
 	""
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 #define CONFIG_MISC_INIT_R
 
-/* Pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT
-
 /*
  * NS16550 Configuration
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		CONFIG_SYS_TCLK
@@ -122,7 +122,6 @@
 /*
  * Commands configuration
  */
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_MTDPARTS
 
 /*
@@ -159,7 +158,6 @@
  */
 #define CONFIG_NETCONSOLE	/* include NetConsole support   */
 #define CONFIG_MII		/* expose smi ove miiphy interface */
-#define CONFIG_CMD_MII		/* to debug mdio phy config */
 #define CONFIG_MVGBE		/* Enable Marvell Gbe Controller Driver */
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	/* detect link using phy */
 #define CONFIG_MVGBE_PORTS	{1, 0}	/* enable port 0 only */
@@ -217,7 +215,6 @@ int get_scl(void);
 #define	CONFIG_SYS_I2C_SOFT_SPEED	100000
 
 /* EEprom support 24C128, 24C256 valid for environment eeprom */
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_ENABLE
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	6 /* 64 Byte write page */
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	10
@@ -243,14 +240,13 @@ int get_scl(void);
 #define CONFIG_SYS_EEPROM_WREN
 #define CONFIG_ENV_OFFSET		0x0 /* no bracets! */
 #define CONFIG_ENV_SIZE			(0x2000 - CONFIG_ENV_OFFSET)
-#define CONFIG_I2C_ENV_EEPROM_BUS	KM_ENV_BUS
+#define CONFIG_I2C_ENV_EEPROM_BUS 5 /* I2C2 (Mux-Port 5) */
 #define CONFIG_ENV_OFFSET_REDUND	0x2000 /* no bracets! */
 #define CONFIG_ENV_SIZE_REDUND		(CONFIG_ENV_SIZE)
 #endif
 
 #define CONFIG_SYS_REDUNDAND_ENVIRONMENT
 
-#define CONFIG_SPI_FLASH_STMICRO
 
 /* SPI bus claim MPP configuration */
 #define CONFIG_SYS_KW_SPI_MPP	0x0

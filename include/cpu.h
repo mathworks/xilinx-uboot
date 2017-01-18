@@ -15,15 +15,20 @@
  * device.
  *
  * @cpu_id:	Platform-specific way of identifying the CPU.
+ * @ucode_version: Microcode version, if CPU_FEAT_UCODE is set
  */
 struct cpu_platdata {
 	int cpu_id;
+	int ucode_version;
+	ulong device_id;
 };
 
 /* CPU features - mostly just a placeholder for now */
 enum {
 	CPU_FEAT_L1_CACHE	= 0,	/* Supports level 1 cache */
 	CPU_FEAT_MMU		= 1,	/* Supports virtual memory */
+	CPU_FEAT_UCODE		= 2,	/* Requires/uses microcode */
+	CPU_FEAT_DEVICE_ID	= 3,	/* Provides a device ID */
 
 	CPU_FEAT_COUNT,
 };
@@ -58,6 +63,14 @@ struct cpu_ops {
 	 * @return 0 if OK, -ve on error
 	 */
 	int (*get_info)(struct udevice *dev, struct cpu_info *info);
+
+	/**
+	 * get_count() - Get number of CPUs
+	 *
+	 * @dev:	Device to check (UCLASS_CPU)
+	 * @return CPU count if OK, -ve on error
+	 */
+	int (*get_count)(struct udevice *dev);
 };
 
 #define cpu_get_ops(dev)        ((struct cpu_ops *)(dev)->driver->ops)
@@ -80,5 +93,13 @@ int cpu_get_desc(struct udevice *dev, char *buf, int size);
  * @return 0 if OK, -ve on error
  */
 int cpu_get_info(struct udevice *dev, struct cpu_info *info);
+
+/**
+ * cpu_get_count() - Get number of CPUs
+ *
+ * @dev:	Device to check (UCLASS_CPU)
+ * @return CPU count if OK, -ve on error
+ */
+int cpu_get_count(struct udevice *dev);
 
 #endif

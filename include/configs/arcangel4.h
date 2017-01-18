@@ -41,10 +41,6 @@
 /*
  * Command line configuration
  */
-#define CONFIG_CMD_ELF
-
-#define CONFIG_OF_LIBFDT
-
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_MAXARGS		16
 
@@ -58,7 +54,6 @@
 /*
  * Environment configuration
  */
-#define CONFIG_BOOTDELAY		3
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"console=ttyARC0,115200n8"
 #define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR
@@ -67,7 +62,6 @@
  * Console configuration
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"arcangel4# "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \

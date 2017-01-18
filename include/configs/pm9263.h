@@ -18,8 +18,6 @@
  */
 #include <asm/hardware.h>
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 /* ARM asynchronous clock */
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -184,7 +182,6 @@
 #define CONFIG_RED_LED		GPIO_PIN_PB(7) /* this is the power led */
 #define CONFIG_GREEN_LED	GPIO_PIN_PB(8) /* this is the user1 led */
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * BOOTP options
@@ -197,11 +194,7 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_PING		1
-#define CONFIG_CMD_DHCP		1
 #define CONFIG_CMD_NAND		1
-#define CONFIG_CMD_USB		1
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS	1
@@ -370,7 +363,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_PROMPT		"u-boot-pm9263> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		\

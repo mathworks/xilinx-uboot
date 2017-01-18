@@ -43,13 +43,6 @@
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_MISC_INIT_R
 #define CONFIG_LAST_STAGE_INIT
-#define CONFIG_SYS_GENERIC_BOARD
-
-#undef CONFIG_ZERO_BOOTDELAY_CHECK	/* ignore keypress on bootdelay==0 */
-
-/* new uImage format support */
-#define CONFIG_FIT
-#define CONFIG_FIT_VERBOSE
 
 /*-----------------------------------------------------------------------
  * Base addresses -- Note these are effective addresses where the

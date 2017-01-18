@@ -3,47 +3,79 @@ if ARCH_UNIPHIER
 config SYS_CONFIG_NAME
 	default "uniphier"
 
-config UNIPHIER_SMP
+config ARCH_UNIPHIER_32BIT
 	bool
+	select CPU_V7
+
+config ARCH_UNIPHIER_64BIT
+	bool
+	select ARM64
+	select SPL_SEPARATE_BSS
+	select ARMV8_MULTIENTRY
 
 choice
-	prompt "UniPhier SoC select"
-	default MACH_PH1_PRO4
+        prompt "UniPhier SoC select"
+        default ARCH_UNIPHIER_PRO4
 
-config MACH_PH1_PRO4
-	bool "PH1-Pro4"
-	select UNIPHIER_SMP
+config ARCH_UNIPHIER_SLD3
+	bool "UniPhier PH1-sLD3 SoC"
+	select ARCH_UNIPHIER_32BIT
 
-config MACH_PH1_LD4
-	bool "PH1-LD4"
+config ARCH_UNIPHIER_LD4_SLD8
+	bool "UniPhier PH1-LD4/PH1-sLD8 SoC"
+	select ARCH_UNIPHIER_32BIT
 
-config MACH_PH1_SLD8
-	bool "PH1-sLD8"
+config ARCH_UNIPHIER_PRO4
+	bool "UniPhier PH1-Pro4 SoC"
+	select ARCH_UNIPHIER_32BIT
+
+config ARCH_UNIPHIER_PRO5_PXS2_LD6B
+	bool "UniPhier PH1-Pro5/ProXstream2/PH1-LD6b SoC"
+	select ARCH_UNIPHIER_32BIT
+
+config ARCH_UNIPHIER_LD11
+	bool "UniPhier PH1-LD11 SoC"
+	select ARCH_UNIPHIER_64BIT
+
+config ARCH_UNIPHIER_LD20
+	bool "UniPhier PH1-LD20 SoC"
+	select ARCH_UNIPHIER_64BIT
+	select OF_BOARD_SETUP
 
 endchoice
 
-choice
-	prompt "UniPhier Support Card select"
-	optional
+config ARCH_UNIPHIER_LD4
+	bool "Enable UniPhier PH1-LD4 SoC support"
+	depends on ARCH_UNIPHIER_LD4_SLD8
+	default y
 
-config PFC_MICRO_SUPPORT_CARD
-	bool "Support card with PFC CPLD"
+config ARCH_UNIPHIER_SLD8
+	bool "Enable UniPhier PH1-sLD8 SoC support"
+	depends on ARCH_UNIPHIER_LD4_SLD8
+	default y
+
+config ARCH_UNIPHIER_PRO5
+	bool "Enable UniPhier PH1-Pro5 SoC support"
+	depends on ARCH_UNIPHIER_PRO5_PXS2_LD6B
+	default y
+
+config ARCH_UNIPHIER_PXS2
+	bool "Enable UniPhier ProXstream2 SoC support"
+	depends on ARCH_UNIPHIER_PRO5_PXS2_LD6B
+	default y
+
+config ARCH_UNIPHIER_LD6B
+	bool "Enable UniPhier PH1-LD6b SoC support"
+	depends on ARCH_UNIPHIER_PRO5_PXS2_LD6B
+	default y
+
+config MICRO_SUPPORT_CARD
+	bool "Use Micro Support Card"
 	help
-	  This option provides support for the expansion board with PFC
-	  original address mapping.
+	  This option provides support for the expansion board, available
+	  on some UniPhier reference boards.
 
 	  Say Y to use the on-board UART, Ether, LED devices.
-
-config DCC_MICRO_SUPPORT_CARD
-	bool "Support card with DCC CPLD"
-	help
-	  This option provides support for the expansion board with DCC-
-	  arranged address mapping that is compatible with legacy UniPhier
-	  reference boards.
-
-	  Say Y to use the on-board UART, Ether, LED devices.
-
-endchoice
 
 config CMD_PINMON
 	bool "Enable boot mode pins monitor command"
@@ -55,26 +87,18 @@ config CMD_PINMON
 
 config CMD_DDRPHY_DUMP
 	bool "Enable dump command of DDR PHY parameters"
+	depends on ARCH_UNIPHIER_LD4 || ARCH_UNIPHIER_PRO4 || ARCH_UNIPHIER_SLD8
+	default y
 	help
 	  The command "ddrphy" shows the resulting parameters of DDR PHY
 	  training; it is useful for the evaluation of DDR PHY training.
 
-choice
-	prompt "DDR3 Frequency select"
-
-config DDR_FREQ_1600
-	bool "DDR3 1600"
-	depends on MACH_PH1_PRO4 || MACH_PH1_LD4
-
-config DDR_FREQ_1333
-	bool "DDR3 1333"
-	depends on MACH_PH1_LD4 || MACH_PH1_SLD8
-
-endchoice
-
-config DDR_FREQ
-	int
-	default 1333 if DDR_FREQ_1333
-	default 1600 if DDR_FREQ_1600
+config CMD_DDRMPHY_DUMP
+	bool "Enable dump command of DDR Multi PHY parameters"
+	depends on ARCH_UNIPHIER_PXS2 || ARCH_UNIPHIER_LD6B
+	default y
+	help
+	  The command "ddrmphy" shows the resulting parameters of DDR Multi PHY
+	  training; it is useful for the evaluation of DDR Multi PHY training.
 
 endif

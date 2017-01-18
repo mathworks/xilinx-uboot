@@ -8,7 +8,9 @@
 
 #include <bouncebuf.h>
 #include <common.h>
+#include <errno.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <mmc.h>
 #include <dwmmc.h>
 #include <asm-generic/errno.h>
@@ -38,7 +40,7 @@ static void dwmci_set_idma_desc(struct dwmci_idmac *idmac,
 	desc->flags = desc0;
 	desc->cnt = desc1;
 	desc->addr = desc2;
-	desc->next_addr = (unsigned int)desc + sizeof(struct dwmci_idmac);
+	desc->next_addr = (ulong)desc + sizeof(struct dwmci_idmac);
 }
 
 static void dwmci_prepare_data(struct dwmci_host *host,
@@ -56,7 +58,7 @@ static void dwmci_prepare_data(struct dwmci_host *host,
 	dwmci_wait_reset(host, DWMCI_CTRL_FIFO_RESET);
 
 	data_start = (ulong)cur_idmac;
-	dwmci_writel(host, DWMCI_DBADDR, (unsigned int)cur_idmac);
+	dwmci_writel(host, DWMCI_DBADDR, (ulong)cur_idmac);
 
 	do {
 		flags = DWMCI_IDMAC_OWN | DWMCI_IDMAC_CH ;
@@ -68,7 +70,7 @@ static void dwmci_prepare_data(struct dwmci_host *host,
 			cnt = data->blocksize * 8;
 
 		dwmci_set_idma_desc(cur_idmac, flags, cnt,
-				    (u32)bounce_buffer + (i * PAGE_SIZE));
+				    (ulong)bounce_buffer + (i * PAGE_SIZE));
 
 		if (blk_cnt <= 8)
 			break;
@@ -92,6 +94,81 @@ static void dwmci_prepare_data(struct dwmci_host *host,
 	dwmci_writel(host, DWMCI_BYTCNT, data->blocksize * data->blocks);
 }
 
+static int dwmci_data_transfer(struct dwmci_host *host, struct mmc_data *data)
+{
+	int ret = 0;
+	u32 timeout = 240000;
+	u32 mask, size, i, len = 0;
+	u32 *buf = NULL;
+	ulong start = get_timer(0);
+	u32 fifo_depth = (((host->fifoth_val & RX_WMARK_MASK) >>
+			    RX_WMARK_SHIFT) + 1) * 2;
+
+	size = data->blocksize * data->blocks / 4;
+	if (data->flags == MMC_DATA_READ)
+		buf = (unsigned int *)data->dest;
+	else
+		buf = (unsigned int *)data->src;
+
+	for (;;) {
+		mask = dwmci_readl(host, DWMCI_RINTSTS);
+		/* Error during data transfer. */
+		if (mask & (DWMCI_DATA_ERR | DWMCI_DATA_TOUT)) {
+			debug("%s: DATA ERROR!\n", __func__);
+			ret = -EINVAL;
+			break;
+		}
+
+		if (host->fifo_mode && size) {
+			if (data->flags == MMC_DATA_READ) {
+				if ((dwmci_readl(host, DWMCI_RINTSTS) &
+				     DWMCI_INTMSK_RXDR)) {
+					len = dwmci_readl(host, DWMCI_STATUS);
+					len = (len >> DWMCI_FIFO_SHIFT) &
+						    DWMCI_FIFO_MASK;
+					for (i = 0; i < len; i++)
+						*buf++ =
+						dwmci_readl(host, DWMCI_DATA);
+					dwmci_writel(host, DWMCI_RINTSTS,
+						     DWMCI_INTMSK_RXDR);
+				}
+			} else {
+				if ((dwmci_readl(host, DWMCI_RINTSTS) &
+				     DWMCI_INTMSK_TXDR)) {
+					len = dwmci_readl(host, DWMCI_STATUS);
+					len = fifo_depth - ((len >>
+						   DWMCI_FIFO_SHIFT) &
+						   DWMCI_FIFO_MASK);
+					for (i = 0; i < len; i++)
+						dwmci_writel(host, DWMCI_DATA,
+							     *buf++);
+					dwmci_writel(host, DWMCI_RINTSTS,
+						     DWMCI_INTMSK_TXDR);
+				}
+			}
+			size = size > len ? (size - len) : 0;
+		}
+
+		/* Data arrived correctly. */
+		if (mask & DWMCI_INTMSK_DTO) {
+			ret = 0;
+			break;
+		}
+
+		/* Check for timeout. */
+		if (get_timer(start) > timeout) {
+			debug("%s: Timeout waiting for data!\n",
+			      __func__);
+			ret = TIMEOUT;
+			break;
+		}
+	}
+
+	dwmci_writel(host, DWMCI_RINTSTS, mask);
+
+	return ret;
+}
+
 static int dwmci_set_transfer_mode(struct dwmci_host *host,
 		struct mmc_data *data)
 {
@@ -110,16 +187,16 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 	struct dwmci_host *host = mmc->priv;
 	ALLOC_CACHE_ALIGN_BUFFER(struct dwmci_idmac, cur_idmac,
 				 data ? DIV_ROUND_UP(data->blocks, 8) : 0);
-	int flags = 0, i;
+	int ret = 0, flags = 0, i;
 	unsigned int timeout = 100000;
-	u32 retry = 10000;
+	u32 retry = 100000;
 	u32 mask, ctrl;
 	ulong start = get_timer(0);
 	struct bounce_buffer bbstate;
 
 	while (dwmci_readl(host, DWMCI_STATUS) & DWMCI_BUSY) {
 		if (get_timer(start) > timeout) {
-			printf("%s: Timeout on data busy\n", __func__);
+			debug("%s: Timeout on data busy\n", __func__);
 			return TIMEOUT;
 		}
 	}
@@ -127,17 +204,24 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 	dwmci_writel(host, DWMCI_RINTSTS, DWMCI_INTMSK_ALL);
 
 	if (data) {
-		if (data->flags == MMC_DATA_READ) {
-			bounce_buffer_start(&bbstate, (void*)data->dest,
-					    data->blocksize *
-					    data->blocks, GEN_BB_WRITE);
+		if (host->fifo_mode) {
+			dwmci_writel(host, DWMCI_BLKSIZ, data->blocksize);
+			dwmci_writel(host, DWMCI_BYTCNT,
+				     data->blocksize * data->blocks);
+			dwmci_wait_reset(host, DWMCI_CTRL_FIFO_RESET);
 		} else {
-			bounce_buffer_start(&bbstate, (void*)data->src,
-					    data->blocksize *
-					    data->blocks, GEN_BB_READ);
+			if (data->flags == MMC_DATA_READ) {
+				bounce_buffer_start(&bbstate, (void*)data->dest,
+						data->blocksize *
+						data->blocks, GEN_BB_WRITE);
+			} else {
+				bounce_buffer_start(&bbstate, (void*)data->src,
+						data->blocksize *
+						data->blocks, GEN_BB_READ);
+			}
+			dwmci_prepare_data(host, data, cur_idmac,
+					   bbstate.bounce_buffer);
 		}
-		dwmci_prepare_data(host, data, cur_idmac,
-				   bbstate.bounce_buffer);
 	}
 
 	dwmci_writel(host, DWMCI_CMDARG, cmd->cmdarg);
@@ -178,7 +262,7 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 	}
 
 	if (i == retry) {
-		printf("%s: Timeout.\n", __func__);
+		debug("%s: Timeout.\n", __func__);
 		return TIMEOUT;
 	}
 
@@ -194,8 +278,8 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 		debug("%s: Response Timeout.\n", __func__);
 		return TIMEOUT;
 	} else if (mask & DWMCI_INTMSK_RE) {
-		printf("%s: Response Error.\n", __func__);
-		return -1;
+		debug("%s: Response Error.\n", __func__);
+		return -EIO;
 	}
 
 
@@ -211,26 +295,20 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 	}
 
 	if (data) {
-		do {
-			mask = dwmci_readl(host, DWMCI_RINTSTS);
-			if (mask & (DWMCI_DATA_ERR | DWMCI_DATA_TOUT)) {
-				printf("%s: DATA ERROR!\n", __func__);
-				return -1;
-			}
-		} while (!(mask & DWMCI_INTMSK_DTO));
+		ret = dwmci_data_transfer(host, data);
 
-		dwmci_writel(host, DWMCI_RINTSTS, mask);
-
-		ctrl = dwmci_readl(host, DWMCI_CTRL);
-		ctrl &= ~(DWMCI_DMA_EN);
-		dwmci_writel(host, DWMCI_CTRL, ctrl);
-
-		bounce_buffer_stop(&bbstate);
+		/* only dma mode need it */
+		if (!host->fifo_mode) {
+			ctrl = dwmci_readl(host, DWMCI_CTRL);
+			ctrl &= ~(DWMCI_DMA_EN);
+			dwmci_writel(host, DWMCI_CTRL, ctrl);
+			bounce_buffer_stop(&bbstate);
+		}
 	}
 
 	udelay(100);
 
-	return 0;
+	return ret;
 }
 
 static int dwmci_setup_bus(struct dwmci_host *host, u32 freq)
@@ -247,11 +325,11 @@ static int dwmci_setup_bus(struct dwmci_host *host, u32 freq)
 	 * host->bus_hz should be set by user.
 	 */
 	if (host->get_mmc_clk)
-		sclk = host->get_mmc_clk(host);
+		sclk = host->get_mmc_clk(host, freq);
 	else if (host->bus_hz)
 		sclk = host->bus_hz;
 	else {
-		printf("%s: Didn't get source clock value.\n", __func__);
+		debug("%s: Didn't get source clock value.\n", __func__);
 		return -EINVAL;
 	}
 
@@ -270,7 +348,7 @@ static int dwmci_setup_bus(struct dwmci_host *host, u32 freq)
 	do {
 		status = dwmci_readl(host, DWMCI_CMD);
 		if (timeout-- < 0) {
-			printf("%s: Timeout!\n", __func__);
+			debug("%s: Timeout!\n", __func__);
 			return -ETIMEDOUT;
 		}
 	} while (status & DWMCI_CMD_START);
@@ -285,7 +363,7 @@ static int dwmci_setup_bus(struct dwmci_host *host, u32 freq)
 	do {
 		status = dwmci_readl(host, DWMCI_CMD);
 		if (timeout-- < 0) {
-			printf("%s: Timeout!\n", __func__);
+			debug("%s: Timeout!\n", __func__);
 			return -ETIMEDOUT;
 		}
 	} while (status & DWMCI_CMD_START);
@@ -339,8 +417,8 @@ static int dwmci_init(struct mmc *mmc)
 	dwmci_writel(host, DWMCI_PWREN, 1);
 
 	if (!dwmci_wait_reset(host, DWMCI_RESET_ALL)) {
-		printf("%s[%d] Fail-reset!!\n", __func__, __LINE__);
-		return -1;
+		debug("%s[%d] Fail-reset!!\n", __func__, __LINE__);
+		return -EIO;
 	}
 
 	/* Enumerate at 400KHz */
@@ -354,9 +432,15 @@ static int dwmci_init(struct mmc *mmc)
 	dwmci_writel(host, DWMCI_IDINTEN, 0);
 	dwmci_writel(host, DWMCI_BMOD, 1);
 
-	if (host->fifoth_val) {
-		dwmci_writel(host, DWMCI_FIFOTH, host->fifoth_val);
+	if (!host->fifoth_val) {
+		uint32_t fifo_size;
+
+		fifo_size = dwmci_readl(host, DWMCI_FIFOTH);
+		fifo_size = ((fifo_size & RX_WMARK_MASK) >> RX_WMARK_SHIFT) + 1;
+		host->fifoth_val = MSIZE(0x2) | RX_WMARK(fifo_size / 2 - 1) |
+				TX_WMARK(fifo_size / 2);
 	}
+	dwmci_writel(host, DWMCI_FIFOTH, host->fifoth_val);
 
 	dwmci_writel(host, DWMCI_CLKENA, 0);
 	dwmci_writel(host, DWMCI_CLKSRC, 0);
@@ -370,27 +454,40 @@ static const struct mmc_ops dwmci_ops = {
 	.init		= dwmci_init,
 };
 
+void dwmci_setup_cfg(struct mmc_config *cfg, const char *name, int buswidth,
+		     uint caps, u32 max_clk, u32 min_clk)
+{
+	cfg->name = name;
+	cfg->ops = &dwmci_ops;
+	cfg->f_min = min_clk;
+	cfg->f_max = max_clk;
+
+	cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
+
+	cfg->host_caps = caps;
+
+	if (buswidth == 8) {
+		cfg->host_caps |= MMC_MODE_8BIT;
+		cfg->host_caps &= ~MMC_MODE_4BIT;
+	} else {
+		cfg->host_caps |= MMC_MODE_4BIT;
+		cfg->host_caps &= ~MMC_MODE_8BIT;
+	}
+	cfg->host_caps |= MMC_MODE_HS | MMC_MODE_HS_52MHz;
+
+	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+}
+
+#ifdef CONFIG_BLK
+int dwmci_bind(struct udevice *dev, struct mmc *mmc, struct mmc_config *cfg)
+{
+	return mmc_bind(dev, mmc, cfg);
+}
+#else
 int add_dwmci(struct dwmci_host *host, u32 max_clk, u32 min_clk)
 {
-	host->cfg.name = host->name;
-	host->cfg.ops = &dwmci_ops;
-	host->cfg.f_min = min_clk;
-	host->cfg.f_max = max_clk;
-
-	host->cfg.voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
-
-	host->cfg.host_caps = host->caps;
-
-	if (host->buswidth == 8) {
-		host->cfg.host_caps |= MMC_MODE_8BIT;
-		host->cfg.host_caps &= ~MMC_MODE_4BIT;
-	} else {
-		host->cfg.host_caps |= MMC_MODE_4BIT;
-		host->cfg.host_caps &= ~MMC_MODE_8BIT;
-	}
-	host->cfg.host_caps |= MMC_MODE_HS | MMC_MODE_HS_52MHz;
-
-	host->cfg.b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+	dwmci_setup_cfg(&host->cfg, host->name, host->buswidth, host->caps,
+			max_clk, min_clk);
 
 	host->mmc = mmc_create(&host->cfg, host);
 	if (host->mmc == NULL)
@@ -398,3 +495,4 @@ int add_dwmci(struct dwmci_host *host, u32 max_clk, u32 min_clk)
 
 	return 0;
 }
+#endif

@@ -34,12 +34,14 @@ In general, all boards for which a configuration option exists in the
 Makefile have been tested to some extent and can be considered
 "working". In fact, many of them are used in production systems.
 
-In case of problems see the CHANGELOG and CREDITS files to find out
-who contributed the specific port. The boards.cfg file lists board
-maintainers.
+In case of problems see the CHANGELOG file to find out who contributed
+the specific port. In addition, there are various MAINTAINERS files
+scattered throughout the U-Boot source identifying the people or
+companies responsible for various boards and subsystems.
 
-Note: There is no CHANGELOG file in the actual U-Boot source tree;
-it can be created dynamically from the Git log using:
+Note: As of August, 2010, there is no longer a CHANGELOG file in the
+actual U-Boot source tree; however, it can be created dynamically
+from the Git log using:
 
 	make CHANGELOG
 
@@ -48,7 +50,7 @@ Where to get help:
 ==================
 
 In case you have questions about, problems with or contributions for
-U-Boot you should send a message to the U-Boot mailing list at
+U-Boot, you should send a message to the U-Boot mailing list at
 <u-boot@lists.denx.de>. There is also an archive of previous traffic
 on the mailing list - please search the archive before asking FAQ's.
 Please see http://lists.denx.de/pipermail/u-boot and
@@ -58,7 +60,7 @@ http://dir.gmane.org/gmane.comp.boot-loaders.u-boot
 Where to get source code:
 =========================
 
-The U-Boot source code is maintained in the git repository at
+The U-Boot source code is maintained in the Git repository at
 git://www.denx.de/git/u-boot.git ; you can browse it online at
 http://www.denx.de/cgi-bin/gitweb.cgi?p=u-boot.git;a=summary
 
@@ -133,79 +135,24 @@ Directory Hierarchy:
 
 /arch			Architecture specific files
   /arc			Files generic to ARC architecture
-    /cpu		CPU specific files
-      /arc700		Files specific to ARC 700 CPUs
-    /lib		Architecture specific library files
   /arm			Files generic to ARM architecture
-    /cpu		CPU specific files
-      /arm720t		Files specific to ARM 720 CPUs
-      /arm920t		Files specific to ARM 920 CPUs
-	/at91		Files specific to Atmel AT91RM9200 CPU
-	/imx		Files specific to Freescale MC9328 i.MX CPUs
-	/s3c24x0	Files specific to Samsung S3C24X0 CPUs
-      /arm926ejs	Files specific to ARM 926 CPUs
-      /arm1136		Files specific to ARM 1136 CPUs
-      /pxa		Files specific to Intel XScale PXA CPUs
-      /sa1100		Files specific to Intel StrongARM SA1100 CPUs
-    /lib		Architecture specific library files
   /avr32		Files generic to AVR32 architecture
-    /cpu		CPU specific files
-    /lib		Architecture specific library files
   /blackfin		Files generic to Analog Devices Blackfin architecture
-    /cpu		CPU specific files
-    /lib		Architecture specific library files
   /m68k			Files generic to m68k architecture
-    /cpu		CPU specific files
-      /mcf52x2		Files specific to Freescale ColdFire MCF52x2 CPUs
-      /mcf5227x		Files specific to Freescale ColdFire MCF5227x CPUs
-      /mcf532x		Files specific to Freescale ColdFire MCF5329 CPUs
-      /mcf5445x		Files specific to Freescale ColdFire MCF5445x CPUs
-      /mcf547x_8x	Files specific to Freescale ColdFire MCF547x_8x CPUs
-    /lib		Architecture specific library files
   /microblaze		Files generic to microblaze architecture
-    /cpu		CPU specific files
-    /lib		Architecture specific library files
   /mips			Files generic to MIPS architecture
-    /cpu		CPU specific files
-      /mips32		Files specific to MIPS32 CPUs
-      /mips64		Files specific to MIPS64 CPUs
-    /lib		Architecture specific library files
   /nds32		Files generic to NDS32 architecture
-    /cpu		CPU specific files
-      /n1213		Files specific to Andes Technology N1213 CPUs
-    /lib		Architecture specific library files
   /nios2		Files generic to Altera NIOS2 architecture
-    /cpu		CPU specific files
-    /lib		Architecture specific library files
   /openrisc		Files generic to OpenRISC architecture
-    /cpu		CPU specific files
-    /lib		Architecture specific library files
   /powerpc		Files generic to PowerPC architecture
-    /cpu		CPU specific files
-      /mpc5xx		Files specific to Freescale MPC5xx CPUs
-      /mpc5xxx		Files specific to Freescale MPC5xxx CPUs
-      /mpc8xx		Files specific to Freescale MPC8xx CPUs
-      /mpc8260		Files specific to Freescale MPC8260 CPUs
-      /mpc85xx		Files specific to Freescale MPC85xx CPUs
-      /ppc4xx		Files specific to AMCC PowerPC 4xx CPUs
-    /lib		Architecture specific library files
+  /sandbox		Files generic to HW-independent "sandbox"
   /sh			Files generic to SH architecture
-    /cpu		CPU specific files
-      /sh2		Files specific to sh2 CPUs
-      /sh3		Files specific to sh3 CPUs
-      /sh4		Files specific to sh4 CPUs
-    /lib		Architecture specific library files
   /sparc		Files generic to SPARC architecture
-    /cpu		CPU specific files
-      /leon2		Files specific to Gaisler LEON2 SPARC CPU
-      /leon3		Files specific to Gaisler LEON3 SPARC CPU
-    /lib		Architecture specific library files
   /x86			Files generic to x86 architecture
-    /cpu		CPU specific files
-    /lib		Architecture specific library files
 /api			Machine/arch independent API for external apps
 /board			Board dependent files
 /common			Misc architecture independent functions
+/configs		Board default configuration files
 /disk			Code for disk drive partition handling
 /doc			Documentation (don't expect too much)
 /drivers		Commonly used device drivers
@@ -213,13 +160,12 @@ Directory Hierarchy:
 /examples		Example code for standalone applications, etc.
 /fs			Filesystem code (cramfs, ext2, jffs2, etc.)
 /include		Header Files
-/lib			Files generic to all architectures
-  /libfdt		Library files to support flattened device trees
-  /lzma			Library files to support LZMA decompression
-  /lzo			Library files to support LZO decompression
+/lib			Library routines generic to all architectures
+/Licenses		Various license files
 /net			Networking code
 /post			Power On Self Test
-/spl			Secondary Program Loader framework
+/scripts		Various build scripts and Makefiles
+/test			Various unit test files
 /tools			Tools to build S-Record or U-Boot images, etc.
 
 Software Configuration:
@@ -239,11 +185,11 @@ There are two classes of configuration variables:
   you don't know what you're doing; they have names beginning with
   "CONFIG_SYS_".
 
-Later we will add a configuration tool - probably similar to or even
-identical to what's used for the Linux kernel. Right now, we have to
-do the configuration by hand, which means creating some symbolic
-links and editing some configuration files. We use the TQM8xxL boards
-as an example here.
+Previously, all configuration was done by hand, which involved creating
+symbolic links and editing configuration files manually. More recently,
+U-Boot has added the Kbuild infrastructure used by the Linux kernel,
+allowing you to use the "make menuconfig" command to configure your
+build.
 
 
 Selection of Processor Architecture and Board Type:
@@ -257,10 +203,9 @@ Example: For a TQM823L module type:
 	cd u-boot
 	make TQM823L_defconfig
 
-For the Cogent platform, you need to specify the CPU type as well;
-e.g. "make cogent_mpc8xx_defconfig". And also configure the cogent
-directory according to the instructions in cogent/README.
-
+Note: If you're looking for the default configuration file for a board
+you're sure used to be there but is now missing, check the file
+doc/README.scrapyard for a list of no longer supported boards.
 
 Sandbox Environment:
 --------------------
@@ -277,13 +222,25 @@ Board Initialisation Flow:
 --------------------------
 
 This is the intended start-up flow for boards. This should apply for both
-SPL and U-Boot proper (i.e. they both follow the same rules). At present SPL
-mostly uses a separate code path, but the funtion names and roles of each
-function are the same. Some boards or architectures may not conform to this.
-At least most ARM boards which use CONFIG_SPL_FRAMEWORK conform to this.
+SPL and U-Boot proper (i.e. they both follow the same rules).
 
-Execution starts with start.S with three functions called during init after
-that. The purpose and limitations of each is described below.
+Note: "SPL" stands for "Secondary Program Loader," which is explained in
+more detail later in this file.
+
+At present, SPL mostly uses a separate code path, but the function names
+and roles of each function are the same. Some boards or architectures
+may not conform to this.  At least most ARM boards which use
+CONFIG_SPL_FRAMEWORK conform to this.
+
+Execution typically starts with an architecture-specific (and possibly
+CPU-specific) start.S file, such as:
+
+	- arch/arm/cpu/armv7/start.S
+	- arch/powerpc/cpu/mpc83xx/start.S
+	- arch/mips/cpu/start.S
+
+and so on. From there, three functions are called; the purpose and
+limitations of each of these functions are described below.
 
 lowlevel_init():
 	- purpose: essential init to permit execution to reach board_init_f()
@@ -503,7 +460,7 @@ The following options need to be configured:
 
 		CONFIG_SYS_CPC_REINIT_F
 		This CONFIG is defined when the CPC is configured as SRAM at the
-		time of U-boot entry and is required to be re-initialized.
+		time of U-Boot entry and is required to be re-initialized.
 
 		CONFIG_DEEP_SLEEP
 		Indicates this SoC supports deep sleep feature. If deep sleep is
@@ -611,6 +568,9 @@ The following options need to be configured:
 		CONFIG_SYS_FSL_OTHER_DDR_NUM_CTRLS
 		Number of controllers used for other than main memory.
 
+		CONFIG_SYS_FSL_HAS_DP_DDR
+		Defines the SoC has DP-DDR used for DPAA.
+
 		CONFIG_SYS_FSL_SEC_BE
 		Defines the SEC controller register space as Big Endian
 
@@ -681,8 +641,10 @@ The following options need to be configured:
 		CONFIG_ARM_ERRATA_742230
 		CONFIG_ARM_ERRATA_743622
 		CONFIG_ARM_ERRATA_751472
-		CONFIG_ARM_ERRATA_794072
 		CONFIG_ARM_ERRATA_761320
+		CONFIG_ARM_ERRATA_773022
+		CONFIG_ARM_ERRATA_774769
+		CONFIG_ARM_ERRATA_794072
 
 		If set, the workarounds for these ARM errata are applied early
 		during U-Boot startup. Note that these options force the
@@ -705,6 +667,7 @@ The following options need to be configured:
 		CONFIG_ARM_ERRATA_454179
 		CONFIG_ARM_ERRATA_621766
 		CONFIG_ARM_ERRATA_798870
+		CONFIG_ARM_ERRATA_801819
 
 - Tegra SoC options:
 		CONFIG_TEGRA_SUPPORT_NON_SECURE
@@ -793,17 +756,9 @@ The following options need to be configured:
 - vxWorks boot parameters:
 
 		bootvx constructs a valid bootline using the following
-		environments variables: bootfile, ipaddr, serverip, hostname.
+		environments variables: bootdev, bootfile, ipaddr, netmask,
+		serverip, gatewayip, hostname, othbootargs.
 		It loads the vxWorks image pointed bootfile.
-
-		CONFIG_SYS_VXWORKS_BOOT_DEVICE - The vxworks device name
-		CONFIG_SYS_VXWORKS_MAC_PTR - Ethernet 6 byte MA -address
-		CONFIG_SYS_VXWORKS_SERVERNAME - Name of the server
-		CONFIG_SYS_VXWORKS_BOOT_ADDR - Address of boot parameters
-
-		CONFIG_SYS_VXWORKS_ADD_PARAMS
-
-		Add it at the end of the bootline. E.g "u=username pw=secret"
 
 		Note: If a "bootargs" environment is defined, it will overwride
 		the defaults discussed just above.
@@ -839,18 +794,6 @@ The following options need to be configured:
 		define this to a list of base addresses for each (supported)
 		port. See e.g. include/configs/versatile.h
 
-		CONFIG_PL011_SERIAL_RLCR
-
-		Some vendor versions of PL011 serial ports (e.g. ST-Ericsson U8500)
-		have separate receive and transmit line control registers.  Set
-		this variable to initialize the extra register.
-
-		CONFIG_PL011_SERIAL_FLUSH_ON_INIT
-
-		On some platforms (e.g. U8500) U-Boot is loaded by a second stage
-		boot loader that has already initialized the UART.  Define this
-		variable to flush the UART at init time.
-
 		CONFIG_SERIAL_HW_FLOW_CONTROL
 
 		Define this variable to enable hw flow control in serial driver.
@@ -884,18 +827,11 @@ The following options need to be configured:
 						(0-5, cf. cfb_console.c)
 			VIDEO_FB_ADRS		framebuffer address
 			VIDEO_KBD_INIT_FCT	keyboard int fct
-						(i.e. i8042_kbd_init())
+						(i.e. rx51_kp_init())
 			VIDEO_TSTC_FCT		test char fct
-						(i.e. i8042_tstc)
+						(i.e. rx51_kp_tstc)
 			VIDEO_GETC_FCT		get char fct
-						(i.e. i8042_getc)
-			CONFIG_CONSOLE_CURSOR	cursor drawing on/off
-						(requires blink timer
-						cf. i8042.c)
-			CONFIG_SYS_CONSOLE_BLINK_COUNT blink interval (cf. i8042.c)
-			CONFIG_CONSOLE_TIME	display time/date info in
-						upper right corner
-						(requires CONFIG_CMD_DATE)
+						(i.e. rx51_kp_getc)
 			CONFIG_VIDEO_LOGO	display Linux logo in
 						upper left corner
 			CONFIG_VIDEO_BMP_LOGO	use bmp_logo.h instead of
@@ -953,32 +889,6 @@ The following options need to be configured:
 
 		'Sane' compilers will generate smaller code if
 		CONFIG_PRE_CON_BUF_SZ is a power of 2
-
-- Safe printf() functions
-		Define CONFIG_SYS_VSNPRINTF to compile in safe versions of
-		the printf() functions. These are defined in
-		include/vsprintf.h and include snprintf(), vsnprintf() and
-		so on. Code size increase is approximately 300-500 bytes.
-		If this option is not given then these functions will
-		silently discard their buffer size argument - this means
-		you are not getting any overflow checking in this case.
-
-- Boot Delay:	CONFIG_BOOTDELAY - in seconds
-		Delay before automatically booting the default image;
-		set to -1 to disable autoboot.
-		set to -2 to autoboot with no delay and not check for abort
-		(even when CONFIG_ZERO_BOOTDELAY_CHECK is defined).
-
-		See doc/README.autoboot for these options that
-		work with CONFIG_BOOTDELAY. None are required.
-		CONFIG_BOOT_RETRY_TIME
-		CONFIG_BOOT_RETRY_MIN
-		CONFIG_AUTOBOOT_KEYED
-		CONFIG_AUTOBOOT_PROMPT
-		CONFIG_AUTOBOOT_DELAY_STR
-		CONFIG_AUTOBOOT_STOP_STR
-		CONFIG_ZERO_BOOTDELAY_CHECK
-		CONFIG_RESET_TO_RETRY
 
 - Autoboot Command:
 		CONFIG_BOOTCOMMAND
@@ -1076,6 +986,7 @@ The following options need to be configured:
 		CONFIG_CMD_ECHO		  echo arguments
 		CONFIG_CMD_EDITENV	  edit env variable
 		CONFIG_CMD_EEPROM	* EEPROM read/write support
+		CONFIG_CMD_EEPROM_LAYOUT* EEPROM layout aware commands
 		CONFIG_CMD_ELF		* bootelf, bootvx
 		CONFIG_CMD_ENV_CALLBACK	* display details about env callbacks
 		CONFIG_CMD_ENV_FLAGS	* display details about env flags
@@ -1096,7 +1007,6 @@ The following options need to be configured:
 		CONFIG_CMD_GO		* the 'go' command (exec code)
 		CONFIG_CMD_GREPENV	* search environment
 		CONFIG_CMD_HASH		* calculate hash / digest
-		CONFIG_CMD_HWFLOW	* RTS/CTS hw flow control
 		CONFIG_CMD_I2C		* I2C serial bus support
 		CONFIG_CMD_IDE		* IDE harddisk support
 		CONFIG_CMD_IMI		  iminfo
@@ -1140,7 +1050,7 @@ The following options need to be configured:
 		CONFIG_CMD_RUN		  run command in env variable
 		CONFIG_CMD_SANDBOX	* sb command to access sandbox features
 		CONFIG_CMD_SAVES	* save S record dump
-		CONFIG_CMD_SCSI		* SCSI Support
+		CONFIG_SCSI		* SCSI Support
 		CONFIG_CMD_SDRAM	* print SDRAM configuration information
 					  (requires CONFIG_CMD_I2C)
 		CONFIG_CMD_SETGETDCR	  Support for DCR Register access
@@ -1184,6 +1094,14 @@ The following options need to be configured:
 
 
 		XXX - this list needs to get updated!
+
+- Removal of commands
+		If no commands are needed to boot, you can disable
+		CONFIG_CMDLINE to remove them. In this case, the command line
+		will not be available, and when U-Boot wants to execute the
+		boot command (on start-up) it will call board_run_command()
+		instead. This can reduce image size significantly for very
+		simple boot procedures.
 
 - Regular expression support:
 		CONFIG_REGEX
@@ -1323,7 +1241,7 @@ The following options need to be configured:
 		CONFIG_MTD_PARTITIONS  Memory Technology Device partition table.
 
 		If IDE or SCSI support is enabled (CONFIG_CMD_IDE or
-		CONFIG_CMD_SCSI) you must configure support for at
+		CONFIG_SCSI) you must configure support for at
 		least one non-MTD partition type as well.
 
 - IDE Reset method:
@@ -1383,9 +1301,6 @@ The following options need to be configured:
 		CONFIG_CMD_E1000
 		Management command for E1000 devices.  When used on devices
 		with SPI support you can reprogram the EEPROM from U-Boot.
-
-		CONFIG_E1000_FALLBACK_MAC
-		default MAC for empty EEPROM after production.
 
 		CONFIG_EEPRO100
 		Support for Intel 82557/82559/82559ER chips.
@@ -1495,18 +1410,23 @@ The following options need to be configured:
 		CONFIG_TPM
 		Support TPM devices.
 
-		CONFIG_TPM_TIS_I2C
-		Support for i2c bus TPM devices. Only one device
+		CONFIG_TPM_TIS_INFINEON
+		Support for Infineon i2c bus TPM devices. Only one device
 		per system is supported at this time.
-
-			CONFIG_TPM_TIS_I2C_BUS_NUMBER
-			Define the the i2c bus number for the TPM device
-
-			CONFIG_TPM_TIS_I2C_SLAVE_ADDRESS
-			Define the TPM's address on the i2c bus
 
 			CONFIG_TPM_TIS_I2C_BURST_LIMITATION
 			Define the burst count bytes upper limit
+
+		CONFIG_TPM_ST33ZP24
+		Support for STMicroelectronics TPM devices. Requires DM_TPM support.
+
+			CONFIG_TPM_ST33ZP24_I2C
+			Support for STMicroelectronics ST33ZP24 I2C devices.
+			Requires TPM_ST33ZP24 and I2C.
+
+			CONFIG_TPM_ST33ZP24_SPI
+			Support for STMicroelectronics ST33ZP24 SPI devices.
+			Requires TPM_ST33ZP24 and SPI.
 
 		CONFIG_TPM_ATMEL_TWI
 		Support for Atmel TWI TPM device. Requires I2C support.
@@ -1674,7 +1594,7 @@ The following options need to be configured:
 		key for the Replay Protection Memory Block partition in eMMC.
 
 - USB Device Firmware Update (DFU) class support:
-		CONFIG_DFU_FUNCTION
+		CONFIG_USB_FUNCTION_DFU
 		This enables the USB portion of the DFU USB class
 
 		CONFIG_CMD_DFU
@@ -1719,6 +1639,9 @@ The following options need to be configured:
 		sending again an USB request to the device.
 
 - USB Device Android Fastboot support:
+		CONFIG_USB_FUNCTION_FASTBOOT
+		This enables the USB part of the fastboot gadget
+
 		CONFIG_CMD_FASTBOOT
 		This enables the command "fastboot" which enables the Android
 		fastboot mode for the platform's USB device. Fastboot is a USB
@@ -1730,12 +1653,12 @@ The following options need to be configured:
 		This enables support for booting images which use the Android
 		image format header.
 
-		CONFIG_USB_FASTBOOT_BUF_ADDR
+		CONFIG_FASTBOOT_BUF_ADDR
 		The fastboot protocol requires a large memory buffer for
 		downloads. Define this to the starting RAM address to use for
 		downloaded images.
 
-		CONFIG_USB_FASTBOOT_BUF_SIZE
+		CONFIG_FASTBOOT_BUF_SIZE
 		The fastboot protocol requires a large memory buffer for
 		downloads. This buffer should be as large as possible for a
 		platform. Define this to the size available RAM for fastboot.
@@ -1800,21 +1723,15 @@ CBFS (Coreboot Filesystem) support
 		a default value of 65536 will be defined.
 
 - Keyboard Support:
-		CONFIG_ISA_KEYBOARD
+		See Kconfig help for available keyboard drivers.
 
-		Define this to enable standard (PC-Style) keyboard
-		support
+		CONFIG_KEYBOARD
 
-		CONFIG_I8042_KBD
-		Standard PC keyboard driver with US (is default) and
-		GERMAN key layout (switch via environment 'keymap=de') support.
-		Export function i8042_kbd_init, i8042_tstc and i8042_getc
-		for cfb_console. Supports cursor blinking.
-
-		CONFIG_CROS_EC_KEYB
-		Enables a Chrome OS keyboard using the CROS_EC interface.
-		This uses CROS_EC to communicate with a second microcontroller
-		which provides key scans on request.
+		Define this to enable a custom keyboard support.
+		This simply calls drv_keyboard_init() which must be
+		defined in your board-specific files. This option is deprecated
+		and is only used by novena. For new boards, use driver model
+		instead.
 
 - Video support:
 		CONFIG_VIDEO
@@ -1872,17 +1789,8 @@ CBFS (Coreboot Filesystem) support
 
 		The DIU driver will look for the 'video-mode' environment
 		variable, and if defined, enable the DIU as a console during
-		boot.  See the documentation file README.video for a
+		boot.  See the documentation file doc/README.video for a
 		description of this variable.
-
-
-- Keyboard Support:
-		CONFIG_KEYBOARD
-
-		Define this to enable a custom keyboard support.
-		This simply calls drv_keyboard_init() which must be
-		defined in your board-specific files.
-		The only board using this so far is RBC823.
 
 - LCD Support:	CONFIG_LCD
 
@@ -1995,7 +1903,7 @@ CBFS (Coreboot Filesystem) support
 
 		If this option is set, then U-Boot will prevent the environment
 		variable "splashimage" from being set to a problematic address
-		(see README.displaying-bmps).
+		(see doc/README.displaying-bmps).
 		This option is useful for targets where, due to alignment
 		restrictions, an improperly aligned BMP image will cause a data
 		abort. If you think you will not have problems with unaligned
@@ -2379,16 +2287,20 @@ CBFS (Coreboot Filesystem) support
 
 		- drivers/i2c/i2c_mxc.c
 		  - activate this driver with CONFIG_SYS_I2C_MXC
+		  - enable bus 1 with CONFIG_SYS_I2C_MXC_I2C1
+		  - enable bus 2 with CONFIG_SYS_I2C_MXC_I2C2
+		  - enable bus 3 with CONFIG_SYS_I2C_MXC_I2C3
+		  - enable bus 4 with CONFIG_SYS_I2C_MXC_I2C4
 		  - define speed for bus 1 with CONFIG_SYS_MXC_I2C1_SPEED
 		  - define slave for bus 1 with CONFIG_SYS_MXC_I2C1_SLAVE
 		  - define speed for bus 2 with CONFIG_SYS_MXC_I2C2_SPEED
 		  - define slave for bus 2 with CONFIG_SYS_MXC_I2C2_SLAVE
 		  - define speed for bus 3 with CONFIG_SYS_MXC_I2C3_SPEED
 		  - define slave for bus 3 with CONFIG_SYS_MXC_I2C3_SLAVE
+		  - define speed for bus 4 with CONFIG_SYS_MXC_I2C4_SPEED
+		  - define slave for bus 4 with CONFIG_SYS_MXC_I2C4_SLAVE
 		If those defines are not set, default value is 100000
 		for speed, and 0 for slave.
-		  - enable bus 3 with CONFIG_SYS_I2C_MXC_I2C3
-		  - enable bus 4 with CONFIG_SYS_I2C_MXC_I2C4
 
 		- drivers/i2c/rcar_i2c.c:
 		  - activate this driver with CONFIG_SYS_I2C_RCAR
@@ -2460,6 +2372,15 @@ CBFS (Coreboot Filesystem) support
 		  - CONFIG_SYS_I2C_IHS_CH3 activate hardware channel 3
 		  - CONFIG_SYS_I2C_IHS_SPEED_3 speed channel 3
 		  - CONFIG_SYS_I2C_IHS_SLAVE_3 slave addr channel 3
+		  - activate dual channel with CONFIG_SYS_I2C_IHS_DUAL
+		  - CONFIG_SYS_I2C_IHS_SPEED_0_1 speed channel 0_1
+		  - CONFIG_SYS_I2C_IHS_SLAVE_0_1 slave addr channel 0_1
+		  - CONFIG_SYS_I2C_IHS_SPEED_1_1 speed channel 1_1
+		  - CONFIG_SYS_I2C_IHS_SLAVE_1_1 slave addr channel 1_1
+		  - CONFIG_SYS_I2C_IHS_SPEED_2_1 speed channel 2_1
+		  - CONFIG_SYS_I2C_IHS_SLAVE_2_1 slave addr channel 2_1
+		  - CONFIG_SYS_I2C_IHS_SPEED_3_1 speed channel 3_1
+		  - CONFIG_SYS_I2C_IHS_SLAVE_3_1 slave addr channel 3_1
 
 		additional defines:
 
@@ -2727,11 +2648,6 @@ CBFS (Coreboot Filesystem) support
 		Enables the driver for SPI controller on SuperH. Currently
 		only SH7757 is supported.
 
-		CONFIG_SPI_X
-
-		Enables extended (16-bit) SPI EEPROM addressing.
-		(symmetrical to CONFIG_I2C_X)
-
 		CONFIG_SOFT_SPI
 
 		Enables a software (bit-bang) SPI driver rather than
@@ -2983,6 +2899,14 @@ CBFS (Coreboot Filesystem) support
 		Enable editing and History functions for interactive
 		command line input operations
 
+- Command Line PS1/PS2 support:
+		CONFIG_CMDLINE_PS_SUPPORT
+
+		Enable support for changing the command prompt string
+		at run-time. Only static string is supported so far.
+		The string is obtained from environment variables PS1
+		and PS2.
+
 - Default Environment:
 		CONFIG_EXTRA_ENV_SETTINGS
 
@@ -3041,7 +2965,7 @@ CBFS (Coreboot Filesystem) support
 - Parallel Flash support:
 		CONFIG_SYS_NO_FLASH
 
-		Traditionally U-boot was run on systems with parallel NOR
+		Traditionally U-Boot was run on systems with parallel NOR
 		flash. This option is used to disable support for parallel NOR
 		flash. This option should be defined if the board does not have
 		parallel flash.
@@ -3163,20 +3087,6 @@ CBFS (Coreboot Filesystem) support
 		on U-Boot.  Using the reset button or running bmode normal
 		will set it back to normal.  This command currently
 		supports i.MX53 and i.MX6.
-
-- Signing support:
-		CONFIG_RSA
-
-		This enables the RSA algorithm used for FIT image verification
-		in U-Boot. See doc/uImage.FIT/signature.txt for more information.
-
-		The Modular Exponentiation algorithm in RSA is implemented using
-		driver model. So CONFIG_DM needs to be enabled by default for this
-		library to function.
-
-		The signing part is build into mkimage regardless of this
-		option. The software based modular exponentiation is built into
-		mkimage irrespective of this option.
 
 - bootcount support:
 		CONFIG_BOOTCOUNT_LIMIT
@@ -3377,32 +3287,13 @@ FIT uImage format:
 		enabled per default for backward compatibility.
 
 - FIT image support:
-		CONFIG_FIT
-		Enable support for the FIT uImage format.
-
-		CONFIG_FIT_BEST_MATCH
-		When no configuration is explicitly selected, default to the
-		one whose fdt's compatibility field best matches that of
-		U-Boot itself. A match is considered "best" if it matches the
-		most specific compatibility entry of U-Boot's fdt's root node.
-		The order of entries in the configuration's fdt is ignored.
-
-		CONFIG_FIT_SIGNATURE
-		This option enables signature verification of FIT uImages,
-		using a hash signed and verified using RSA. If
-		CONFIG_SHA_PROG_HW_ACCEL is defined, i.e support for progressive
-		hashing is available using hardware, RSA library will use it.
-		See doc/uImage.FIT/signature.txt for more details.
-
-		WARNING: When relying on signed FIT images with required
-		signature check the legacy image format is default
-		disabled. If a board need legacy image format support
-		enable this through CONFIG_IMAGE_FORMAT_LEGACY
-
 		CONFIG_FIT_DISABLE_SHA256
 		Supporting SHA256 hashes has quite an impact on binary size.
 		For constrained systems sha256 hash support can be disabled
 		with this option.
+
+		TODO(sjg@chromium.org): Adjust this option to be positive,
+		and move it to Kconfig
 
 - Standalone program support:
 		CONFIG_STANDALONE_LOAD_ADDR
@@ -3516,6 +3407,10 @@ FIT uImage format:
 		without a fastmap.
 		default: 0
 
+		CONFIG_MTD_UBI_FM_DEBUG
+		Enable UBI fastmap debug
+		default: 0
+
 - UBIFS support
 		CONFIG_CMD_UBIFS
 
@@ -3579,6 +3474,10 @@ FIT uImage format:
 		consider that a completely unreadable NAND block is bad,
 		and thus should be skipped silently.
 
+		CONFIG_SPL_ABORT_ON_RAW_IMAGE
+		When defined, SPL will proceed to another boot method
+		if the image it has loaded does not have a signature.
+
 		CONFIG_SPL_RELOC_STACK
 		Adress of the start of the stack SPL will use after
 		relocation.  If unspecified, this is equal to
@@ -3586,6 +3485,9 @@ FIT uImage format:
 
 		CONFIG_SYS_SPL_MALLOC_START
 		Starting address of the malloc pool used in SPL.
+		When this option is set the full malloc is used in SPL and
+		it is set up by spl_init() and before that, the simple malloc()
+		can be used if CONFIG_SYS_MALLOC_F is defined.
 
 		CONFIG_SYS_SPL_MALLOC_SIZE
 		The size of the malloc pool used in SPL.
@@ -3783,23 +3685,6 @@ FIT uImage format:
 		CONFIG_SPL_PAD_TO must be either 0, meaning to append the SPL
 		payload without any padding, or >= CONFIG_SPL_MAX_SIZE.
 
-Modem Support:
---------------
-
-[so far only for SMDK2400 boards]
-
-- Modem support enable:
-		CONFIG_MODEM_SUPPORT
-
-- RTS/CTS Flow control enable:
-		CONFIG_HWFLOW
-
-- Modem debug support:
-		CONFIG_MODEM_SUPPORT_DEBUG
-
-		Enables debugging stuff (char screen[1024], dbg())
-		for modem support. Useful only with BDI2000.
-
 - Interrupt support (PPC):
 
 		There are common interrupt_init() and timer_interrupt()
@@ -3813,22 +3698,6 @@ Modem Support:
 		/ other_activity_monitor it works automatically from
 		general timer_interrupt().
 
-- General:
-
-		In the target system modem support is enabled when a
-		specific key (key combination) is pressed during
-		power-on. Otherwise U-Boot will boot normally
-		(autoboot). The key_pressed() function is called from
-		board_init(). Currently key_pressed() is a dummy
-		function, returning 1 and thus enabling modem
-		initialization.
-
-		If there are no modem init strings in the
-		environment, U-Boot proceed to autoboot; the
-		previous output (banner, info printfs) will be
-		suppressed, though.
-
-		See also: doc/README.Modem
 
 Board initialization settings:
 ------------------------------
@@ -3899,7 +3768,15 @@ Configuration Settings:
 		Scratch address used by the alternate memory test
 		You only need to set this if address zero isn't writeable
 
-- CONFIG_SYS_MEM_TOP_HIDE (PPC only):
+- CONFIG_SYS_MEM_RESERVE_SECURE
+		If defined, the size of CONFIG_SYS_MEM_RESERVE_SECURE memory
+		is substracted from total RAM and won't be reported to OS.
+		This memory can be used as secure memory. A variable
+		gd->secure_ram is used to track the location. In systems
+		the RAM base is not zero, or RAM is divided into banks,
+		this variable needs to be recalcuated to get the address.
+
+- CONFIG_SYS_MEM_TOP_HIDE:
 		If CONFIG_SYS_MEM_TOP_HIDE is defined in the board config header,
 		this specified memory area will get subtracted from the top
 		(end) of RAM and won't get "touched" at all by U-Boot. By
@@ -4156,16 +4033,6 @@ Configuration Settings:
 - CONFIG_ENV_ACCESS_IGNORE_FORCE
 	If defined, don't allow the -f switch to env set override variable
 	access flags.
-
-- CONFIG_SYS_GENERIC_BOARD
-	This selects the architecture-generic board system instead of the
-	architecture-specific board files. It is intended to move boards
-	to this new framework over time. Defining this will disable the
-	arch/foo/lib/board.c file and use common/board_f.c and
-	common/board_r.c instead. To use this option your architecture
-	must support it (i.e. must select HAVE_GENERIC_BOARD in arch/Kconfig).
-	If you find problems enabling this option on your board please report
-	the problem and send patches!
 
 - CONFIG_OMAP_PLATFORM_RESET_TIME_MAX_USEC (OMAP only)
 	This is set by OMAP boards for the max time that reset should
@@ -4943,6 +4810,11 @@ Low Level (hardware related) configuration options:
 		other boot loader or by a debugger which performs
 		these initializations itself.
 
+- CONFIG_SKIP_LOWLEVEL_INIT_ONLY
+		[ARM926EJ-S only] This allows just the call to lowlevel_init()
+		to be skipped. The normal CPU15 init (such as enabling the
+		instruction cache) is still performed.
+
 - CONFIG_SPL_BUILD
 		Modifies the behaviour of start.S when compiling a loader
 		that is executed before the actual U-Boot. E.g. when
@@ -5066,6 +4938,33 @@ within that device.
 	normal addressable memory via the LBC. CONFIG_SYS_LS_MC_FW_ADDR is the
 	virtual address in NOR flash.
 
+Freescale Layerscape Debug Server Support:
+-------------------------------------------
+The Freescale Layerscape Debug Server Support supports the loading of
+"Debug Server firmware" and triggering SP boot-rom.
+This firmware often needs to be loaded during U-Boot booting.
+
+- CONFIG_FSL_DEBUG_SERVER
+	Enable the Debug Server for Layerscape SoCs.
+
+- CONFIG_SYS_DEBUG_SERVER_DRAM_BLOCK_MIN_SIZE
+	Define minimum DDR size required for debug server image
+
+- CONFIG_SYS_MC_RSV_MEM_ALIGN
+	Define alignment of reserved memory MC requires
+
+Reproducible builds
+-------------------
+
+In order to achieve reproducible builds, timestamps used in the U-Boot build
+process have to be set to a fixed value.
+
+This is done using the SOURCE_DATE_EPOCH environment variable.
+SOURCE_DATE_EPOCH is to be set on the build host's shell, not as a configuration
+option for U-Boot or an environment variable in U-Boot.
+
+SOURCE_DATE_EPOCH should be set to a number of seconds since the epoch, in UTC.
+
 Building the Software:
 ======================
 
@@ -5156,14 +5055,11 @@ If the system board that you have is not listed, then you will need
 to port U-Boot to your hardware platform. To do this, follow these
 steps:
 
-1.  Add a new configuration option for your board to the toplevel
-    "boards.cfg" file, using the existing entries as examples.
-    Follow the instructions there to keep the boards in order.
-2.  Create a new directory to hold your board specific code. Add any
+1.  Create a new directory to hold your board specific code. Add any
     files you need. In your board directory, you will need at least
-    the "Makefile", a "<board>.c", "flash.c" and "u-boot.lds".
-3.  Create a new configuration file "include/configs/<board>.h" for
-    your board
+    the "Makefile" and a "<board>.c".
+2.  Create a new configuration file "include/configs/<board>.h" for
+    your board.
 3.  If you're porting U-Boot to a new CPU, then also create a new
     directory to hold your CPU specific code. Add any files you need.
 4.  Run "make <board>_defconfig" with your new name.
@@ -5445,10 +5341,10 @@ List of environment variables (most likely not complete):
 		  unset, then it will be made silent if the U-Boot console
 		  is silent.
 
-  tftpsrcport	- If this is set, the value is used for TFTP's
+  tftpsrcp	- If this is set, the value is used for TFTP's
 		  UDP source port.
 
-  tftpdstport	- If this is set, the value is used for TFTP's UDP
+  tftpdstp	- If this is set, the value is used for TFTP's UDP
 		  destination port instead of the Well Know Port 69.
 
   tftpblocksize - Block size to use for TFTP transfers; if not set,
@@ -5462,9 +5358,23 @@ List of environment variables (most likely not complete):
 		  faster in networks with high packet loss rates or
 		  with unreliable TFTP servers.
 
+  tftptimeoutcountmax	- maximum count of TFTP timeouts (no
+		  unit, minimum value = 0). Defines how many timeouts
+		  can happen during a single file transfer before that
+		  transfer is aborted. The default is 10, and 0 means
+		  'no timeouts allowed'. Increasing this value may help
+		  downloads succeed with high packet loss rates, or with
+		  unreliable TFTP servers or client hardware.
+
   vlan		- When set to a value < 4095 the traffic over
 		  Ethernet is encapsulated/received over 802.1q
 		  VLAN tagged frames.
+
+  bootpretryperiod	- Period during which BOOTP/DHCP sends retries.
+		  Unsigned value, in milliseconds. If not set, the period will
+		  be either the default (28000), or a value based on
+		  CONFIG_NET_RETRY_COUNT, if defined. This value has
+		  precedence over the valu based on CONFIG_NET_RETRY_COUNT.
 
 The following image location variables contain the location of images
 used in booting. The "Image" column gives the role of the image and is
@@ -6617,7 +6527,8 @@ it:
 
 * A CHANGELOG entry as plaintext (separate from the patch)
 
-* For major contributions, your entry to the CREDITS file
+* For major contributions, add a MAINTAINERS file with your
+  information and associated file and directory references.
 
 * When you add support for a new board, don't forget to add a
   maintainer e-mail address to the boards.cfg file, too.

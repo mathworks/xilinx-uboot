@@ -5,11 +5,13 @@
  * Copyright (C) 2005 Ivan Kokshaysky
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
  * Copyright (C) 2013 Bo Shen <voice.shen@atmel.com>
+ * Copyright (C) 2015 Wenyou Yang <wenyou.yang@atmel.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_pmc.h>
@@ -148,28 +150,106 @@ void at91_mck_init(u32 mckr)
 		;
 }
 
-void at91_periph_clk_enable(int id)
+int at91_enable_periph_generated_clk(u32 id, u32 clk_source, u32 div)
 {
 	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-	u32 regval;
+	u32 regval, status;
+	u32 timeout = 1000;
 
 	if (id > AT91_PMC_PCR_PID_MASK)
-		return;
+		return -EINVAL;
 
-	regval = AT91_PMC_PCR_EN | AT91_PMC_PCR_CMD_WRITE | id;
+	if (div > 0xff)
+		return -EINVAL;
+
+	if (clk_source == GCK_CSS_UPLL_CLK) {
+		if (at91_upll_clk_enable())
+			return -ENODEV;
+	}
+
+	writel(id, &pmc->pcr);
+	regval = readl(&pmc->pcr);
+	regval &= ~AT91_PMC_PCR_GCKCSS;
+	regval &= ~AT91_PMC_PCR_GCKDIV;
+
+	switch (clk_source) {
+	case GCK_CSS_SLOW_CLK:
+		regval |= AT91_PMC_PCR_GCKCSS_SLOW_CLK;
+		break;
+	case GCK_CSS_MAIN_CLK:
+		regval |= AT91_PMC_PCR_GCKCSS_MAIN_CLK;
+		break;
+	case GCK_CSS_PLLA_CLK:
+		regval |= AT91_PMC_PCR_GCKCSS_PLLA_CLK;
+		break;
+	case GCK_CSS_UPLL_CLK:
+		regval |= AT91_PMC_PCR_GCKCSS_UPLL_CLK;
+		break;
+	case GCK_CSS_MCK_CLK:
+		regval |= AT91_PMC_PCR_GCKCSS_MCK_CLK;
+		break;
+	case GCK_CSS_AUDIO_CLK:
+		regval |= AT91_PMC_PCR_GCKCSS_AUDIO_CLK;
+		break;
+	default:
+		printf("Error GCK clock source selection!\n");
+		return -EINVAL;
+	}
+
+	regval |= AT91_PMC_PCR_CMD_WRITE |
+		  AT91_PMC_PCR_GCKDIV_(div) |
+		  AT91_PMC_PCR_GCKEN;
 
 	writel(regval, &pmc->pcr);
+
+	do {
+		udelay(1);
+		status = readl(&pmc->sr);
+	} while ((!!(--timeout)) && (!(status & AT91_PMC_GCKRDY)));
+
+	if (!timeout)
+		printf("Timeout waiting for GCK ready!\n");
+
+	return 0;
 }
 
-void at91_periph_clk_disable(int id)
+u32 at91_get_periph_generated_clk(u32 id)
 {
 	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-	u32 regval;
+	u32 regval, clk_source, div;
+	u32 freq;
 
 	if (id > AT91_PMC_PCR_PID_MASK)
-		return;
+		return 0;
 
-	regval = AT91_PMC_PCR_CMD_WRITE | id;
+	writel(id, &pmc->pcr);
+	regval = readl(&pmc->pcr);
 
-	writel(regval, &pmc->pcr);
+	clk_source = regval & AT91_PMC_PCR_GCKCSS;
+	switch (clk_source) {
+	case AT91_PMC_PCR_GCKCSS_SLOW_CLK:
+		freq = CONFIG_SYS_AT91_SLOW_CLOCK;
+		break;
+	case AT91_PMC_PCR_GCKCSS_MAIN_CLK:
+		freq = gd->arch.main_clk_rate_hz;
+		break;
+	case AT91_PMC_PCR_GCKCSS_PLLA_CLK:
+		freq = gd->arch.plla_rate_hz;
+		break;
+	case AT91_PMC_PCR_GCKCSS_UPLL_CLK:
+		freq = AT91_UTMI_PLL_CLK_FREQ;
+		break;
+	case AT91_PMC_PCR_GCKCSS_MCK_CLK:
+		freq = gd->arch.mck_rate_hz;
+		break;
+	default:
+		printf("Improper GCK clock source selection!\n");
+		freq = 0;
+		break;
+	}
+
+	div = ((regval & AT91_PMC_PCR_GCKDIV) >> AT91_PMC_PCR_GCKDIV_OFFSET);
+	div += 1;
+
+	return freq / div;
 }

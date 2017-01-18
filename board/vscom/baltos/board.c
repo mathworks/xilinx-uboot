@@ -10,6 +10,7 @@
 
 #include <common.h>
 #include <errno.h>
+#include <libfdt.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -346,7 +347,7 @@ int board_late_init(void)
 
 	/* get production data */
 	if (read_eeprom(&header)) {
-		sprintf(model, "211");
+		strcpy(model, "211");
 	} else {
 		sprintf(model, "%d", header.SystemId);
 		if (header.SystemId == 215) {
@@ -407,7 +408,7 @@ static struct cpsw_platform_data cpsw_data = {
 #if ((defined(CONFIG_SPL_ETH_SUPPORT) || defined(CONFIG_SPL_USBETH_SUPPORT)) \
 		&& defined(CONFIG_SPL_BUILD)) || \
 	((defined(CONFIG_DRIVER_TI_CPSW) || \
-	  defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET)) && \
+	  defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET)) && \
 	 !defined(CONFIG_SPL_BUILD))
 int board_eth_init(bd_t *bis)
 {

@@ -1,12 +1,12 @@
 #
-# U-boot - Makefile
+# U-Boot - Makefile
 #
 # Copyright (c) 2005-2008 Analog Device Inc.
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# Licensed under the GPL-2 or later.
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 extra-y := init.elf

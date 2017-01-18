@@ -8,13 +8,16 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE,\
+		LENGTH = CONFIG_SPL_MAX_SIZE }
+MEMORY { .sdram : ORIGIN = CONFIG_SPL_BSS_START_ADDR, \
+		LENGTH = CONFIG_SPL_BSS_MAX_SIZE }
+
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
-	. = CONFIG_SPL_TEXT_BASE;
-
 	. = ALIGN(4);
 	.text :
 	{
@@ -22,36 +25,36 @@ SECTIONS
 		*(.vectors)
 		CPUDIR/start.o (.text*)
 		*(.text*)
-	}
+	} > .sram
 
 	. = ALIGN(4);
-	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
+	.rodata : {
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
+	} > .sram
 
 	. = ALIGN(4);
 	.data : {
 		*(.data*)
-	}
+	} > .sram
+
+	. = ALIGN(4);
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list*)));
+	} > .sram
 
 	. = ALIGN(4);
 
-	. = .;
-
-	__image_copy_end = .;
-
-	.rel.dyn : {
-		__rel_dyn_start = .;
-		*(.rel*)
-		__rel_dyn_end = .;
-	}
+	_image_binary_end = .;
 
 	_end = .;
 
-	.bss __rel_dyn_start (OVERLAY) : {
+	/* Move BSS section to RAM because of FAT */
+	.bss (NOLOAD) : {
 		__bss_start = .;
 		*(.bss*)
 		 . = ALIGN(4);
 		__bss_end = .;
-	}
+	} > .sdram
 
 	/DISCARD/ : { *(.dynsym) }
 	/DISCARD/ : { *(.dynstr*) }
@@ -59,29 +62,4 @@ SECTIONS
 	/DISCARD/ : { *(.plt*) }
 	/DISCARD/ : { *(.interp*) }
 	/DISCARD/ : { *(.gnu*) }
-
-	/* Just random address above 1MB */
-	/* There is something wrong in fat implementation */
-	. = 0x100000;
-	.ddr (NOLOAD) :  {
-		__ddr_start = .;
-		*(.ddr*)
-		 . = ALIGN(4);
-		__ddr_end = .;
-	}
 }
-
-#if defined(CONFIG_SPL_MAX_SIZE)
-ASSERT(__image_copy_end - __image_copy_start < (CONFIG_SPL_MAX_SIZE), \
-	"SPL image too big");
-#endif
-
-#if defined(CONFIG_SPL_BSS_MAX_SIZE)
-ASSERT(__bss_end - __bss_start < (CONFIG_SPL_BSS_MAX_SIZE), \
-	"SPL image BSS too big");
-#endif
-
-#if defined(CONFIG_SPL_MAX_FOOTPRINT)
-ASSERT(__bss_end - _start < (CONFIG_SPL_MAX_FOOTPRINT), \
-	"SPL image plus BSS too big");
-#endif

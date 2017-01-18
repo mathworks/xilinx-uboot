@@ -43,7 +43,6 @@
 /* SPI */
 #define CONFIG_SPI
 #define CONFIG_SH_QSPI
-#define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_SYS_NO_FLASH
 
 /* SH Ether */
@@ -89,7 +88,6 @@
 
 /* MMC */
 #define CONFIG_MMC
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
 
 #define CONFIG_SH_MMCIF

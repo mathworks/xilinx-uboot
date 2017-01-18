@@ -6,10 +6,11 @@
 #include <spl.h>
 #include <asm/u-boot.h>
 #include <ext4fs.h>
+#include <errno.h>
 #include <image.h>
 
 #ifdef CONFIG_SPL_EXT_SUPPORT
-int spl_load_image_ext(block_dev_desc_t *block_dev,
+int spl_load_image_ext(struct blk_desc *block_dev,
 						int partition,
 						const char *filename)
 {
@@ -21,8 +22,7 @@ int spl_load_image_ext(block_dev_desc_t *block_dev,
 	header = (struct image_header *)(CONFIG_SYS_TEXT_BASE -
 						sizeof(struct image_header));
 
-	if (get_partition_info(block_dev,
-			       partition, &part_info)) {
+	if (part_get_info(block_dev, partition, &part_info)) {
 		printf("spl: no partition table found\n");
 		return -1;
 	}
@@ -48,7 +48,11 @@ int spl_load_image_ext(block_dev_desc_t *block_dev,
 		goto end;
 	}
 
-	spl_parse_image_header(header);
+	err = spl_parse_image_header(header);
+	if (err < 0) {
+		puts("spl: ext: failed to parse image header\n");
+		goto end;
+	}
 
 	err = ext4fs_read((char *)spl_image.load_addr, filelen, &actlen);
 
@@ -63,15 +67,14 @@ end:
 }
 
 #ifdef CONFIG_SPL_OS_BOOT
-int spl_load_image_ext_os(block_dev_desc_t *block_dev, int partition)
+int spl_load_image_ext_os(struct blk_desc *block_dev, int partition)
 {
 	int err;
 	__maybe_unused loff_t filelen, actlen;
 	disk_partition_t part_info = {};
 	__maybe_unused char *file;
 
-	if (get_partition_info(block_dev,
-			       partition, &part_info)) {
+	if (part_get_info(block_dev, partition, &part_info)) {
 		printf("spl: no partition table found\n");
 		return -1;
 	}
@@ -85,8 +88,7 @@ int spl_load_image_ext_os(block_dev_desc_t *block_dev, int partition)
 #endif
 		return -1;
 	}
-
-#if defined(CONFIG_SPL_ENV_SUPPORT) && defined(CONFIG_SPL_OS_BOOT)
+#if defined(CONFIG_SPL_ENV_SUPPORT)
 	file = getenv("falcon_args_file");
 	if (file) {
 		err = ext4fs_open(file, &filelen);
@@ -134,6 +136,11 @@ defaults:
 
 	return spl_load_image_ext(block_dev, partition,
 			CONFIG_SPL_FS_LOAD_KERNEL_NAME);
+}
+#else
+int spl_load_image_ext_os(struct blk_desc *block_dev, int partition)
+{
+	return -ENOSYS;
 }
 #endif
 #endif

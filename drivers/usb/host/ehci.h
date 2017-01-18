@@ -3,20 +3,7 @@
  * Copyright (c) 2008, Michael Trimarchi <trimarchimichael@yahoo.it>
  * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2 of
- * the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef USB_EHCI_H
@@ -115,8 +102,9 @@ struct usb_linux_config_descriptor {
 } __attribute__ ((packed));
 
 #if defined CONFIG_EHCI_DESC_BIG_ENDIAN
-#define	ehci_readl(x)		(*((volatile u32 *)(x)))
-#define ehci_writel(a, b)	(*((volatile u32 *)(a)) = ((volatile u32)b))
+#define ehci_readl(x)		cpu_to_be32((*((volatile u32 *)(x))))
+#define ehci_writel(a, b)	(*((volatile u32 *)(a)) = \
+					cpu_to_be32(((volatile u32)b)))
 #else
 #define ehci_readl(x)		cpu_to_le32((*((volatile u32 *)(x))))
 #define ehci_writel(a, b)	(*((volatile u32 *)(a)) = \
@@ -252,9 +240,11 @@ struct ehci_ops {
 	void (*powerup_fixup)(struct ehci_ctrl *ctrl, uint32_t *status_reg,
 			      uint32_t *reg);
 	uint32_t *(*get_portsc_register)(struct ehci_ctrl *ctrl, int port);
+	int (*init_after_reset)(struct ehci_ctrl *ctrl);
 };
 
 struct ehci_ctrl {
+	enum usb_init_type init;
 	struct ehci_hccr *hccr;	/* R/O registers, not need for volatile */
 	struct ehci_hcor *hcor;
 	int rootdev;

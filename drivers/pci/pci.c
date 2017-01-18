@@ -9,7 +9,10 @@
  */
 
 /*
- * PCI routines
+ * Old PCI routines
+ *
+ * Do not change this file. Instead, convert your board to use CONFIG_DM_PCI
+ * and change pci-uclass.c.
  */
 
 #include <common.h>
@@ -172,11 +175,7 @@ pci_dev_t pci_find_devices(struct pci_device_id *ids, int index)
 	int bus;
 
 	for (hose = pci_get_hose_head(); hose; hose = hose->next) {
-#ifdef CONFIG_SYS_SCSI_SCAN_BUS_REVERSE
-		for (bus = hose->last_busno; bus >= hose->first_busno; bus--) {
-#else
 		for (bus = hose->first_busno; bus <= hose->last_busno; bus++) {
-#endif
 			bdf = pci_hose_find_devices(hose, bus, ids, &index);
 			if (bdf != -1)
 				return bdf;
@@ -269,7 +268,8 @@ int pci_hose_config_device(struct pci_controller *hose,
 	/* Disable interrupt line, if device says it wants to use interrupts */
 	pci_hose_read_config_byte(hose, dev, PCI_INTERRUPT_PIN, &pin);
 	if (pin != 0) {
-		pci_hose_write_config_byte(hose, dev, PCI_INTERRUPT_LINE, 0xff);
+		pci_hose_write_config_byte(hose, dev, PCI_INTERRUPT_LINE,
+					   PCI_INTERRUPT_LINE_DISABLE);
 	}
 
 	pci_hose_read_config_dword(hose, dev, PCI_COMMAND, &old_command);
@@ -525,4 +525,57 @@ int pci_find_cap(struct pci_controller *hose, pci_dev_t dev, int pos, int cap)
 		pos += PCI_CAP_LIST_NEXT;
 	}
 	return 0;
+}
+
+/**
+ * pci_find_next_ext_capability - Find an extended capability
+ *
+ * Returns the address of the next matching extended capability structure
+ * within the device's PCI configuration space or 0 if the device does
+ * not support it.  Some capabilities can occur several times, e.g., the
+ * vendor-specific capability, and this provides a way to find them all.
+ */
+int pci_find_next_ext_capability(struct pci_controller *hose, pci_dev_t dev,
+				 int start, int cap)
+{
+	u32 header;
+	int ttl, pos = PCI_CFG_SPACE_SIZE;
+
+	/* minimum 8 bytes per capability */
+	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
+
+	if (start)
+		pos = start;
+
+	pci_hose_read_config_dword(hose, dev, pos, &header);
+	if (header == 0xffffffff || header == 0)
+		return 0;
+
+	while (ttl-- > 0) {
+		if (PCI_EXT_CAP_ID(header) == cap && pos != start)
+			return pos;
+
+		pos = PCI_EXT_CAP_NEXT(header);
+		if (pos < PCI_CFG_SPACE_SIZE)
+			break;
+
+		pci_hose_read_config_dword(hose, dev, pos, &header);
+		if (header == 0xffffffff || header == 0)
+			break;
+	}
+
+	return 0;
+}
+
+/**
+ * pci_hose_find_ext_capability - Find an extended capability
+ *
+ * Returns the address of the requested extended capability structure
+ * within the device's PCI configuration space or 0 if the device does
+ * not support it.
+ */
+int pci_hose_find_ext_capability(struct pci_controller *hose, pci_dev_t dev,
+				 int cap)
+{
+	return pci_find_next_ext_capability(hose, dev, 0, cap);
 }

@@ -22,16 +22,13 @@
 #include <configs/ti_omap4_common.h>
 
 #undef CONFIG_SPL_OS_BOOT
+#undef CONFIG_EFI_PARTITION
 
 #undef CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS
 #define CONFIG_SYS_AUTOMATIC_SDRAM_DETECTION
 #define CONFIG_SYS_DEFAULT_LPDDR2_TIMINGS
 
-#undef CONFIG_SYS_PROMPT
-#define CONFIG_SYS_PROMPT		"duovero # "
-
 /* USB UHH support options */
-#define CONFIG_CMD_USB
 #define CONFIG_USB_HOST
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_OMAP
@@ -43,15 +40,11 @@
 
 #define CONFIG_SYS_ENABLE_PADS_ALL
 
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-
 #define CONFIG_SMC911X
 #define CONFIG_SMC911X_32_BIT
 #define CONFIG_SMC911X_BASE		0x2C000000
 
 /* GPIO */
-#define CONFIG_CMD_GPIO
 
 /* ENV related config options */
 #define CONFIG_ENV_IS_NOWHERE

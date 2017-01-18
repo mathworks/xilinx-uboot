@@ -11,6 +11,9 @@
 
 #include <asm/io.h>
 #include <common.h>
+#include <dma.h>
+#include <dm/device.h>
+#include <asm/omap_common.h>
 #include <asm/ti-common/ti-edma3.h>
 
 #define EDMA3_SL_BASE(slot)			(0x4000 + ((slot) << 5))
@@ -30,6 +33,10 @@
 #define EDMA3_QEECR				0x1088
 #define EDMA3_QEESR				0x108c
 #define EDMA3_QSECR				0x1094
+
+struct ti_edma3_priv {
+	u32 base;
+};
 
 /**
  * qedma3_start - start qdma on a channel
@@ -382,3 +389,152 @@ void qedma3_stop(u32 base, struct edma3_channel_config *cfg)
 	/* Clear the channel map */
 	__raw_writel(0, base + EDMA3_QCHMAP(cfg->chnum));
 }
+
+void __edma3_transfer(unsigned long edma3_base_addr, unsigned int edma_slot_num,
+		      void *dst, void *src, size_t len)
+{
+	struct edma3_slot_config        slot;
+	struct edma3_channel_config     edma_channel;
+	int                             b_cnt_value = 1;
+	int                             rem_bytes  = 0;
+	int                             a_cnt_value = len;
+	unsigned int                    addr = (unsigned int) (dst);
+	unsigned int                    max_acnt  = 0x7FFFU;
+
+	if (len > max_acnt) {
+		b_cnt_value = (len / max_acnt);
+		rem_bytes  = (len % max_acnt);
+		a_cnt_value = max_acnt;
+	}
+
+	slot.opt        = 0;
+	slot.src        = ((unsigned int) src);
+	slot.acnt       = a_cnt_value;
+	slot.bcnt       = b_cnt_value;
+	slot.ccnt       = 1;
+	slot.src_bidx   = a_cnt_value;
+	slot.dst_bidx   = a_cnt_value;
+	slot.src_cidx   = 0;
+	slot.dst_cidx   = 0;
+	slot.link       = EDMA3_PARSET_NULL_LINK;
+	slot.bcntrld    = 0;
+	slot.opt        = EDMA3_SLOPT_TRANS_COMP_INT_ENB |
+			  EDMA3_SLOPT_COMP_CODE(0) |
+			  EDMA3_SLOPT_STATIC | EDMA3_SLOPT_AB_SYNC;
+
+	edma3_slot_configure(edma3_base_addr, edma_slot_num, &slot);
+	edma_channel.slot = edma_slot_num;
+	edma_channel.chnum = 0;
+	edma_channel.complete_code = 0;
+	 /* set event trigger to dst update */
+	edma_channel.trigger_slot_word = EDMA3_TWORD(dst);
+
+	qedma3_start(edma3_base_addr, &edma_channel);
+	edma3_set_dest_addr(edma3_base_addr, edma_channel.slot, addr);
+
+	while (edma3_check_for_transfer(edma3_base_addr, &edma_channel))
+		;
+	qedma3_stop(edma3_base_addr, &edma_channel);
+
+	if (rem_bytes != 0) {
+		slot.opt        = 0;
+		slot.src        =
+			(b_cnt_value * max_acnt) + ((unsigned int) src);
+		slot.acnt       = rem_bytes;
+		slot.bcnt       = 1;
+		slot.ccnt       = 1;
+		slot.src_bidx   = rem_bytes;
+		slot.dst_bidx   = rem_bytes;
+		slot.src_cidx   = 0;
+		slot.dst_cidx   = 0;
+		slot.link       = EDMA3_PARSET_NULL_LINK;
+		slot.bcntrld    = 0;
+		slot.opt        = EDMA3_SLOPT_TRANS_COMP_INT_ENB |
+				  EDMA3_SLOPT_COMP_CODE(0) |
+				  EDMA3_SLOPT_STATIC | EDMA3_SLOPT_AB_SYNC;
+		edma3_slot_configure(edma3_base_addr, edma_slot_num, &slot);
+		edma_channel.slot = edma_slot_num;
+		edma_channel.chnum = 0;
+		edma_channel.complete_code = 0;
+		/* set event trigger to dst update */
+		edma_channel.trigger_slot_word = EDMA3_TWORD(dst);
+
+		qedma3_start(edma3_base_addr, &edma_channel);
+		edma3_set_dest_addr(edma3_base_addr, edma_channel.slot, addr +
+				    (max_acnt * b_cnt_value));
+		while (edma3_check_for_transfer(edma3_base_addr, &edma_channel))
+			;
+		qedma3_stop(edma3_base_addr, &edma_channel);
+	}
+}
+
+#ifndef CONFIG_DMA
+
+void edma3_transfer(unsigned long edma3_base_addr, unsigned int edma_slot_num,
+		    void *dst, void *src, size_t len)
+{
+	__edma3_transfer(edma3_base_addr, edma_slot_num, dst, src, len);
+}
+
+#else
+
+static int ti_edma3_transfer(struct udevice *dev, int direction, void *dst,
+			     void *src, size_t len)
+{
+	struct ti_edma3_priv *priv = dev_get_priv(dev);
+
+	/* enable edma3 clocks */
+	enable_edma3_clocks();
+
+	switch (direction) {
+	case DMA_MEM_TO_MEM:
+		__edma3_transfer(priv->base, 1, dst, src, len);
+		break;
+	default:
+		error("Transfer type not implemented in DMA driver\n");
+		break;
+	}
+
+	/* disable edma3 clocks */
+	disable_edma3_clocks();
+
+	return 0;
+}
+
+static int ti_edma3_ofdata_to_platdata(struct udevice *dev)
+{
+	struct ti_edma3_priv *priv = dev_get_priv(dev);
+
+	priv->base = dev_get_addr(dev);
+
+	return 0;
+}
+
+static int ti_edma3_probe(struct udevice *dev)
+{
+	struct dma_dev_priv *uc_priv = dev_get_uclass_priv(dev);
+
+	uc_priv->supported = DMA_SUPPORTS_MEM_TO_MEM;
+
+	return 0;
+}
+
+static const struct dma_ops ti_edma3_ops = {
+	.transfer	= ti_edma3_transfer,
+};
+
+static const struct udevice_id ti_edma3_ids[] = {
+	{ .compatible = "ti,edma3" },
+	{ }
+};
+
+U_BOOT_DRIVER(ti_edma3) = {
+	.name	= "ti_edma3",
+	.id	= UCLASS_DMA,
+	.of_match = ti_edma3_ids,
+	.ops	= &ti_edma3_ops,
+	.ofdata_to_platdata = ti_edma3_ofdata_to_platdata,
+	.probe	= ti_edma3_probe,
+	.priv_auto_alloc_size = sizeof(struct ti_edma3_priv),
+};
+#endif /* CONFIG_DMA */

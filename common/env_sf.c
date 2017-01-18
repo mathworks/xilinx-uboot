@@ -16,6 +16,7 @@
 #include <spi_flash.h>
 #include <search.h>
 #include <errno.h>
+#include <dm/device-internal.h>
 
 #ifndef CONFIG_ENV_SPI_BUS
 # define CONFIG_ENV_SPI_BUS	0
@@ -51,6 +52,19 @@ int saveenv(void)
 	char	*saved_buffer = NULL, flag = OBSOLETE_FLAG;
 	u32	saved_size, saved_offset, sector = 1;
 	int	ret;
+#ifdef CONFIG_DM_SPI_FLASH
+	struct udevice *new;
+
+	ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
+				     CONFIG_ENV_SPI_MAX_HZ,
+				     CONFIG_ENV_SPI_MODE, &new);
+	if (ret) {
+		set_default_env("!spi_flash_probe_bus_cs() failed");
+		return 1;
+	}
+
+	env_flash = dev_get_uclass_priv(new);
+#else
 
 	if (!env_flash) {
 		env_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS,
@@ -61,6 +75,7 @@ int saveenv(void)
 			return 1;
 		}
 	}
+#endif
 
 	ret = env_export(&env_new);
 	if (ret)
@@ -79,7 +94,7 @@ int saveenv(void)
 	if (CONFIG_ENV_SECT_SIZE > CONFIG_ENV_SIZE) {
 		saved_size = CONFIG_ENV_SECT_SIZE - CONFIG_ENV_SIZE;
 		saved_offset = env_new_offset + CONFIG_ENV_SIZE;
-		saved_buffer = malloc(saved_size);
+		saved_buffer = memalign(ARCH_DMA_MINALIGN, saved_size);
 		if (!saved_buffer) {
 			ret = 1;
 			goto done;
@@ -142,9 +157,10 @@ void env_relocate_spec(void)
 	env_t *tmp_env2 = NULL;
 	env_t *ep = NULL;
 
-	tmp_env1 = (env_t *)malloc(CONFIG_ENV_SIZE);
-	tmp_env2 = (env_t *)malloc(CONFIG_ENV_SIZE);
-
+	tmp_env1 = (env_t *)memalign(ARCH_DMA_MINALIGN,
+			CONFIG_ENV_SIZE);
+	tmp_env2 = (env_t *)memalign(ARCH_DMA_MINALIGN,
+			CONFIG_ENV_SIZE);
 	if (!tmp_env1 || !tmp_env2) {
 		set_default_env("!malloc() failed");
 		goto out;
@@ -209,7 +225,7 @@ void env_relocate_spec(void)
 	ret = env_import((char *)ep, 0);
 	if (!ret) {
 		error("Cannot import environment: errno = %d\n", errno);
-		set_default_env("env_import failed");
+		set_default_env("!env_import failed");
 	}
 
 err_read:
@@ -226,6 +242,19 @@ int saveenv(void)
 	char	*saved_buffer = NULL;
 	int	ret = 1;
 	env_t	env_new;
+#ifdef CONFIG_DM_SPI_FLASH
+	struct udevice *new;
+
+	ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
+				     CONFIG_ENV_SPI_MAX_HZ,
+				     CONFIG_ENV_SPI_MODE, &new);
+	if (ret) {
+		set_default_env("!spi_flash_probe_bus_cs() failed");
+		return 1;
+	}
+
+	env_flash = dev_get_uclass_priv(new);
+#else
 
 	if (!env_flash) {
 		env_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS,
@@ -236,6 +265,7 @@ int saveenv(void)
 			return 1;
 		}
 	}
+#endif
 
 	/* Is the sector larger than the env (i.e. embedded) */
 	if (CONFIG_ENV_SECT_SIZE > CONFIG_ENV_SIZE) {
@@ -295,7 +325,7 @@ void env_relocate_spec(void)
 	int ret;
 	char *buf = NULL;
 
-	buf = (char *)malloc(CONFIG_ENV_SIZE);
+	buf = (char *)memalign(ARCH_DMA_MINALIGN, CONFIG_ENV_SIZE);
 	env_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
 			CONFIG_ENV_SPI_MAX_HZ, CONFIG_ENV_SPI_MODE);
 	if (!env_flash) {

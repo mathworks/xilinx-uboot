@@ -127,6 +127,7 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data,
 #define CONFIG_SDHCI_CMD_MAX_TIMEOUT		3200
 #endif
 #define CONFIG_SDHCI_CMD_DEFAULT_TIMEOUT	100
+#define SDHCI_READ_STATUS_TIMEOUT		1000
 
 static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		       struct mmc_data *data)
@@ -137,7 +138,7 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	int trans_bytes = 0, is_aligned = 1;
 	u32 mask, flags, mode;
 	unsigned int time = 0, start_addr = 0;
-	int mmc_dev = mmc->block_dev.dev;
+	int mmc_dev = mmc_get_blk_desc(mmc)->devnum;
 	unsigned start = get_timer(0);
 
 	/* Timeout unit - ms */
@@ -243,9 +244,9 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		if (stat & SDHCI_INT_ERROR)
 			break;
 	} while (((stat & mask) != mask) &&
-		 (get_timer(start) < CONFIG_SDHCI_CMD_DEFAULT_TIMEOUT));
+		 (get_timer(start) < SDHCI_READ_STATUS_TIMEOUT));
 
-	if (get_timer(start) >= CONFIG_SDHCI_CMD_DEFAULT_TIMEOUT) {
+	if (get_timer(start) >= SDHCI_READ_STATUS_TIMEOUT) {
 		if (host->quirks & SDHCI_QUIRK_BROKEN_R1B)
 			return 0;
 		else {
@@ -286,9 +287,25 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 {
 	struct sdhci_host *host = mmc->priv;
-	unsigned int div, clk, timeout;
+	unsigned int div, clk, timeout, reg;
 
-	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
+	/* Wait max 20 ms */
+	timeout = 200;
+	while (sdhci_readl(host, SDHCI_PRESENT_STATE) &
+			   (SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT)) {
+		if (timeout == 0) {
+			printf("%s: Timeout to wait cmd & data inhibit\n",
+			       __func__);
+			return -1;
+		}
+
+		timeout--;
+		udelay(100);
+	}
+
+	reg = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	reg &= ~(SDHCI_CLOCK_CARD_EN | SDHCI_CLOCK_INT_EN);
+	sdhci_writew(host, reg, SDHCI_CLOCK_CONTROL);
 
 	if (clock == 0)
 		return 0;
@@ -427,6 +444,12 @@ static int sdhci_init(struct mmc *mmc)
 	sdhci_set_power(host, fls(mmc->cfg->voltages) - 1);
 
 	if (host->quirks & SDHCI_QUIRK_NO_CD) {
+#if defined(CONFIG_PIC32_SDHCI)
+		/* PIC32 SDHCI CD errata:
+		 * - set CD_TEST and clear CD_TEST_INS bit
+		 */
+		sdhci_writeb(host, SDHCI_CTRL_CD_TEST, SDHCI_HOST_CONTROL);
+#else
 		unsigned int status;
 
 		sdhci_writeb(host, SDHCI_CTRL_CD_TEST_INS | SDHCI_CTRL_CD_TEST,
@@ -437,6 +460,7 @@ static int sdhci_init(struct mmc *mmc)
 		    (!(status & SDHCI_CARD_STATE_STABLE)) ||
 		    (!(status & SDHCI_CARD_DETECT_PIN_LEVEL)))
 			status = sdhci_readl(host, SDHCI_PRESENT_STATE);
+#endif
 	}
 
 	/* Enable only interrupts served by the SD controller */
@@ -514,6 +538,10 @@ int add_sdhci(struct sdhci_host *host, u32 max_clk, u32 min_clk)
 		if (caps & SDHCI_CAN_DO_8BIT)
 			host->cfg.host_caps |= MMC_MODE_8BIT;
 	}
+
+	if (host->quirks & SDHCI_QUIRK_NO_HISPD_BIT)
+		host->cfg.host_caps &= ~(MMC_MODE_HS | MMC_MODE_HS_52MHz);
+
 	if (host->host_caps)
 		host->cfg.host_caps |= host->host_caps;
 

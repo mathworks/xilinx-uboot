@@ -68,9 +68,29 @@ config MACH_SUN8I_A33
 	select SUPPORT_SPL
 	select ARMV7_BOOT_SEC_DEFAULT if OLD_SUNXI_KERNEL_COMPAT
 
+config MACH_SUN8I_A83T
+	bool "sun8i (Allwinner A83T)"
+	select CPU_V7
+	select SUNXI_GEN_SUN6I
+	select SUPPORT_SPL
+
+config MACH_SUN8I_H3
+	bool "sun8i (Allwinner H3)"
+	select CPU_V7
+	select CPU_V7_HAS_NONSEC
+	select CPU_V7_HAS_VIRT
+	select SUNXI_GEN_SUN6I
+	select SUPPORT_SPL
+	select ARMV7_BOOT_SEC_DEFAULT if OLD_SUNXI_KERNEL_COMPAT
+
 config MACH_SUN9I
 	bool "sun9i (Allwinner A80)"
 	select CPU_V7
+	select SUNXI_GEN_SUN6I
+
+config MACH_SUN50I
+	bool "sun50i (Allwinner A64)"
+	select ARM64
 	select SUNXI_GEN_SUN6I
 
 endchoice
@@ -78,8 +98,14 @@ endchoice
 # The sun8i SoCs share a lot, this helps to avoid a lot of "if A23 || A33"
 config MACH_SUN8I
 	bool
-	default y if MACH_SUN8I_A23 || MACH_SUN8I_A33
+	default y if MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_H3 || MACH_SUN8I_A83T
 
+config DRAM_TYPE
+	int "sunxi dram type"
+	depends on MACH_SUN8I_A83T
+	default 3
+	---help---
+	Set the dram type, 3: DDR3, 7: LPDDR3
 
 config DRAM_CLK
 	int "sunxi dram clock speed"
@@ -192,6 +218,7 @@ config DRAM_ODT_CORRECTION
 endif
 
 config SYS_CLK_FREQ
+	default 816000000 if MACH_SUN50I
 	default 912000000 if MACH_SUN7I
 	default 1008000000 if MACH_SUN4I || MACH_SUN5I || MACH_SUN6I || MACH_SUN8I
 
@@ -202,6 +229,7 @@ config SYS_CONFIG_NAME
 	default "sun7i" if MACH_SUN7I
 	default "sun8i" if MACH_SUN8I
 	default "sun9i" if MACH_SUN9I
+	default "sun50i" if MACH_SUN50I
 
 config SYS_BOARD
 	default "sunxi"
@@ -227,8 +255,13 @@ config OLD_SUNXI_KERNEL_COMPAT
 	Set this to enable various workarounds for old kernels, this results in
 	sub-optimal settings for newer kernels, only enable if needed.
 
+config MMC
+	depends on !UART0_PORT_F
+	default y if ARCH_SUNXI
+
 config MMC0_CD_PIN
 	string "Card detect pin for mmc0"
+	default "PF6" if MACH_SUN8I_A83T || MACH_SUN8I_H3 || MACH_SUN50I
 	default ""
 	---help---
 	Set the card detect pin for mmc0, leave empty to not use cd. This
@@ -280,6 +313,15 @@ config MMC_SUNXI_SLOT_EXTRA
 	slot or emmc on mmc1 - mmc3. Setting this to 1, 2 or 3 will enable
 	support for this.
 
+config INITIAL_USB_SCAN_DELAY
+	int "delay initial usb scan by x ms to allow builtin devices to init"
+	default 0
+	---help---
+	Some boards have on board usb devices which need longer than the
+	USB spec's 1 second to connect from board powerup. Set this config
+	option to a non 0 value to add an extra delay before the first usb
+	bus scan.
+
 config USB0_VBUS_PIN
 	string "Vbus enable pin for usb0 (otg)"
 	default ""
@@ -292,6 +334,13 @@ config USB0_VBUS_DET
 	default ""
 	---help---
 	Set the Vbus detect pin for usb0 (otg). This takes a string in the
+	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
+
+config USB0_ID_DET
+	string "ID detect pin for usb0 (otg)"
+	default ""
+	---help---
+	Set the ID detect pin for usb0 (otg). This takes a string in the
 	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
 
 config USB1_VBUS_PIN
@@ -310,10 +359,17 @@ config USB2_VBUS_PIN
 	---help---
 	See USB1_VBUS_PIN help text.
 
+config USB3_VBUS_PIN
+	string "Vbus enable pin for usb3 (ehci2)"
+	default ""
+	---help---
+	See USB1_VBUS_PIN help text.
+
 config I2C0_ENABLE
 	bool "Enable I2C/TWI controller 0"
 	default y if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I
 	default n if MACH_SUN6I || MACH_SUN8I
+	select CMD_I2C
 	---help---
 	This allows enabling I2C/TWI controller 0 by muxing its pins, enabling
 	its clock and setting up the bus. This is especially useful on devices
@@ -323,12 +379,14 @@ config I2C0_ENABLE
 config I2C1_ENABLE
 	bool "Enable I2C/TWI controller 1"
 	default n
+	select CMD_I2C
 	---help---
 	See I2C0_ENABLE help text.
 
 config I2C2_ENABLE
 	bool "Enable I2C/TWI controller 2"
 	default n
+	select CMD_I2C
 	---help---
 	See I2C0_ENABLE help text.
 
@@ -336,14 +394,26 @@ if MACH_SUN6I || MACH_SUN7I
 config I2C3_ENABLE
 	bool "Enable I2C/TWI controller 3"
 	default n
+	select CMD_I2C
 	---help---
 	See I2C0_ENABLE help text.
+endif
+
+if SUNXI_GEN_SUN6I
+config R_I2C_ENABLE
+	bool "Enable the PRCM I2C/TWI controller"
+	# This is used for the pmic on H3
+	default y if SY8106A_POWER
+	select CMD_I2C
+	---help---
+	Set this to y to enable the I2C controller which is part of the PRCM.
 endif
 
 if MACH_SUN7I
 config I2C4_ENABLE
 	bool "Enable I2C/TWI controller 4"
 	default n
+	select CMD_I2C
 	---help---
 	See I2C0_ENABLE help text.
 endif
@@ -356,6 +426,7 @@ config AXP_GPIO
 
 config VIDEO
 	boolean "Enable graphical uboot console on HDMI, LCD or VGA"
+	depends on !MACH_SUN8I_A83T && !MACH_SUN8I_H3 && !MACH_SUN9I && !MACH_SUN50I_A64
 	default y
 	---help---
 	Say Y here to add support for using a cfb console on the HDMI, LCD
@@ -403,6 +474,13 @@ config VIDEO_VGA_EXTERNAL_DAC_EN
 	Set the enable pin for the external VGA DAC. This takes a string in the
 	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
 
+config VIDEO_COMPOSITE
+	boolean "Composite video output support"
+	depends on VIDEO && (MACH_SUN4I || MACH_SUN5I || MACH_SUN7I)
+	default n
+	---help---
+	Say Y here to add support for outputting composite video.
+
 config VIDEO_LCD_MODE
 	string "LCD panel timing details"
 	depends on VIDEO
@@ -411,6 +489,7 @@ config VIDEO_LCD_MODE
 	LCD panel timing details string, leave empty if there is no LCD panel.
 	This is in drivers/video/videomodes.c: video_get_params() format, e.g.
 	x:800,y:480,depth:18,pclk_khz:33000,le:16,ri:209,up:22,lo:22,hs:30,vs:1,sync:0,vmode:0
+	Also see: http://linux-sunxi.org/LCD
 
 config VIDEO_LCD_DCLK_PHASE
 	int "LCD panel display clock phase"
@@ -463,6 +542,7 @@ config VIDEO_LCD_PANEL_I2C
 	bool "LCD panel needs to be configured via i2c"
 	depends on VIDEO
 	default n
+	select CMD_I2C
 	---help---
 	Say y here if the LCD panel needs to be configured via i2c. This
 	will add a bitbang i2c controller using gpios to talk to the LCD.
@@ -512,7 +592,16 @@ config VIDEO_LCD_PANEL_MIPI_4_LANE_513_MBPS_VIA_SSD2828
 	select VIDEO_LCD_SSD2828
 	select VIDEO_LCD_IF_PARALLEL
 	---help---
-	 7.85" 768x1024 LCD panels, such as LG LP079X01 or AUO B079XAN01.0
+	7.85" 768x1024 LCD panels, such as LG LP079X01 or AUO B079XAN01.0
+
+config VIDEO_LCD_PANEL_EDP_4_LANE_1620M_VIA_ANX9804
+	bool "eDP 4-lane, 1.62G LCD panel via ANX9804 bridge chip"
+	select VIDEO_LCD_ANX9804
+	select VIDEO_LCD_IF_PARALLEL
+	select VIDEO_LCD_PANEL_I2C
+	---help---
+	Select this for eDP LCD panels with 4 lanes running at 1.62G,
+	connected via an ANX9804 bridge chip.
 
 config VIDEO_LCD_PANEL_HITACHI_TX18D42VM
 	bool "Hitachi tx18d42vm LCD panel"
@@ -532,26 +621,14 @@ config VIDEO_LCD_TL059WV5C0
 endchoice
 
 
-config USB_MUSB_SUNXI
-	bool "Enable sunxi OTG / DRC USB controller in host mode"
-	default n
-	---help---
-	Say y here to enable support for the sunxi OTG / DRC USB controller
-	used on almost all sunxi boards. Note currently u-boot can only have
-	one usb host controller enabled at a time, so enabling this on boards
-	which also use the ehci host controller will result in build errors.
-
-config USB_KEYBOARD
-	boolean "Enable USB keyboard support"
-	default y
-	---help---
-	Say Y here to add support for using a USB keyboard (typically used
-	in combination with a graphical console).
-
 config GMAC_TX_DELAY
 	int "GMAC Transmit Clock Delay Chain"
 	default 0
 	---help---
 	Set the GMAC Transmit Clock Delay Chain value.
+
+config SPL_STACK_R_ADDR
+	default 0x4fe00000 if MACH_SUN4I || MACH_SUN5I || MACH_SUN6I || MACH_SUN7I || MACH_SUN8I || MACH_SUN50I
+	default 0x2fe00000 if MACH_SUN9I
 
 endif

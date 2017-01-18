@@ -13,8 +13,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 /*
  * Top level Makefile configuration choices
  */
@@ -407,7 +405,6 @@
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(400000000 / CONFIG_SYS_CLK_DIV)
@@ -417,14 +414,6 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_CCSRBAR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_OF_BOARD_SETUP		1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * I2C
@@ -482,7 +471,6 @@
 
 #endif	/* CONFIG_PCI */
 
-
 #if defined(CONFIG_TSEC_ENET)
 
 #define CONFIG_MII		1	/* MII PHY management */
@@ -532,20 +520,14 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
 #endif
-
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
@@ -597,7 +579,6 @@
 
 #define CONFIG_LOADADDR	1000000	/*default location for tftp and bootm*/
 
-#define CONFIG_BOOTDELAY 10	/* -1 disables auto-boot */
 #undef	CONFIG_BOOTARGS		/* the boot command will set bootargs*/
 
 #define CONFIG_BAUDRATE	115200
@@ -625,7 +606,6 @@
    "tftp $loadaddr $bootfile;"						\
    "tftp $fdtaddr $fdtfile;"						\
    "bootm $loadaddr - $fdtaddr"
-
 
 #define CONFIG_RAMBOOTCOMMAND \
    "setenv bootargs root=/dev/ram rw "					\

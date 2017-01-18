@@ -1,7 +1,7 @@
 /*
  * Copyright © 1999-2010 David Woodhouse <dwmw2@infradead.org> et al.
  *
- * Released under GPL
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -238,11 +238,13 @@ struct mtd_info {
 	int (*_lock) (struct mtd_info *mtd, loff_t ofs, uint64_t len);
 	int (*_unlock) (struct mtd_info *mtd, loff_t ofs, uint64_t len);
 	int (*_is_locked) (struct mtd_info *mtd, loff_t ofs, uint64_t len);
+	int (*_block_isreserved) (struct mtd_info *mtd, loff_t ofs);
 	int (*_block_isbad) (struct mtd_info *mtd, loff_t ofs);
 	int (*_block_markbad) (struct mtd_info *mtd, loff_t ofs);
 #ifndef __UBOOT__
 	int (*_suspend) (struct mtd_info *mtd);
 	void (*_resume) (struct mtd_info *mtd);
+	void (*_reboot) (struct mtd_info *mtd);
 #endif
 	/*
 	 * If the driver is something smart, like UBI, it may need to maintain
@@ -270,9 +272,16 @@ struct mtd_info {
 	struct module *owner;
 #ifndef __UBOOT__
 	struct device dev;
+#else
+	struct udevice *dev;
 #endif
 	int usecount;
 };
+
+static inline int mtd_oobavail(struct mtd_info *mtd, struct mtd_oob_ops *ops)
+{
+	return ops->mode == MTD_OPS_AUTO_OOB ? mtd->oobavail : mtd->oobsize;
+}
 
 int mtd_erase(struct mtd_info *mtd, struct erase_info *instr);
 #ifndef __UBOOT__
@@ -328,6 +337,7 @@ static inline void mtd_sync(struct mtd_info *mtd)
 int mtd_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len);
 int mtd_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len);
 int mtd_is_locked(struct mtd_info *mtd, loff_t ofs, uint64_t len);
+int mtd_block_isreserved(struct mtd_info *mtd, loff_t ofs);
 int mtd_block_isbad(struct mtd_info *mtd, loff_t ofs);
 int mtd_block_markbad(struct mtd_info *mtd, loff_t ofs);
 
@@ -475,6 +485,8 @@ static inline int mtd_is_eccerr(int err) {
 static inline int mtd_is_bitflip_or_eccerr(int err) {
 	return mtd_is_bitflip(err) || mtd_is_eccerr(err);
 }
+
+unsigned mtd_mmap_capabilities(struct mtd_info *mtd);
 
 #ifdef __UBOOT__
 /* drivers/mtd/mtdcore.h */

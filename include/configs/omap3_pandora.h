@@ -49,7 +49,7 @@
 /*
  * NS16550 Configuration
  */
-#undef CONFIG_OMAP_SERIAL
+#undef CONFIG_SYS_NS16550_CLK
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
@@ -57,14 +57,13 @@
 #define CONFIG_SERIAL3			3
 
 /* commands to include */
-#define CONFIG_CMD_CACHE	/* Cache control		*/
 
 /*
  * Board NAND Info.
  */
 #define CONFIG_SYS_NAND_ADDR		NAND_BASE	/* physical address */
 							/* to access nand */
-#define CONFIG_SYS_NAND_BUSWIDTH_16BIT	16
+#define CONFIG_SYS_NAND_BUSWIDTH_16BIT
 #define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_HAM1_CODE_SW
 #define CONFIG_SYS_NAND_PAGE_SIZE	2048
 #define CONFIG_SYS_NAND_OOBSIZE		64
@@ -100,12 +99,6 @@
 	"fi; " \
 	"ubi part boot && ubifsmount ubi:boot && " \
 		"ubifsload ${loadaddr} uImage && bootm ${loadaddr}"
-
-/*
- * Miscellaneous configurable options
- */
-#undef CONFIG_SYS_PROMPT
-#define CONFIG_SYS_PROMPT		"Pandora # "
 
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)

@@ -6,8 +6,18 @@
 #include <linux/linkage.h>
 
 ENTRY(save_boot_params)
+	stmfd	sp!, {r0 - r12, lr}	/* @ save registers on stack */
+	ldr	r12, =CONFIG_SPL_BOOTROM_SAVE
+	str	sp, [r12]
 	b	save_boot_params_ret
 ENDPROC(save_boot_params)
+
+ENTRY(return_to_bootrom)
+	ldr	r12, =CONFIG_SPL_BOOTROM_SAVE
+	ldr	sp, [r12]
+	mov	r0, #0x0		/* @ return value: 0x0 NO_ERR */
+	ldmfd	sp!, {r0 - r12, pc}	/* @ restore regs and return */
+ENDPROC(return_to_bootrom)
 
 /*
  * cache_inv - invalidate Cache line

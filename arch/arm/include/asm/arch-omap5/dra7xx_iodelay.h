@@ -49,6 +49,10 @@
 #define ISOLATE_IO			1
 #define DEISOLATE_IO			0
 
+/* CTRL_CORE_SMA_SW_1 */
+#define RGMII2_ID_MODE_N_MASK		(1 << 26)
+#define RGMII1_ID_MODE_N_MASK		(1 << 25)
+
 /* PRM_IO_PMCTRL */
 #define PMCTRL_ISOCLK_OVERRIDE_SHIFT	0
 #define PMCTRL_ISOCLK_OVERRIDE_MASK	(1 << 0)
@@ -79,5 +83,9 @@
 void __recalibrate_iodelay(struct pad_conf_entry const *pad, int npads,
 			   struct iodelay_cfg_entry const *iodelay,
 			   int niodelays);
+int __recalibrate_iodelay_start(void);
+void __recalibrate_iodelay_end(int ret);
 
+int do_set_iodelay(u32 base, struct iodelay_cfg_entry const *array,
+		   int niodelays);
 #endif

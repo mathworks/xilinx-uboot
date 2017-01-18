@@ -12,13 +12,10 @@
 #include "exynos4-common.h"
 
 #undef CONFIG_BOARD_COMMON
-#undef CONFIG_USB_GADGET
-#undef CONFIG_USB_GADGET_S3C_UDC_OTG
-#undef CONFIG_USB_GADGET_S3C_UDC_OTG_PHY
-#undef CONFIG_CMD_USB_MASS_STORAGE
+#undef CONFIG_USB_GADGET_DWC2_OTG
+#undef CONFIG_USB_GADGET_DWC2_OTG_PHY
 #undef CONFIG_REVISION_TAG
 #undef CONFIG_CMD_THOR_DOWNLOAD
-#undef CONFIG_CMD_DFU
 
 /* High Level Configuration Options */
 #define CONFIG_EXYNOS4210		1	/* which is a EXYNOS4210 SoC */
@@ -42,10 +39,6 @@
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_DHCP
-
 /* MMC SPL */
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define COPY_BL2_FNPTR_ADDR	0x00002488
@@ -55,7 +48,6 @@
 #define CONFIG_BOOTCOMMAND	"fatload mmc 0 40007000 uImage; bootm 40007000"
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_PROMPT		"SMDKV310 # "
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC2,115200n8\0"
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
@@ -94,7 +86,7 @@
 
 #define CONFIG_SYS_INIT_SP_ADDR		0x02040000
 
-/* U-boot copy size from boot Media to DRAM.*/
+/* U-Boot copy size from boot Media to DRAM.*/
 #define	COPY_BL2_SIZE		0x80000
 #define BL2_START_OFFSET	((CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)/512)
 #define BL2_SIZE_BLOC_COUNT	(COPY_BL2_SIZE/512)

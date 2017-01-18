@@ -23,7 +23,6 @@
 #define CONFIG_MPC5200		1	/* This is an MPC5200 CPU */
 #define CONFIG_DIGSY_MTC	1	/* ... on InterControl digsyMTC board */
 #define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Valid values for CONFIG_SYS_TEXT_BASE are:
@@ -102,24 +101,14 @@
 #ifdef CONFIG_VIDEO
 #define CONFIG_CMD_BMP
 #endif
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_I2C
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_IRQ
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_USB
 
 #if (CONFIG_SYS_TEXT_BASE == 0xFF000000)
 #define CONFIG_SYS_LOWBOOT	1
@@ -128,7 +117,6 @@
 /*
  * Autobooting
  */
-#define CONFIG_BOOTDELAY	1
 
 #undef	CONFIG_BOOTARGS
 
@@ -298,9 +286,6 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	240000
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500
 
-#define CONFIG_OF_LIBFDT  1
-#define CONFIG_OF_BOARD_SETUP	1
-
 #define OF_CPU			"PowerPC,5200@0"
 #define OF_SOC			"soc5200@f0000000"
 #define OF_TBCLK		(bd->bi_busfreq / 4)
@@ -392,11 +377,8 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_AUTO_COMPLETE	1
 #define CONFIG_CMDLINE_EDITING	1
-#define CONFIG_SYS_HUSH_PARSER
 
-#define CONFIG_LOOPW		1
 #define CONFIG_MX_CYCLIC	1
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 
 #define CONFIG_SYS_CBSIZE		1024
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)

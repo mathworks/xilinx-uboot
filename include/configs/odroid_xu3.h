@@ -9,8 +9,9 @@
 #define __CONFIG_ODROID_XU3_H
 
 #include "exynos5420-common.h"
+#include <configs/exynos5-common.h>
 
-#define CONFIG_SYS_PROMPT		"ODROID-XU3 # "
+#undef CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_IDENT_STRING		" for ODROID-XU3"
 
 #define CONFIG_BOARD_COMMON
@@ -22,8 +23,6 @@
 #define CONFIG_SERIAL2			/* use SERIAL 2 */
 
 #define TZPC_BASE_OFFSET		0x10000
-
-#define CONFIG_CMD_MMC
 
 #define CONFIG_NR_DRAM_BANKS	8
 #define SDRAM_BANK_SIZE		(256UL << 20UL)	/* 256 MB */
@@ -46,40 +45,23 @@
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_EXYNOS
 
-/* DWC3 */
-#define CONFIG_USB_DWC3
-#define CONFIG_USB_DWC3_GADGET
-#define CONFIG_USB_DWC3_PHY_SAMSUNG
-
-/* USB gadget */
-#define CONFIG_USB_GADGET
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW	2
-
-/* Downloader */
-#define CONFIG_G_DNL_VENDOR_NUM		0x04E8
-#define CONFIG_G_DNL_PRODUCT_NUM	0x6601
-#define CONFIG_G_DNL_MANUFACTURER	"Samsung"
-#define CONFIG_USBDOWNLOAD_GADGET
-
 /* DFU */
-#define CONFIG_DFU_FUNCTION
+#define CONFIG_USB_FUNCTION_DFU
 #define CONFIG_DFU_MMC
-#define CONFIG_CMD_DFU
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	SZ_32M
 #define DFU_DEFAULT_POLL_TIMEOUT	300
+#define DFU_MANIFEST_POLL_TIMEOUT       25000
 
 /* THOR */
 #define CONFIG_G_DNL_THOR_VENDOR_NUM	CONFIG_G_DNL_VENDOR_NUM
 #define CONFIG_G_DNL_THOR_PRODUCT_NUM	0x685D
-#define CONFIG_THOR_FUNCTION
+#define CONFIG_USB_FUNCTION_THOR
 #define CONFIG_CMD_THOR_DOWNLOAD
 
 /* UMS */
 #define CONFIG_G_DNL_UMS_VENDOR_NUM	0x0525
 #define CONFIG_G_DNL_UMS_PRODUCT_NUM	0xA4A5
-#define CONFIG_USB_GADGET_MASS_STORAGE
-#define CONFIG_CMD_USB_MASS_STORAGE
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 
 /* FIXME: MUST BE REMOVED AFTER TMU IS TURNED ON */
 #undef CONFIG_EXYNOS_TMU
@@ -93,6 +75,8 @@
 	"boot.scr fat 0 1;"                 \
 	"boot.cmd fat 0 1;"                 \
 	"exynos5422-odroidxu3.dtb fat 0 1;" \
+	"exynos5422-odroidxu3-lite.dtb fat 0 1;" \
+	"exynos5422-odroidxu4.dtb fat 0 1;" \
 	"boot part 0 1;"                    \
 	"root part 0 2\0"
 
@@ -112,8 +96,18 @@
 
 /* Enable: board/samsung/common/misc.c to use set_dfu_alt_info() */
 #define CONFIG_MISC_COMMON
+#define CONFIG_MISC_INIT_R
 #define CONFIG_SET_DFU_ALT_INFO
 #define CONFIG_SET_DFU_ALT_BUF_LEN	(SZ_1K)
+
+/* Set soc_rev, soc_id, board_rev, boardname, fdtfile */
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+#define CONFIG_ODROID_REV_AIN			9
+#define CONFIG_REVISION_TAG
+#define CONFIG_BOARD_TYPES
+
+#undef CONFIG_SYS_BOARD
+#define CONFIG_SYS_BOARD	"odroid"
 
 /* Define new extra env settings, including DFU settings */
 #undef CONFIG_EXTRA_ENV_SETTINGS

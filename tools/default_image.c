@@ -88,6 +88,7 @@ static void image_set_header(void *ptr, struct stat *sbuf, int ifd,
 				struct image_tool_params *params)
 {
 	uint32_t checksum;
+	time_t time;
 
 	image_header_t * hdr = (image_header_t *)ptr;
 
@@ -96,9 +97,11 @@ static void image_set_header(void *ptr, struct stat *sbuf, int ifd,
 				sizeof(image_header_t)),
 			sbuf->st_size - sizeof(image_header_t));
 
+	time = imagetool_get_source_date(params, sbuf->st_mtime);
+
 	/* Build new header */
 	image_set_magic(hdr, IH_MAGIC);
-	image_set_time(hdr, sbuf->st_mtime);
+	image_set_time(hdr, time);
 	image_set_size(hdr, sbuf->st_size - sizeof(image_header_t));
 	image_set_load(hdr, params->addr);
 	image_set_ep(hdr, params->ep);

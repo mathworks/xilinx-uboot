@@ -18,7 +18,6 @@
 #define CONFIG_DRIVER_TI_EMAC
 #define MACH_TYPE_CALIMAIN	3528
 #define CONFIG_MACH_TYPE	MACH_TYPE_CALIMAIN
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * SoC Configuration
@@ -152,7 +151,6 @@
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART2_BASE /* Base address of UART2 */
@@ -194,7 +192,6 @@
  * U-Boot general configuration
  */
 #define CONFIG_BOOTFILE        "uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT      "Calimain > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE      1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE      (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS     16 /* max number of command args */
@@ -203,7 +200,6 @@
 #define CONFIG_LOADADDR        0xc0700000
 #define CONFIG_VERSION_VARIABLE
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CRC32_VERIFY
@@ -218,8 +214,6 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS           ""
 #define CONFIG_BOOTCOMMAND        "run checkupdate; run checkbutton;"
-#define CONFIG_BOOTDELAY          0
-#define CONFIG_ZERO_BOOTDELAY_CHECK   /* check for keypress on bootdelay==0 */
 #define CONFIG_BOOT_RETRY_TIME    60  /* continue boot after 60 s inactivity */
 #define CONFIG_RESET_TO_RETRY
 
@@ -312,18 +306,10 @@
  * U-Boot commands
  */
 #define CONFIG_CMD_ENV
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_GPIO
 
 #ifndef CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_CMD_DHCP
-#undef CONFIG_CMD_MII
-#undef CONFIG_CMD_PING
 #endif
 
 /* additions for new relocation code, must added to all boards */

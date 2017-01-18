@@ -17,6 +17,7 @@ endif
 
 obj-$(CONFIG_ALTERA_SPI) += altera_spi.o
 obj-$(CONFIG_ARMADA100_SPI) += armada100_spi.o
+obj-$(CONFIG_ATH79_SPI) += ath79_spi.o
 obj-$(CONFIG_ATMEL_DATAFLASH_SPI) += atmel_dataflash_spi.o
 obj-$(CONFIG_ATMEL_SPI) += atmel_spi.o
 obj-$(CONFIG_BFIN_SPI) += bfin_spi.o
@@ -39,12 +40,15 @@ obj-$(CONFIG_MPC8XXX_SPI) += mpc8xxx_spi.o
 obj-$(CONFIG_MXC_SPI) += mxc_spi.o
 obj-$(CONFIG_MXS_SPI) += mxs_spi.o
 obj-$(CONFIG_OMAP3_SPI) += omap3_spi.o
+obj-$(CONFIG_PIC32_SPI) += pic32_spi.o
+obj-$(CONFIG_ROCKCHIP_SPI) += rk_spi.o
 obj-$(CONFIG_SANDBOX_SPI) += sandbox_spi.o
 obj-$(CONFIG_SH_SPI) += sh_spi.o
 obj-$(CONFIG_SH_QSPI) += sh_qspi.o
 obj-$(CONFIG_TEGRA114_SPI) += tegra114_spi.o
 obj-$(CONFIG_TEGRA20_SFLASH) += tegra20_sflash.o
 obj-$(CONFIG_TEGRA20_SLINK) += tegra20_slink.o
+obj-$(CONFIG_TEGRA210_QSPI) += tegra210_qspi.o
 obj-$(CONFIG_TI_QSPI) += ti_qspi.o
 obj-$(CONFIG_XILINX_SPI) += xilinx_spi.o
 obj-$(CONFIG_ZYNQ_SPI) += zynq_spi.o

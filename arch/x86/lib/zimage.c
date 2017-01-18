@@ -42,29 +42,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define COMMAND_LINE_SIZE	2048
 
-/*
- * Install a default e820 table with 3 entries as follows:
- *
- *	0x000000-0x0a0000	Useable RAM
- *	0x0a0000-0x100000	Reserved for ISA
- *	0x100000-gd->ram_size	Useable RAM
- */
-__weak unsigned install_e820_map(unsigned max_entries,
-				 struct e820entry *entries)
-{
-	entries[0].addr = 0;
-	entries[0].size = ISA_START_ADDRESS;
-	entries[0].type = E820_RAM;
-	entries[1].addr = ISA_START_ADDRESS;
-	entries[1].size = ISA_END_ADDRESS - ISA_START_ADDRESS;
-	entries[1].type = E820_RESERVED;
-	entries[2].addr = ISA_END_ADDRESS;
-	entries[2].size = gd->ram_size - ISA_END_ADDRESS;
-	entries[2].type = E820_RAM;
-
-	return 3;
-}
-
 static void build_command_line(char *command_line, int auto_boot)
 {
 	char *env_command_line;
@@ -272,6 +249,8 @@ int setup_zimage(struct boot_params *setup_base, char *cmd_line, int auto_boot,
 		/* build command line at COMMAND_LINE_OFFSET */
 		build_command_line(cmd_line, auto_boot);
 	}
+
+	setup_video(&setup_base->screen_info);
 
 	return 0;
 }

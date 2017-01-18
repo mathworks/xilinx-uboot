@@ -12,7 +12,6 @@
 #define CONFIG_PMC405DE		1	/* ...on a PMC405DE board	*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
@@ -22,7 +21,6 @@
 #define CONFIG_SYS_CLK_FREQ	33330000 /* external frequency to pll	*/
 
 #define CONFIG_BAUDRATE		115200
-#define CONFIG_BOOTDELAY	3	/* autoboot after 3 seconds	*/
 
 #undef  CONFIG_BOOTARGS
 #undef  CONFIG_BOOTCOMMAND
@@ -57,17 +55,9 @@
 #define CONFIG_CMD_BSP
 #define CONFIG_CMD_CHIP_CONFIG
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_I2C
 #define CONFIG_CMD_IRQ
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
-
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
 
 #undef  CONFIG_WATCHDOG			/* watchdog disabled */
 #define CONFIG_SDRAM_BANK0	1	/* init onboard SDRAM bank 0 */
@@ -90,7 +80,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x3000000 /* 1 ... 48 MB in DRAM */
 
 #define CONFIG_CONS_INDEX	2	/* Use UART1			*/
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
@@ -102,9 +91,7 @@
 #define CONFIG_SYS_EXTBDINFO	1	/* To use extended board_into (bd_t) */
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history     */
-#define CONFIG_LOOPW		1	/* enable loopw command         */
 #define CONFIG_MX_CYCLIC	1	/* enable mdc/mwc commands      */
-#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check for keypress on bootdelay==0 */
 #define CONFIG_VERSION_VARIABLE 1	/* include version env variable */
 
 /*
@@ -167,7 +154,6 @@
 
 #define CONFIG_SYS_FLASH_EMPTY_INFO	1 /* 'E' for empty sector (flinfo) */
 #define CONFIG_SYS_FLASH_QUIET_TEST	1 /* don't warn upon unknown flash */
-
 
 /*
  * Start addresses for the final memory configuration

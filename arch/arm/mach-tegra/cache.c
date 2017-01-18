@@ -1,17 +1,7 @@
 /*
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 /* Tegra cache routines */
@@ -21,6 +11,7 @@
 #include <asm/arch-tegra/ap.h>
 #include <asm/arch/gp_padctrl.h>
 
+#ifndef CONFIG_ARM64
 void config_cache(void)
 {
 	u32 reg = 0;
@@ -44,3 +35,4 @@ void config_cache(void)
 	reg |= 2;
 	asm("mcr p15, 1, %0, c9, c0, 2" : : "r" (reg));
 }
+#endif

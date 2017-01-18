@@ -46,13 +46,13 @@ static u32 gpmc_net_config[GPMC_MAX_REG] = {
 };
 
 static const struct ns16550_platdata devkit8000_serial = {
-	OMAP34XX_UART3,
-	2,
-	V_NS16550_CLK
+	.base = OMAP34XX_UART3,
+	.reg_shift = 2,
+	.clock = V_NS16550_CLK
 };
 
 U_BOOT_DEVICE(devkit8000_uart) = {
-	"serial_omap",
+	"ns16550_serial",
 	&devkit8000_serial
 };
 
@@ -114,7 +114,7 @@ int misc_init_r(void)
 	}
 #endif
 
-	dieid_num_r();
+	omap_die_id_display();
 
 	return 0;
 }

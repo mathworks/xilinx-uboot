@@ -130,8 +130,10 @@ ulong android_image_get_kload(const struct andr_img_hdr *hdr)
 int android_image_get_ramdisk(const struct andr_img_hdr *hdr,
 			      ulong *rd_data, ulong *rd_len)
 {
-	if (!hdr->ramdisk_size)
+	if (!hdr->ramdisk_size) {
+		*rd_data = *rd_len = 0;
 		return -1;
+	}
 
 	printf("RAM disk load addr 0x%08x size %u KiB\n",
 	       hdr->ramdisk_addr, DIV_ROUND_UP(hdr->ramdisk_size, 1024));
@@ -143,3 +145,32 @@ int android_image_get_ramdisk(const struct andr_img_hdr *hdr,
 	*rd_len = hdr->ramdisk_size;
 	return 0;
 }
+
+#if !defined(CONFIG_SPL_BUILD)
+/**
+ * android_print_contents - prints out the contents of the Android format image
+ * @hdr: pointer to the Android format image header
+ *
+ * android_print_contents() formats a multi line Android image contents
+ * description.
+ * The routine prints out Android image properties
+ *
+ * returns:
+ *     no returned results
+ */
+void android_print_contents(const struct andr_img_hdr *hdr)
+{
+	const char * const p = IMAGE_INDENT_STRING;
+
+	printf("%skernel size:      %x\n", p, hdr->kernel_size);
+	printf("%skernel address:   %x\n", p, hdr->kernel_addr);
+	printf("%sramdisk size:     %x\n", p, hdr->ramdisk_size);
+	printf("%sramdisk addrress: %x\n", p, hdr->ramdisk_addr);
+	printf("%ssecond size:      %x\n", p, hdr->second_size);
+	printf("%ssecond address:   %x\n", p, hdr->second_addr);
+	printf("%stags address:     %x\n", p, hdr->tags_addr);
+	printf("%spage size:        %x\n", p, hdr->page_size);
+	printf("%sname:             %s\n", p, hdr->name);
+	printf("%scmdline:          %s\n", p, hdr->cmdline);
+}
+#endif

@@ -129,6 +129,7 @@ struct prcm_regs const omap4_prcm = {
 	.cm_div_m2_dpll_unipro = 0x4a0081d0,
 	.cm_ssc_deltamstep_dpll_unipro = 0x4a0081e8,
 	.cm_ssc_modfreqdiv_dpll_unipro = 0x4a0081ec,
+	.cm_coreaon_usb_phy1_core_clkctrl = 0x4a008640,
 
 	/* cm2.core */
 	.cm_l3_1_clkstctrl = 0x4a008700,
@@ -279,7 +280,11 @@ struct prcm_regs const omap4_prcm = {
 };
 
 struct omap_sys_ctrl_regs const omap4_ctrl = {
-	.control_id_code			= 0x4A002204,
+	.control_status				= 0x4A0022C4,
+	.control_std_fuse_die_id_0		= 0x4A002200,
+	.control_std_fuse_die_id_1		= 0x4A002208,
+	.control_std_fuse_die_id_2		= 0x4A00220C,
+	.control_std_fuse_die_id_3		= 0x4A002210,
 	.control_std_fuse_opp_bgap		= 0x4a002260,
 	.control_status				= 0x4a0022c4,
 	.control_ldosram_iva_voltage_ctrl	= 0x4A002320,

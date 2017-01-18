@@ -8,8 +8,14 @@ choice
 	prompt "Mainboard vendor"
 	default VENDOR_EMULATION
 
+config VENDOR_CONGATEC
+	bool "congatec"
+
 config VENDOR_COREBOOT
 	bool "coreboot"
+
+config VENDOR_EFI
+	bool "efi"
 
 config VENDOR_EMULATION
 	bool "emulation"
@@ -23,13 +29,16 @@ config VENDOR_INTEL
 endchoice
 
 # board-specific options below
+source "board/congatec/Kconfig"
 source "board/coreboot/Kconfig"
+source "board/efi/Kconfig"
 source "board/emulation/Kconfig"
 source "board/google/Kconfig"
 source "board/intel/Kconfig"
 
 # platform-specific options below
 source "arch/x86/cpu/baytrail/Kconfig"
+source "arch/x86/cpu/broadwell/Kconfig"
 source "arch/x86/cpu/coreboot/Kconfig"
 source "arch/x86/cpu/ivybridge/Kconfig"
 source "arch/x86/cpu/qemu/Kconfig"
@@ -37,6 +46,9 @@ source "arch/x86/cpu/quark/Kconfig"
 source "arch/x86/cpu/queensbay/Kconfig"
 
 # architecture-specific options below
+
+config AHCI
+	default y
 
 config SYS_MALLOC_F_LEN
 	default 0x800
@@ -68,6 +80,21 @@ config SMM_TSEG_SIZE
 config X86_RESET_VECTOR
 	bool
 	default n
+
+config RESET_SEG_START
+	hex
+	depends on X86_RESET_VECTOR
+	default 0xffff0000
+
+config RESET_SEG_SIZE
+	hex
+	depends on X86_RESET_VECTOR
+	default 0x10000
+
+config RESET_VEC_LOC
+	hex
+	depends on X86_RESET_VECTOR
+	default 0xfffffff0
 
 config SYS_X86_START16
 	hex
@@ -173,16 +200,9 @@ config X86_RAMTEST
 	  to work correctly. It is not exhaustive but can save time by
 	  detecting obvious failures.
 
-config MARK_GRAPHICS_MEM_WRCOMB
-	bool "Mark graphics memory as write-combining"
-	default n
-	help
-	  The graphics performance may increase if the graphics
-	  memory is set as write-combining cache type. This option
-	  enables marking the graphics memory as write-combining.
-
 config HAVE_FSP
 	bool "Add an Firmware Support Package binary"
+	depends on !EFI
 	help
 	  Select this option to add an Firmware Support Package binary to
 	  the resulting U-Boot image. It is a binary blob which U-Boot uses
@@ -217,19 +237,121 @@ config FSP_TEMP_RAM_ADDR
 	depends on HAVE_FSP
 	default 0x2000000
 	help
-	  Stack top address which is used in FspInit after DRAM is ready and
+	  Stack top address which is used in fsp_init() after DRAM is ready and
 	  CAR is disabled.
 
-config MAX_CPUS
-        int "Maximum number of CPUs permitted"
-        default 4
+config FSP_SYS_MALLOC_F_LEN
+	hex
+	depends on HAVE_FSP
+	default 0x100000
+	help
+	  Additional size of malloc() pool before relocation.
+
+config FSP_USE_UPD
+	bool
+	depends on HAVE_FSP
+	default y
+	help
+	  Most FSPs use UPD data region for some FSP customization. But there
+	  are still some FSPs that might not even have UPD. For such FSPs,
+	  override this to n in their platform Kconfig files.
+
+config FSP_BROKEN_HOB
+	bool
+	depends on HAVE_FSP
+	help
+	  Indicate some buggy FSPs that does not report memory used by FSP
+	  itself as reserved in the resource descriptor HOB. Select this to
+	  tell U-Boot to do some additional work to ensure U-Boot relocation
+	  do not overwrite the important boot service data which is used by
+	  FSP, otherwise the subsequent call to fsp_notify() will fail.
+
+config ENABLE_MRC_CACHE
+	bool "Enable MRC cache"
+	depends on !EFI && !SYS_COREBOOT
+	help
+	  Enable this feature to cause MRC data to be cached in NV storage
+	  to be used for speeding up boot time on future reboots and/or
+	  power cycles.
+
+	  For platforms that use Intel FSP for the memory initialization,
+	  please check FSP output HOB via U-Boot command 'fsp hob' to see
+	  if there is FSP_NON_VOLATILE_STORAGE_HOB_GUID (asm/fsp/fsp_hob.h).
+	  If such GUID does not exist, MRC cache is not avaiable on such
+	  platform (eg: Intel Queensbay), which means selecting this option
+	  here does not make any difference.
+
+config HAVE_MRC
+	bool "Add a System Agent binary"
+	depends on !HAVE_FSP
+	help
+	  Select this option to add a System Agent binary to
+	  the resulting U-Boot image. MRC stands for Memory Reference Code.
+	  It is a binary blob which U-Boot uses to set up SDRAM.
+
+	  Note: Without this binary U-Boot will not be able to set up its
+	  SDRAM so will not boot.
+
+config CACHE_MRC_BIN
+	bool
+	depends on HAVE_MRC
+	default n
+	help
+	  Enable caching for the memory reference code binary. This uses an
+	  MTRR (memory type range register) to turn on caching for the section
+	  of SPI flash that contains the memory reference code. This makes
+	  SDRAM init run faster.
+
+config CACHE_MRC_SIZE_KB
+	int
+	depends on HAVE_MRC
+	default 512
+	help
+	  Sets the size of the cached area for the memory reference code.
+	  This ends at the end of SPI flash (address 0xffffffff) and is
+	  measured in KB. Typically this is set to 512, providing for 0.5MB
+	  of cached space.
+
+config DCACHE_RAM_BASE
+	hex
+	depends on HAVE_MRC
+	help
+	  Sets the base of the data cache area in memory space. This is the
+	  start address of the cache-as-RAM (CAR) area and the address varies
+	  depending on the CPU. Once CAR is set up, read/write memory becomes
+	  available at this address and can be used temporarily until SDRAM
+	  is working.
+
+config DCACHE_RAM_SIZE
+	hex
+	depends on HAVE_MRC
+	default 0x40000
+	help
+	  Sets the total size of the data cache area in memory space. This
+	  sets the size of the cache-as-RAM (CAR) area. Note that much of the
+	  CAR space is required by the MRC. The CAR space available to U-Boot
+	  is normally at the start and typically extends to 1/4 or 1/2 of the
+	  available size.
+
+config DCACHE_RAM_MRC_VAR_SIZE
+	hex
+	depends on HAVE_MRC
+	help
+	  This is the amount of CAR (Cache as RAM) reserved for use by the
+	  memory reference code. This depends on the implementation of the
+	  memory reference code and must be set correctly or the board will
+	  not boot.
+
+config HAVE_REFCODE
+        bool "Add a Reference Code binary"
         help
-          When using multi-CPU chips it is possible for U-Boot to start up
-          more than one CPU. The stack memory used by all of these CPUs is
-          pre-allocated so at present U-Boot wants to know the maximum
-          number of CPUs that may be present. Set this to at least as high
-          as the number of CPUs in your system (it uses about 4KB of RAM for
-          each CPU).
+          Select this option to add a Reference Code binary to the resulting
+          U-Boot image. This is an Intel binary blob that handles system
+          initialisation, in this case the PCH and System Agent.
+
+          Note: Without this binary (on platforms that need it such as
+          broadwell) U-Boot will be missing some critical setup steps.
+          Various peripherals may fail to work.
 
 config SMP
 	bool "Enable Symmetric Multiprocessing"
@@ -241,8 +363,21 @@ config SMP
 	  only one CPU will be enabled regardless of the number of CPUs
 	  available.
 
+config MAX_CPUS
+	int "Maximum number of CPUs permitted"
+	depends on SMP
+	default 4
+	help
+	  When using multi-CPU chips it is possible for U-Boot to start up
+	  more than one CPU. The stack memory used by all of these CPUs is
+	  pre-allocated so at present U-Boot wants to know the maximum
+	  number of CPUs that may be present. Set this to at least as high
+	  as the number of CPUs in your system (it uses about 4KB of RAM for
+	  each CPU).
+
 config AP_STACK_SIZE
 	hex
+	depends on SMP
 	default 0x1000
 	help
 	  Each additional CPU started by U-Boot requires its own stack. This
@@ -250,27 +385,30 @@ config AP_STACK_SIZE
 	  the memory used by this initialisation process. Typically 4KB is
 	  enough space.
 
-config TSC_CALIBRATION_BYPASS
-	bool "Bypass Time-Stamp Counter (TSC) calibration"
-	default n
+config HAVE_VGA_BIOS
+	bool "Add a VGA BIOS image"
 	help
-	  By default U-Boot automatically calibrates Time-Stamp Counter (TSC)
-	  running frequency via Model-Specific Register (MSR) and Programmable
-	  Interval Timer (PIT). If the calibration does not work on your board,
-	  select this option and provide a hardcoded TSC running frequency with
-	  CONFIG_TSC_FREQ_IN_MHZ below.
+	  Select this option if you have a VGA BIOS image that you would
+	  like to add to your ROM.
 
-	  Normally this option should be turned on in a simulation environment
-	  like qemu.
-
-config TSC_FREQ_IN_MHZ
-	int "Time-Stamp Counter (TSC) running frequency in MHz"
-	depends on TSC_CALIBRATION_BYPASS
-	default 1000
+config VGA_BIOS_FILE
+	string "VGA BIOS image filename"
+	depends on HAVE_VGA_BIOS
+	default "vga.bin"
 	help
-	  The running frequency in MHz of Time-Stamp Counter (TSC).
+	  The filename of the VGA BIOS image in the board directory.
+
+config VGA_BIOS_ADDR
+	hex "VGA BIOS image location"
+	depends on HAVE_VGA_BIOS
+	default 0xfff90000
+	help
+	  The location of VGA BIOS image in the SPI flash. For example, base
+	  address of 0xfff90000 indicates that the image will be put at offset
+	  0x90000 from the beginning of a 1MB flash device.
 
 menu "System tables"
+	depends on !EFI && !SYS_COREBOOT
 
 config GENERATE_PIRQ_TABLE
 	bool "Generate a PIRQ table"
@@ -295,6 +433,52 @@ config GENERATE_SFI_TABLE
 	  the OS.
 
 	  For more information, see http://simplefirmware.org
+
+config GENERATE_MP_TABLE
+	bool "Generate an MP (Multi-Processor) table"
+	default n
+	help
+	  Generate an MP (Multi-Processor) table for this board. The MP table
+	  provides a way for the operating system to support for symmetric
+	  multiprocessing as well as symmetric I/O interrupt handling with
+	  the local APIC and I/O APIC.
+
+config GENERATE_ACPI_TABLE
+	bool "Generate an ACPI (Advanced Configuration and Power Interface) table"
+	default n
+	select QFW if QEMU
+	help
+	  The Advanced Configuration and Power Interface (ACPI) specification
+	  provides an open standard for device configuration and management
+	  by the operating system. It defines platform-independent interfaces
+	  for configuration and power management monitoring.
+
+config GENERATE_SMBIOS_TABLE
+	bool "Generate an SMBIOS (System Management BIOS) table"
+	default y
+	help
+	  The System Management BIOS (SMBIOS) specification addresses how
+	  motherboard and system vendors present management information about
+	  their products in a standard format by extending the BIOS interface
+	  on Intel architecture systems.
+
+	  Check http://www.dmtf.org/standards/smbios for details.
+
+config SMBIOS_MANUFACTURER
+	string "SMBIOS Manufacturer"
+	depends on GENERATE_SMBIOS_TABLE
+	default SYS_VENDOR
+	help
+	  The board manufacturer to store in SMBIOS structures.
+	  Change this to override the default one (CONFIG_SYS_VENDOR).
+
+config SMBIOS_PRODUCT_NAME
+	string "SMBIOS Product Name"
+	depends on GENERATE_SMBIOS_TABLE
+	default SYS_BOARD
+	help
+	  The product name to store in SMBIOS structures.
+	  Change this to override the default one (CONFIG_SYS_BOARD).
 
 endmenu
 
@@ -328,5 +512,62 @@ config PCIE_ECAM_BASE
 	  should be set to a region that does not conflict with memory
 	  assigned to PCI devices - i.e. the memory and prefetch regions, as
 	  passed to pci_set_region().
+
+config PCIE_ECAM_SIZE
+	hex
+	default 0x10000000
+	help
+	  This is the size of memory-mapped address of PCI configuration space,
+	  which is only available through the Enhanced Configuration Access
+	  Mechanism (ECAM) with PCI Express. Each bus consumes 1 MiB memory,
+	  so a default 0x10000000 size covers all of the 256 buses which is the
+	  maximum number of PCI buses as defined by the PCI specification.
+
+config I8259_PIC
+	bool
+	default y
+	help
+	  Intel 8259 ISA compatible chipset incorporates two 8259 (master and
+	  slave) interrupt controllers. Include this to have U-Boot set up
+	  the interrupt correctly.
+
+config I8254_TIMER
+	bool
+	default y
+	help
+	  Intel 8254 timer contains three counters which have fixed uses.
+	  Include this to have U-Boot set up the timer correctly.
+
+config I8042_KEYB
+	default y
+
+config DM_KEYBOARD
+	default y
+
+config SEABIOS
+	bool "Support booting SeaBIOS"
+	help
+	  SeaBIOS is an open source implementation of a 16-bit X86 BIOS.
+	  It can run in an emulator or natively on X86 hardware with the use
+	  of coreboot/U-Boot. By turning on this option, U-Boot prepares
+	  all the configuration tables that are necessary to boot SeaBIOS.
+
+	  Check http://www.seabios.org/SeaBIOS for details.
+
+config HIGH_TABLE_SIZE
+	hex "Size of configuration tables which reside in high memory"
+	default 0x10000
+	depends on SEABIOS
+	help
+	  SeaBIOS itself resides in E seg and F seg, where U-Boot puts all
+	  configuration tables like PIRQ/MP/ACPI. To avoid conflicts, U-Boot
+	  puts a copy of configuration tables in high memory region which
+	  is reserved on the stack before relocation. The region size is
+	  determined by this option.
+
+	  Increse it if the default size does not fit the board's needs.
+	  This is most likely due to a large ACPI DSDT table is used.
+
+source "arch/x86/lib/efi/Kconfig"
 
 endmenu

@@ -80,13 +80,6 @@ static int pl01x_generic_serial_init(struct pl01x_regs *regs,
 		writel(0, &regs->pl010_cr);
 		break;
 	case TYPE_PL011:
-#ifdef CONFIG_PL011_SERIAL_FLUSH_ON_INIT
-		/* Empty RX fifo if necessary */
-		if (readl(&regs->pl011_cr) & UART_PL011_CR_UARTEN) {
-			while (!(readl(&regs->fr) & UART_PL01x_FR_RXFE))
-				readl(&regs->dr);
-		}
-#endif
 		/* disable everything */
 		writel(0, &regs->pl011_cr);
 		break;
@@ -105,21 +98,6 @@ static int pl011_set_line_control(struct pl01x_regs *regs)
 	 * control register write
 	 */
 	lcr = UART_PL011_LCRH_WLEN_8 | UART_PL011_LCRH_FEN;
-#ifdef CONFIG_PL011_SERIAL_RLCR
-	{
-		int i;
-
-		/*
-		 * Program receive line control register after waiting
-		 * 10 bus cycles.  Delay be writing to readonly register
-		 * 10 times
-		 */
-		for (i = 0; i < 10; i++)
-			writel(lcr, &regs->fr);
-
-		writel(lcr, &regs->pl011_rlcr);
-	}
-#endif
 	writel(lcr, &regs->pl011_lcrh);
 	return 0;
 }
@@ -306,7 +284,10 @@ static int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
 	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
 	struct pl01x_priv *priv = dev_get_priv(dev);
 
-	pl01x_generic_setbrg(priv->regs, priv->type, plat->clock, baudrate);
+	if (!plat->skip_init) {
+		pl01x_generic_setbrg(priv->regs, priv->type, plat->clock,
+				     baudrate);
+	}
 
 	return 0;
 }
@@ -318,7 +299,10 @@ static int pl01x_serial_probe(struct udevice *dev)
 
 	priv->regs = (struct pl01x_regs *)plat->base;
 	priv->type = plat->type;
-	return pl01x_generic_serial_init(priv->regs, priv->type);
+	if (!plat->skip_init)
+		return pl01x_generic_serial_init(priv->regs, priv->type);
+	else
+		return 0;
 }
 
 static int pl01x_serial_getc(struct udevice *dev)
@@ -353,7 +337,7 @@ static const struct dm_serial_ops pl01x_serial_ops = {
 	.setbrg = pl01x_serial_setbrg,
 };
 
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 static const struct udevice_id pl01x_serial_id[] ={
 	{.compatible = "arm,pl011", .data = TYPE_PL011},
 	{.compatible = "arm,pl010", .data = TYPE_PL010},
@@ -365,7 +349,7 @@ static int pl01x_serial_ofdata_to_platdata(struct udevice *dev)
 	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
 	fdt_addr_t addr;
 
-	addr = fdtdec_get_addr(gd->fdt_blob, dev->of_offset, "reg");
+	addr = dev_get_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -387,5 +371,33 @@ U_BOOT_DRIVER(serial_pl01x) = {
 	.flags = DM_FLAG_PRE_RELOC,
 	.priv_auto_alloc_size = sizeof(struct pl01x_priv),
 };
+
+#endif
+
+#if defined(CONFIG_DEBUG_UART_PL010) || defined(CONFIG_DEBUG_UART_PL011)
+
+#include <debug_uart.h>
+
+static void _debug_uart_init(void)
+{
+#ifndef CONFIG_DEBUG_UART_SKIP_INIT
+	struct pl01x_regs *regs = (struct pl01x_regs *)CONFIG_DEBUG_UART_BASE;
+	enum pl01x_type type = CONFIG_IS_ENABLED(DEBUG_UART_PL011) ?
+				TYPE_PL011 : TYPE_PL010;
+
+	pl01x_generic_serial_init(regs, type);
+	pl01x_generic_setbrg(regs, type,
+			     CONFIG_DEBUG_UART_CLOCK, CONFIG_BAUDRATE);
+#endif
+}
+
+static inline void _debug_uart_putc(int ch)
+{
+	struct pl01x_regs *regs = (struct pl01x_regs *)CONFIG_DEBUG_UART_BASE;
+
+	pl01x_putc(regs, ch);
+}
+
+DEBUG_UART_FUNCS
 
 #endif

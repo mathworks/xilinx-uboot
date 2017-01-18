@@ -25,12 +25,12 @@ DECLARE_GLOBAL_DATA_PTR;
 u32 *const omap_si_rev = (u32 *)OMAP_SRAM_SCRATCH_OMAP_REV;
 
 static const struct gpio_bank gpio_bank_44xx[6] = {
-	{ (void *)OMAP44XX_GPIO1_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP44XX_GPIO2_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP44XX_GPIO3_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP44XX_GPIO4_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP44XX_GPIO5_BASE, METHOD_GPIO_24XX },
-	{ (void *)OMAP44XX_GPIO6_BASE, METHOD_GPIO_24XX },
+	{ (void *)OMAP44XX_GPIO1_BASE },
+	{ (void *)OMAP44XX_GPIO2_BASE },
+	{ (void *)OMAP44XX_GPIO3_BASE },
+	{ (void *)OMAP44XX_GPIO4_BASE },
+	{ (void *)OMAP44XX_GPIO5_BASE },
+	{ (void *)OMAP44XX_GPIO6_BASE },
 };
 
 const struct gpio_bank *const omap_gpio_bank = gpio_bank_44xx;
@@ -154,6 +154,14 @@ void init_omap_revision(void)
 		*omap_si_rev = OMAP4430_SILICON_ID_INVALID;
 		break;
 	}
+}
+
+void omap_die_id(unsigned int *die_id)
+{
+	die_id[0] = readl((*ctrl)->control_std_fuse_die_id_0);
+	die_id[1] = readl((*ctrl)->control_std_fuse_die_id_1);
+	die_id[2] = readl((*ctrl)->control_std_fuse_die_id_2);
+	die_id[3] = readl((*ctrl)->control_std_fuse_die_id_3);
 }
 
 #ifndef CONFIG_SYS_L2CACHE_OFF

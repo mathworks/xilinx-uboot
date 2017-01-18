@@ -23,6 +23,7 @@
 #define STATUS_LED_BLINKING	1
 #define STATUS_LED_ON		2
 
+void status_led_init(void);
 void status_led_tick (unsigned long timestamp);
 void status_led_set  (int led, int state);
 
@@ -63,19 +64,6 @@ void status_led_set  (int led, int state);
    * ADVICE: Define in your board configuration file rather than
    * filling this file up with lots of custom board stuff.
    */
-
-/*****  CMI   ********************************************************/
-#elif defined(CONFIG_CMI)
-# define STATUS_LED_DIR		im_mios.mios_mpiosm32ddr
-# define STATUS_LED_DAT		im_mios.mios_mpiosm32dr
-
-# define STATUS_LED_BIT		0x2000		/* Select one of the 16 possible*/
-						/* MIOS outputs */
-# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)	/* Blinking periode is 500 ms */
-# define STATUS_LED_STATE	STATUS_LED_BLINKING
-
-# define STATUS_LED_ACTIVE	1		/* LED on for bit == 0	*/
-# define STATUS_LED_BOOT	0		/* LED 0 used for boot status */
 
 #elif defined(CONFIG_V38B)
 

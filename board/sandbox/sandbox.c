@@ -26,6 +26,7 @@ void flush_cache(unsigned long start, unsigned long size)
 {
 }
 
+#ifndef CONFIG_TIMER
 /* system timer offset in ms */
 static unsigned long sandbox_timer_offset;
 
@@ -38,29 +39,13 @@ unsigned long timer_read_counter(void)
 {
 	return os_get_nsec() / 1000 + sandbox_timer_offset * 1000;
 }
+#endif
 
 int dram_init(void)
 {
 	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
 	return 0;
 }
-
-#ifdef CONFIG_BOARD_EARLY_INIT_F
-int board_early_init_f(void)
-{
-#ifdef CONFIG_VIDEO_SANDBOX_SDL
-	int ret;
-
-	ret = sandbox_lcd_sdl_early_init();
-	if (ret) {
-		puts("Could not init sandbox LCD emulation\n");
-		return ret;
-	}
-#endif
-
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)

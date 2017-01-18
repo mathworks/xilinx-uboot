@@ -18,6 +18,7 @@
 		i2c0 = &i2c0;
 		serial0 = &uart1;
 		spi0 = &qspi;
+		mmc0 = &sdhci0;
 	};
 
 	memory {
@@ -26,9 +27,8 @@
 	};
 
 	chosen {
-		bootargs = "earlyprintk";
-		linux,stdout-path = &uart1;
-		stdout-path = &uart1;
+		bootargs = "";
+		stdout-path = "serial0:115200n8";
 	};
 
 	usb_phy0: phy0 {
@@ -81,6 +81,21 @@
 				reg = <0x5d>;
 				factory-fout = <156250000>;
 				clock-frequency = <148500000>;
+			};
+		};
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			adv7511: hdmi-tx@39 {
+				compatible = "adi,adv7511";
+				reg = <0x39>;
+				adi,input-depth = <8>;
+				adi,input-colorspace = "yuv422";
+				adi,input-clock = "1x";
+				adi,input-style = <3>;
+				adi,input-justification = "evenly";
 			};
 		};
 
@@ -292,6 +307,7 @@
 };
 
 &qspi {
+	u-boot,dm-pre-reloc;
 	status = "okay";
 	is-dual = <1>;
 	num-cs = <1>;
@@ -327,12 +343,14 @@
 };
 
 &sdhci0 {
+	u-boot,dm-pre-reloc;
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdhci0_default>;
 };
 
 &uart1 {
+	u-boot,dm-pre-reloc;
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1_default>;

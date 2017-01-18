@@ -21,15 +21,13 @@
  * A typedef for a physical address. Note that fdt data is always big
  * endian even on a litle endian machine.
  */
+typedef phys_addr_t fdt_addr_t;
+typedef phys_size_t fdt_size_t;
 #ifdef CONFIG_PHYS_64BIT
-typedef u64 fdt_addr_t;
-typedef u64 fdt_size_t;
 #define FDT_ADDR_T_NONE (-1ULL)
 #define fdt_addr_to_cpu(reg) be64_to_cpu(reg)
 #define fdt_size_to_cpu(reg) be64_to_cpu(reg)
 #else
-typedef u32 fdt_addr_t;
-typedef u32 fdt_size_t;
 #define FDT_ADDR_T_NONE (-1U)
 #define fdt_addr_to_cpu(reg) be32_to_cpu(reg)
 #define fdt_size_to_cpu(reg) be32_to_cpu(reg)
@@ -45,16 +43,6 @@ struct fdt_memory {
 #define SPL_BUILD	1
 #else
 #define SPL_BUILD	0
-#endif
-
-#ifdef CONFIG_OF_CONTROL
-# if defined(CONFIG_SPL_BUILD) && defined(SPL_DISABLE_OF_CONTROL)
-#  define OF_CONTROL 0
-# else
-#  define OF_CONTROL 1
-# endif
-#else
-# define OF_CONTROL 0
 #endif
 
 /*
@@ -130,21 +118,17 @@ enum fdt_compat_id {
 	COMPAT_UNKNOWN,
 	COMPAT_NVIDIA_TEGRA20_EMC,	/* Tegra20 memory controller */
 	COMPAT_NVIDIA_TEGRA20_EMC_TABLE, /* Tegra20 memory timing table */
-	COMPAT_NVIDIA_TEGRA20_KBC,	/* Tegra20 Keyboard */
 	COMPAT_NVIDIA_TEGRA20_NAND,	/* Tegra2 NAND controller */
-	COMPAT_NVIDIA_TEGRA20_PWM,	/* Tegra 2 PWM controller */
-	COMPAT_NVIDIA_TEGRA124_DC,	/* Tegra 124 Display controller */
-	COMPAT_NVIDIA_TEGRA124_SOR,	/* Tegra 124 Serial Output Resource */
 	COMPAT_NVIDIA_TEGRA124_PMC,	/* Tegra 124 power mgmt controller */
-	COMPAT_NVIDIA_TEGRA20_DC,	/* Tegra 2 Display controller */
+	COMPAT_NVIDIA_TEGRA186_SDMMC,	/* Tegra186 SDMMC controller */
+	COMPAT_NVIDIA_TEGRA210_SDMMC,	/* Tegra210 SDMMC controller */
 	COMPAT_NVIDIA_TEGRA124_SDMMC,	/* Tegra124 SDMMC controller */
 	COMPAT_NVIDIA_TEGRA30_SDMMC,	/* Tegra30 SDMMC controller */
 	COMPAT_NVIDIA_TEGRA20_SDMMC,	/* Tegra20 SDMMC controller */
-	COMPAT_NVIDIA_TEGRA124_PCIE,	/* Tegra 124 PCIe controller */
-	COMPAT_NVIDIA_TEGRA30_PCIE,	/* Tegra 30 PCIe controller */
-	COMPAT_NVIDIA_TEGRA20_PCIE,	/* Tegra 20 PCIe controller */
 	COMPAT_NVIDIA_TEGRA124_XUSB_PADCTL,
 					/* Tegra124 XUSB pad controller */
+	COMPAT_NVIDIA_TEGRA210_XUSB_PADCTL,
+					/* Tegra210 XUSB pad controller */
 	COMPAT_SMSC_LAN9215,		/* SMSC 10/100 Ethernet LAN9215 */
 	COMPAT_SAMSUNG_EXYNOS5_SROMC,	/* Exynos5 SROMC */
 	COMPAT_SAMSUNG_S3C2440_I2C,	/* Exynos I2C Controller */
@@ -159,30 +143,26 @@ enum fdt_compat_id {
 	COMPAT_SAMSUNG_EXYNOS5_DP,	/* Exynos Display port controller */
 	COMPAT_SAMSUNG_EXYNOS_DWMMC,	/* Exynos DWMMC controller */
 	COMPAT_SAMSUNG_EXYNOS_MMC,	/* Exynos MMC controller */
-	COMPAT_SAMSUNG_EXYNOS_SERIAL,	/* Exynos UART */
 	COMPAT_MAXIM_MAX77686_PMIC,	/* MAX77686 PMIC */
 	COMPAT_GENERIC_SPI_FLASH,	/* Generic SPI Flash chip */
 	COMPAT_MAXIM_98095_CODEC,	/* MAX98095 Codec */
-	COMPAT_INFINEON_SLB9635_TPM,	/* Infineon SLB9635 TPM */
-	COMPAT_INFINEON_SLB9645_TPM,	/* Infineon SLB9645 TPM */
 	COMPAT_SAMSUNG_EXYNOS5_I2C,	/* Exynos5 High Speed I2C Controller */
-	COMPAT_SANDBOX_LCD_SDL,		/* Sandbox LCD emulation with SDL */
-	COMPAT_TI_TPS65090,		/* Texas Instrument TPS65090 */
-	COMPAT_NXP_PTN3460,		/* NXP PTN3460 DP/LVDS bridge */
 	COMPAT_SAMSUNG_EXYNOS_SYSMMU,	/* Exynos sysmmu */
-	COMPAT_PARADE_PS8625,		/* Parade PS8622 EDP->LVDS bridge */
 	COMPAT_INTEL_MICROCODE,		/* Intel microcode update */
-	COMPAT_MEMORY_SPD,		/* Memory SPD information */
 	COMPAT_INTEL_PANTHERPOINT_AHCI,	/* Intel Pantherpoint AHCI */
 	COMPAT_INTEL_MODEL_206AX,	/* Intel Model 206AX CPU */
 	COMPAT_INTEL_GMA,		/* Intel Graphics Media Accelerator */
 	COMPAT_AMS_AS3722,		/* AMS AS3722 PMIC */
 	COMPAT_INTEL_ICH_SPI,		/* Intel ICH7/9 SPI controller */
 	COMPAT_INTEL_QRK_MRC,		/* Intel Quark MRC */
-	COMPAT_INTEL_X86_PINCTRL,	/* Intel ICH7/9 pin control */
 	COMPAT_SOCIONEXT_XHCI,		/* Socionext UniPhier xHCI */
 	COMPAT_INTEL_PCH,		/* Intel PCH */
-	COMPAT_INTEL_IRQ_ROUTER,	/* Intel Interrupt Router */
+	COMPAT_ALTERA_SOCFPGA_DWMAC,	/* SoCFPGA Ethernet controller */
+	COMPAT_ALTERA_SOCFPGA_DWMMC,	/* SoCFPGA DWMMC controller */
+	COMPAT_ALTERA_SOCFPGA_DWC2USB,	/* SoCFPGA DWC2 USB controller */
+	COMPAT_INTEL_BAYTRAIL_FSP,	/* Intel Bay Trail FSP */
+	COMPAT_INTEL_BAYTRAIL_FSP_MDP,	/* Intel FSP memory-down params */
+	COMPAT_INTEL_IVYBRIDGE_FSP,	/* Intel Ivy Bridge FSP */
 
 	COMPAT_COUNT,
 };
@@ -305,10 +285,90 @@ int fdtdec_next_compatible(const void *blob, int node,
 int fdtdec_next_compatible_subnode(const void *blob, int node,
 		enum fdt_compat_id id, int *depthp);
 
-/**
- * Look up an address property in a node and return it as an address.
- * The property must hold either one address with no trailing data or
- * one address with a length. This is only tested on 32-bit machines.
+/*
+ * Look up an address property in a node and return the parsed address, and
+ * optionally the parsed size.
+ *
+ * This variant assumes a known and fixed number of cells are used to
+ * represent the address and size.
+ *
+ * You probably don't want to use this function directly except to parse
+ * non-standard properties, and never to parse the "reg" property. Instead,
+ * use one of the "auto" variants below, which automatically honor the
+ * #address-cells and #size-cells properties in the parent node.
+ *
+ * @param blob	FDT blob
+ * @param node	node to examine
+ * @param prop_name	name of property to find
+ * @param index	which address to retrieve from a list of addresses. Often 0.
+ * @param na	the number of cells used to represent an address
+ * @param ns	the number of cells used to represent a size
+ * @param sizep	a pointer to store the size into. Use NULL if not required
+ * @return address, if found, or FDT_ADDR_T_NONE if not
+ */
+fdt_addr_t fdtdec_get_addr_size_fixed(const void *blob, int node,
+		const char *prop_name, int index, int na, int ns,
+		fdt_size_t *sizep);
+
+/*
+ * Look up an address property in a node and return the parsed address, and
+ * optionally the parsed size.
+ *
+ * This variant automatically determines the number of cells used to represent
+ * the address and size by parsing the provided parent node's #address-cells
+ * and #size-cells properties.
+ *
+ * @param blob	FDT blob
+ * @param parent	parent node of @node
+ * @param node	node to examine
+ * @param prop_name	name of property to find
+ * @param index	which address to retrieve from a list of addresses. Often 0.
+ * @param sizep	a pointer to store the size into. Use NULL if not required
+ * @return address, if found, or FDT_ADDR_T_NONE if not
+ */
+fdt_addr_t fdtdec_get_addr_size_auto_parent(const void *blob, int parent,
+		int node, const char *prop_name, int index, fdt_size_t *sizep);
+
+/*
+ * Look up an address property in a node and return the parsed address, and
+ * optionally the parsed size.
+ *
+ * This variant automatically determines the number of cells used to represent
+ * the address and size by parsing the parent node's #address-cells
+ * and #size-cells properties. The parent node is automatically found.
+ *
+ * The automatic parent lookup implemented by this function is slow.
+ * Consequently, fdtdec_get_addr_size_auto_parent() should be used where
+ * possible.
+ *
+ * @param blob	FDT blob
+ * @param parent	parent node of @node
+ * @param node	node to examine
+ * @param prop_name	name of property to find
+ * @param index	which address to retrieve from a list of addresses. Often 0.
+ * @param sizep	a pointer to store the size into. Use NULL if not required
+ * @return address, if found, or FDT_ADDR_T_NONE if not
+ */
+fdt_addr_t fdtdec_get_addr_size_auto_noparent(const void *blob, int node,
+		const char *prop_name, int index, fdt_size_t *sizep);
+
+/*
+ * Look up an address property in a node and return the parsed address.
+ *
+ * This variant hard-codes the number of cells used to represent the address
+ * and size based on sizeof(fdt_addr_t) and sizeof(fdt_size_t). It also
+ * always returns the first address value in the property (index 0).
+ *
+ * Use of this function is not recommended due to the hard-coding of cell
+ * counts. There is no programmatic validation that these hard-coded values
+ * actually match the device tree content in any way at all. This assumption
+ * can be satisfied by manually ensuring CONFIG_PHYS_64BIT is appropriately
+ * set in the U-Boot build and exercising strict control over DT content to
+ * ensure use of matching #address-cells/#size-cells properties. However, this
+ * approach is error-prone; those familiar with DT will not expect the
+ * assumption to exist, and could easily invalidate it. If the assumption is
+ * invalidated, this function will not report the issue, and debugging will
+ * be required. Instead, use fdtdec_get_addr_size_auto_parent().
  *
  * @param blob	FDT blob
  * @param node	node to examine
@@ -318,14 +378,29 @@ int fdtdec_next_compatible_subnode(const void *blob, int node,
 fdt_addr_t fdtdec_get_addr(const void *blob, int node,
 		const char *prop_name);
 
-/**
- * Look up an address property in a node and return it as an address.
- * The property must hold one address with a length. This is only tested
- * on 32-bit machines.
+/*
+ * Look up an address property in a node and return the parsed address, and
+ * optionally the parsed size.
+ *
+ * This variant hard-codes the number of cells used to represent the address
+ * and size based on sizeof(fdt_addr_t) and sizeof(fdt_size_t). It also
+ * always returns the first address value in the property (index 0).
+ *
+ * Use of this function is not recommended due to the hard-coding of cell
+ * counts. There is no programmatic validation that these hard-coded values
+ * actually match the device tree content in any way at all. This assumption
+ * can be satisfied by manually ensuring CONFIG_PHYS_64BIT is appropriately
+ * set in the U-Boot build and exercising strict control over DT content to
+ * ensure use of matching #address-cells/#size-cells properties. However, this
+ * approach is error-prone; those familiar with DT will not expect the
+ * assumption to exist, and could easily invalidate it. If the assumption is
+ * invalidated, this function will not report the issue, and debugging will
+ * be required. Instead, use fdtdec_get_addr_size_auto_parent().
  *
  * @param blob	FDT blob
  * @param node	node to examine
  * @param prop_name	name of property to find
+ * @param sizep	a pointer to store the size into. Use NULL if not required
  * @return address, if found, or FDT_ADDR_T_NONE if not
  */
 fdt_addr_t fdtdec_get_addr_size(const void *blob, int node,
@@ -363,32 +438,15 @@ int fdtdec_get_pci_vendev(const void *blob, int node,
 
 /**
  * Look at the pci address of a device node that represents a PCI device
- * and parse the bus, device and function number from it. For some cases
- * like the bus number encoded in reg property is not correct after pci
- * enumeration, this function looks through the node's compatible strings
- * to get these numbers extracted instead.
- *
- * @param blob		FDT blob
- * @param node		node to examine
- * @param addr		pci address in the form of fdt_pci_addr
- * @param bdf		returns bus, device, function triplet
- * @return 0 if ok, negative on error
- */
-int fdtdec_get_pci_bdf(const void *blob, int node,
-		struct fdt_pci_addr *addr, pci_dev_t *bdf);
-
-/**
- * Look at the pci address of a device node that represents a PCI device
  * and return base address of the pci device's registers.
  *
- * @param blob		FDT blob
- * @param node		node to examine
+ * @param dev		device to examine
  * @param addr		pci address in the form of fdt_pci_addr
  * @param bar		returns base address of the pci device's registers
  * @return 0 if ok, negative on error
  */
-int fdtdec_get_pci_bar32(const void *blob, int node,
-		struct fdt_pci_addr *addr, u32 *bar);
+int fdtdec_get_pci_bar32(struct udevice *dev, struct fdt_pci_addr *addr,
+			 u32 *bar);
 
 /**
  * Look up a 32-bit integer property in a node and return it. The property
@@ -403,6 +461,19 @@ int fdtdec_get_pci_bar32(const void *blob, int node,
  */
 s32 fdtdec_get_int(const void *blob, int node, const char *prop_name,
 		s32 default_val);
+
+/**
+ * Unsigned version of fdtdec_get_int. The property must have at least
+ * 4 bytes of data. The value of the first cell is returned.
+ *
+ * @param blob	FDT blob
+ * @param node	node to examine
+ * @param prop_name	name of property to find
+ * @param default_val	default value to return if the property is not found
+ * @return unsigned integer value, if found, or default_val if not
+ */
+unsigned int fdtdec_get_uint(const void *blob, int node, const char *prop_name,
+			unsigned int default_val);
 
 /**
  * Get a variable-sized number from a property
@@ -496,7 +567,7 @@ int fdtdec_check_fdt(void);
  * @param id		Compatible ID to look for
  * @param node_list	Place to put list of found nodes
  * @param maxcount	Maximum number of nodes to find
- * @return number of nodes found on success, FTD_ERR_... on error
+ * @return number of nodes found on success, FDT_ERR_... on error
  */
 int fdtdec_find_aliases_for_id(const void *blob, const char *name,
 			enum fdt_compat_id id, int *node_list, int maxcount);
@@ -543,7 +614,16 @@ int fdtdec_get_alias_seq(const void *blob, const char *base, int node,
 			 int *seqp);
 
 /**
- * Get the offset of the given chosen node
+ * Get a property from the /chosen node
+ *
+ * @param blob		Device tree blob (if NULL, then NULL is returned)
+ * @param name		Property name to look up
+ * @return Value of property, or NULL if it does not exist
+ */
+const char *fdtdec_get_chosen_prop(const void *blob, const char *name);
+
+/**
+ * Get the offset of the given /chosen node
  *
  * This looks up a property in /chosen containing the path to another node,
  * then finds the offset of that node.
@@ -635,6 +715,15 @@ const u32 *fdtdec_locate_array(const void *blob, int node,
  * @return 1 if the properly is present; 0 if it isn't present
  */
 int fdtdec_get_bool(const void *blob, int node, const char *prop_name);
+
+/*
+ * Count child nodes of one parent node.
+ *
+ * @param blob	FDT blob
+ * @param node	parent node
+ * @return number of child node; 0 if there is not child node
+ */
+int fdtdec_get_child_count(const void *blob, int node);
 
 /**
  * Look in the FDT for a config item with the given name and return its value

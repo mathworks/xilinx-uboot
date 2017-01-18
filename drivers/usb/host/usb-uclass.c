@@ -10,6 +10,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <memalign.h>
 #include <usb.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
@@ -128,6 +129,17 @@ int usb_alloc_device(struct usb_device *udev)
 	return ops->alloc_device(bus, udev);
 }
 
+int usb_reset_root_port(struct usb_device *udev)
+{
+	struct udevice *bus = udev->controller_dev;
+	struct dm_usb_ops *ops = usb_get_ops(bus);
+
+	if (!ops->reset_root_port)
+		return -ENOSYS;
+
+	return ops->reset_root_port(bus, udev);
+}
+
 int usb_stop(void)
 {
 	struct udevice *bus;
@@ -147,7 +159,11 @@ int usb_stop(void)
 		if (ret && !err)
 			err = ret;
 	}
-
+#ifdef CONFIG_BLK
+	ret = blk_unbind_all(IF_TYPE_USB);
+	if (ret && !err)
+		err = ret;
+#endif
 #ifdef CONFIG_SANDBOX
 	struct udevice *dev;
 
@@ -159,7 +175,9 @@ int usb_stop(void)
 	uclass_foreach_dev(dev, uc)
 		usb_emul_reset(dev);
 #endif
+#ifdef CONFIG_USB_STORAGE
 	usb_stor_reset();
+#endif
 	usb_hub_reset();
 	uc_priv->companion_device_count = 0;
 	usb_started = 0;
@@ -186,6 +204,20 @@ static void usb_scan_bus(struct udevice *bus, bool recurse)
 		printf("No USB Device found\n");
 	else
 		printf("%d USB Device(s) found\n", priv->next_addr);
+}
+
+static void remove_inactive_children(struct uclass *uc, struct udevice *bus)
+{
+	uclass_foreach_dev(bus, uc) {
+		struct udevice *dev, *next;
+
+		if (!device_active(bus))
+			continue;
+		device_foreach_child_safe(dev, next, bus) {
+			if (!device_active(dev))
+				device_unbind(dev);
+		}
+	}
 }
 
 int usb_init(void)
@@ -256,6 +288,15 @@ int usb_init(void)
 	}
 
 	debug("scan end\n");
+
+	/* Remove any devices that were not found on this scan */
+	remove_inactive_children(uc, bus);
+
+	ret = uclass_get(UCLASS_USB_HUB, &uc);
+	if (ret)
+		return ret;
+	remove_inactive_children(uc, bus);
+
 	/* if we were not able to find at least one working bus, bail out */
 	if (!count)
 		printf("No controllers found\n");
@@ -265,11 +306,14 @@ int usb_init(void)
 	return usb_started ? 0 : -1;
 }
 
-int usb_reset_root_port(void)
-{
-	return -ENOSYS;
-}
-
+/*
+ * TODO(sjg@chromium.org): Remove this legacy function. At present it is needed
+ * to support boards which use driver model for USB but not Ethernet, and want
+ * to use USB Ethernet.
+ *
+ * The #if clause is here to ensure that remains the only case.
+ */
+#if !defined(CONFIG_DM_ETH) && defined(CONFIG_USB_HOST_ETHER)
 static struct usb_device *find_child_devnum(struct udevice *parent, int devnum)
 {
 	struct usb_device *udev;
@@ -277,7 +321,7 @@ static struct usb_device *find_child_devnum(struct udevice *parent, int devnum)
 
 	if (!device_active(parent))
 		return NULL;
-	udev = dev_get_parentdata(parent);
+	udev = dev_get_parent_priv(parent);
 	if (udev->devnum == devnum)
 		return udev;
 
@@ -294,49 +338,21 @@ static struct usb_device *find_child_devnum(struct udevice *parent, int devnum)
 
 struct usb_device *usb_get_dev_index(struct udevice *bus, int index)
 {
-	struct udevice *hub;
+	struct udevice *dev;
 	int devnum = index + 1; /* Addresses are allocated from 1 on USB */
 
-	device_find_first_child(bus, &hub);
-	if (device_get_uclass_id(hub) == UCLASS_USB_HUB)
-		return find_child_devnum(hub, devnum);
+	device_find_first_child(bus, &dev);
+	if (!dev)
+		return NULL;
 
-	return NULL;
+	return find_child_devnum(dev, devnum);
 }
+#endif
 
 int usb_post_bind(struct udevice *dev)
 {
 	/* Scan the bus for devices */
 	return dm_scan_fdt_node(dev, gd->fdt_blob, dev->of_offset, false);
-}
-
-int usb_port_reset(struct usb_device *parent, int portnr)
-{
-	unsigned short portstatus;
-	int ret;
-
-	debug("%s: start\n", __func__);
-
-	if (parent) {
-		/* reset the port for the second time */
-		assert(portnr > 0);
-		debug("%s: reset %d\n", __func__, portnr - 1);
-		ret = legacy_hub_port_reset(parent, portnr - 1, &portstatus);
-		if (ret < 0) {
-			printf("\n     Couldn't reset port %i\n", portnr);
-			return ret;
-		}
-	} else {
-		debug("%s: reset root\n", __func__);
-		usb_reset_root_port();
-	}
-
-	return 0;
-}
-
-int usb_legacy_port_reset(struct usb_device *parent, int portnr)
-{
-	return usb_port_reset(parent, portnr);
 }
 
 int usb_setup_ehci_gadget(struct ehci_ctrl **ctlrp)
@@ -593,8 +609,8 @@ int usb_scan_device(struct udevice *parent, int port,
 	udev->portnr = port;
 	debug("Calling usb_setup_device(), portnr=%d\n", udev->portnr);
 	parent_udev = device_get_uclass_id(parent) == UCLASS_USB_HUB ?
-		dev_get_parentdata(parent) : NULL;
-	ret = usb_setup_device(udev, priv->desc_before_addr, parent_udev, port);
+		dev_get_parent_priv(parent) : NULL;
+	ret = usb_setup_device(udev, priv->desc_before_addr, parent_udev);
 	debug("read_descriptor for '%s': ret=%d\n", parent->name, ret);
 	if (ret)
 		return ret;
@@ -656,7 +672,7 @@ int usb_detect_change(void)
 			if (!device_active(dev))
 				continue;
 
-			udev = dev_get_parentdata(dev);
+			udev = dev_get_parent_priv(dev);
 			if (usb_get_port_status(udev, udev->portnr, &status)
 					< 0)
 				/* USB request failed */
@@ -712,7 +728,7 @@ struct udevice *usb_get_bus(struct udevice *dev)
 
 int usb_child_pre_probe(struct udevice *dev)
 {
-	struct usb_device *udev = dev_get_parentdata(dev);
+	struct usb_device *udev = dev_get_parent_priv(dev);
 	struct usb_dev_platdata *plat = dev_get_parent_platdata(dev);
 	int ret;
 

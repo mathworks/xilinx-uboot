@@ -236,6 +236,8 @@ static void do_setup_dpll(u32 const base, const struct dpll_params *params,
 			/* Dpll locked with ideal values for nominal opps. */
 			debug("\n %s Dpll already locked with ideal"
 						"nominal opp values", dpll);
+
+			bypass_dpll(base);
 			goto setup_post_dividers;
 		}
 	}
@@ -251,12 +253,12 @@ static void do_setup_dpll(u32 const base, const struct dpll_params *params,
 
 	writel(temp, &dpll_regs->cm_clksel_dpll);
 
+setup_post_dividers:
+	setup_post_dividers(base, params);
+
 	/* Lock */
 	if (lock)
 		do_lock_dpll(base);
-
-setup_post_dividers:
-	setup_post_dividers(base, params);
 
 	/* Wait till the DPLL locks */
 	if (lock)
@@ -339,7 +341,8 @@ void configure_mpu_dpll(void)
 	debug("MPU DPLL locked\n");
 }
 
-#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP)
+#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP) || \
+	defined(CONFIG_USB_MUSB_OMAP2PLUS)
 static void setup_usb_dpll(void)
 {
 	const struct dpll_params *params;
@@ -406,7 +409,8 @@ static void setup_dplls(void)
 	/* MPU dpll */
 	configure_mpu_dpll();
 
-#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP)
+#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP) || \
+	defined(CONFIG_USB_MUSB_OMAP2PLUS)
 	setup_usb_dpll();
 #endif
 	params = get_ddr_dpll_params(*dplls_data);
@@ -582,22 +586,46 @@ void scale_vcores(struct vcores_data const *vcores)
 	debug("mpu: %d\n", vcores->mpu.value);
 	do_scale_vcore(vcores->mpu.addr, vcores->mpu.value, vcores->mpu.pmic);
 	/* Configure MPU ABB LDO after scale */
-	abb_setup((*ctrl)->control_std_fuse_opp_vdd_mpu_2,
+	abb_setup(vcores->mpu.efuse.reg,
 		  (*ctrl)->control_wkup_ldovbb_mpu_voltage_ctrl,
 		  (*prcm)->prm_abbldo_mpu_setup,
 		  (*prcm)->prm_abbldo_mpu_ctrl,
 		  (*prcm)->prm_irqstatus_mpu_2,
-		  OMAP_ABB_MPU_TXDONE_MASK,
+		  vcores->mpu.abb_tx_done_mask,
 		  OMAP_ABB_FAST_OPP);
 
 	/* The .mm member is not used for the DRA7xx */
 
 	debug("gpu: %d\n", vcores->gpu.value);
 	do_scale_vcore(vcores->gpu.addr, vcores->gpu.value, vcores->gpu.pmic);
+	/* Configure GPU ABB LDO after scale */
+	abb_setup(vcores->gpu.efuse.reg,
+		  (*ctrl)->control_wkup_ldovbb_gpu_voltage_ctrl,
+		  (*prcm)->prm_abbldo_gpu_setup,
+		  (*prcm)->prm_abbldo_gpu_ctrl,
+		  (*prcm)->prm_irqstatus_mpu,
+		  vcores->gpu.abb_tx_done_mask,
+		  OMAP_ABB_FAST_OPP);
 	debug("eve: %d\n", vcores->eve.value);
 	do_scale_vcore(vcores->eve.addr, vcores->eve.value, vcores->eve.pmic);
+	/* Configure EVE ABB LDO after scale */
+	abb_setup(vcores->eve.efuse.reg,
+		  (*ctrl)->control_wkup_ldovbb_eve_voltage_ctrl,
+		  (*prcm)->prm_abbldo_eve_setup,
+		  (*prcm)->prm_abbldo_eve_ctrl,
+		  (*prcm)->prm_irqstatus_mpu,
+		  vcores->eve.abb_tx_done_mask,
+		  OMAP_ABB_FAST_OPP);
 	debug("iva: %d\n", vcores->iva.value);
 	do_scale_vcore(vcores->iva.addr, vcores->iva.value, vcores->iva.pmic);
+	/* Configure IVA ABB LDO after scale */
+	abb_setup(vcores->iva.efuse.reg,
+		  (*ctrl)->control_wkup_ldovbb_iva_voltage_ctrl,
+		  (*prcm)->prm_abbldo_iva_setup,
+		  (*prcm)->prm_abbldo_iva_ctrl,
+		  (*prcm)->prm_irqstatus_mpu,
+		  vcores->iva.abb_tx_done_mask,
+		  OMAP_ABB_FAST_OPP);
 	/* Might need udelay(1000) here if debug is enabled to see all prints */
 #else
 	u32 val;
@@ -619,16 +647,25 @@ void scale_vcores(struct vcores_data const *vcores)
 	do_scale_vcore(vcores->mpu.addr, val, vcores->mpu.pmic);
 
 	/* Configure MPU ABB LDO after scale */
-	abb_setup((*ctrl)->control_std_fuse_opp_vdd_mpu_2,
+	abb_setup(vcores->mpu.efuse.reg,
 		  (*ctrl)->control_wkup_ldovbb_mpu_voltage_ctrl,
 		  (*prcm)->prm_abbldo_mpu_setup,
 		  (*prcm)->prm_abbldo_mpu_ctrl,
 		  (*prcm)->prm_irqstatus_mpu_2,
-		  OMAP_ABB_MPU_TXDONE_MASK,
+		  vcores->mpu.abb_tx_done_mask,
 		  OMAP_ABB_FAST_OPP);
 
 	val = optimize_vcore_voltage(&vcores->mm);
 	do_scale_vcore(vcores->mm.addr, val, vcores->mm.pmic);
+
+	/* Configure MM ABB LDO after scale */
+	abb_setup(vcores->mm.efuse.reg,
+		  (*ctrl)->control_wkup_ldovbb_mm_voltage_ctrl,
+		  (*prcm)->prm_abbldo_mm_setup,
+		  (*prcm)->prm_abbldo_mm_ctrl,
+		  (*prcm)->prm_irqstatus_mpu,
+		  vcores->mm.abb_tx_done_mask,
+		  OMAP_ABB_FAST_OPP);
 
 	val = optimize_vcore_voltage(&vcores->gpu);
 	do_scale_vcore(vcores->gpu.addr, val, vcores->gpu.pmic);
@@ -646,6 +683,14 @@ static inline void enable_clock_domain(u32 const clkctrl_reg, u32 enable_mode)
 	clrsetbits_le32(clkctrl_reg, CD_CLKCTRL_CLKTRCTRL_MASK,
 			enable_mode << CD_CLKCTRL_CLKTRCTRL_SHIFT);
 	debug("Enable clock domain - %x\n", clkctrl_reg);
+}
+
+static inline void disable_clock_domain(u32 const clkctrl_reg)
+{
+	clrsetbits_le32(clkctrl_reg, CD_CLKCTRL_CLKTRCTRL_MASK,
+			CD_CLKCTRL_CLKTRCTRL_SW_SLEEP <<
+			CD_CLKCTRL_CLKTRCTRL_SHIFT);
+	debug("Disable clock domain - %x\n", clkctrl_reg);
 }
 
 static inline void wait_for_clk_enable(u32 clkctrl_addr)
@@ -675,6 +720,34 @@ static inline void enable_clock_module(u32 const clkctrl_addr, u32 enable_mode,
 	debug("Enable clock module - %x\n", clkctrl_addr);
 	if (wait_for_enable)
 		wait_for_clk_enable(clkctrl_addr);
+}
+
+static inline void wait_for_clk_disable(u32 clkctrl_addr)
+{
+	u32 clkctrl, idlest = MODULE_CLKCTRL_IDLEST_FULLY_FUNCTIONAL;
+	u32 bound = LDELAY;
+
+	while ((idlest != MODULE_CLKCTRL_IDLEST_DISABLED)) {
+		clkctrl = readl(clkctrl_addr);
+		idlest = (clkctrl & MODULE_CLKCTRL_IDLEST_MASK) >>
+			 MODULE_CLKCTRL_IDLEST_SHIFT;
+		if (--bound == 0) {
+			printf("Clock disable failed for 0x%x idlest 0x%x\n",
+			       clkctrl_addr, clkctrl);
+			return;
+		}
+	}
+}
+
+static inline void disable_clock_module(u32 const clkctrl_addr,
+					u32 wait_for_disable)
+{
+	clrsetbits_le32(clkctrl_addr, MODULE_CLKCTRL_MODULEMODE_MASK,
+			MODULE_CLKCTRL_MODULEMODE_SW_DISABLE <<
+			MODULE_CLKCTRL_MODULEMODE_SHIFT);
+	debug("Disable clock module - %x\n", clkctrl_addr);
+	if (wait_for_disable)
+		wait_for_clk_disable(clkctrl_addr);
 }
 
 void freq_update_core(void)
@@ -733,7 +806,7 @@ void lock_dpll(u32 const base)
 	wait_for_lock(base);
 }
 
-void setup_clocks_for_console(void)
+static void setup_clocks_for_console(void)
 {
 	/* Do not add any spl_debug prints in this function */
 	clrsetbits_le32((*prcm)->cm_l4per_clkstctrl, CD_CLKCTRL_CLKTRCTRL_MASK,
@@ -800,14 +873,48 @@ void do_enable_clocks(u32 const *clk_domains,
 	}
 }
 
+void do_disable_clocks(u32 const *clk_domains,
+			    u32 const *clk_modules_disable,
+			    u8 wait_for_disable)
+{
+	u32 i, max = 100;
+
+
+	/* Clock modules that need to be put in SW_DISABLE */
+	for (i = 0; (i < max) && clk_modules_disable[i]; i++)
+		disable_clock_module(clk_modules_disable[i],
+				     wait_for_disable);
+
+	/* Put the clock domains in SW_SLEEP mode */
+	for (i = 0; (i < max) && clk_domains[i]; i++)
+		disable_clock_domain(clk_domains[i]);
+}
+
+/**
+ * setup_early_clocks() - Setup early clocks needed for SoC
+ *
+ * Setup clocks for console, SPL basic initialization clocks and initialize
+ * the timer. This is invoked prior prcm_init.
+ */
+void setup_early_clocks(void)
+{
+	switch (omap_hw_init_context()) {
+	case OMAP_INIT_CONTEXT_SPL:
+	case OMAP_INIT_CONTEXT_UBOOT_FROM_NOR:
+	case OMAP_INIT_CONTEXT_UBOOT_AFTER_CH:
+		setup_clocks_for_console();
+		enable_basic_clocks();
+		timer_init();
+		/* Fall through */
+	}
+}
+
 void prcm_init(void)
 {
 	switch (omap_hw_init_context()) {
 	case OMAP_INIT_CONTEXT_SPL:
 	case OMAP_INIT_CONTEXT_UBOOT_FROM_NOR:
 	case OMAP_INIT_CONTEXT_UBOOT_AFTER_CH:
-		enable_basic_clocks();
-		timer_init();
 		scale_vcores(*omap_vcores);
 		setup_dplls();
 		setup_warmreset_time();

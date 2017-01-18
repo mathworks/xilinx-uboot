@@ -40,6 +40,10 @@ extern struct serial_device serial1_device;
 
 extern struct serial_device eserial1_device;
 extern struct serial_device eserial2_device;
+extern struct serial_device eserial3_device;
+extern struct serial_device eserial4_device;
+extern struct serial_device eserial5_device;
+extern struct serial_device eserial6_device;
 
 extern void serial_register(struct serial_device *);
 extern void serial_initialize(void);
@@ -164,8 +168,6 @@ struct serial_dev_priv {
 /* Access the serial operations for a device */
 #define serial_get_ops(dev)	((struct dm_serial_ops *)(dev)->driver->ops)
 
-void altera_jtag_serial_initialize(void);
-void altera_serial_initialize(void);
 void amirix_serial_initialize(void);
 void arc_serial_initialize(void);
 void arm_dcc_initialize(void);

@@ -55,13 +55,6 @@
 #define CONFIG_BOOTP_HOSTNAME
 
 /* Available command configuration */
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_DHCP
-
 
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
@@ -98,7 +91,6 @@
 #define CONFIG_SYS_I2C_PINMUX_CLR	(0xFFF0)
 #define CONFIG_SYS_I2C_PINMUX_SET	(0x000F)
 
-#define CONFIG_SYS_PROMPT		"-> "
 #define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 
 #if (CONFIG_CMD_KGDB)
@@ -112,7 +104,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x800000
 
-#define CONFIG_BOOTDELAY	5
 #define CONFIG_BOOTCOMMAND	"bootm ffe40000"
 #define CONFIG_SYS_MEMTEST_START	0x400
 #define CONFIG_SYS_MEMTEST_END		0x380000

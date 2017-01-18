@@ -45,11 +45,13 @@ void watchdog_init(void);
 u32 get_device_type(void);
 void do_set_mux(u32 base, struct pad_conf_entry const *array, int size);
 void do_set_mux32(u32 base, struct pad_conf_entry const *array, int size);
-void set_muxconf_regs_essential(void);
+void set_muxconf_regs(void);
 u32 wait_on_value(u32, u32, void *, u32);
 void sdelay(unsigned long);
-void setup_clocks_for_console(void);
+void setup_early_clocks(void);
 void prcm_init(void);
+void do_board_detect(void);
+void vcores_init(void);
 void bypass_dpll(u32 const base);
 void freq_update_core(void);
 u32 get_sys_clk_freq(void);
@@ -62,7 +64,6 @@ void save_omap_boot_params(void);
 void init_omap_revision(void);
 void do_io_settings(void);
 void sri2c_init(void);
-void gpi2c_init(void);
 int omap_vc_bypass_send_value(u8 sa, u8 reg_addr, u8 reg_data);
 u32 warm_reset(void);
 void force_emif_self_refresh(void);
@@ -81,5 +82,6 @@ static inline u32 usec_to_32k(u32 usec)
 }
 
 #define OMAP5_SERVICE_L2ACTLR_SET    0x104
+#define OMAP5_SERVICE_ACR_SET        0x107
 
 #endif

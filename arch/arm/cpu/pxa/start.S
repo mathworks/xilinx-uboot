@@ -53,7 +53,15 @@ reset:
 #ifdef	CONFIG_CPU_PXA25X
 	bl	lock_cache_for_stack
 #endif
-
+#ifdef	CONFIG_CPU_PXA27X
+	/*
+	 * enable clock for SRAM
+	 */
+	ldr	r0,=CKEN
+	ldr	r1,[r0]
+	orr	r1,r1,#(1 << 20)
+	str	r1,[r0]
+#endif
 	bl	_main
 
 /*------------------------------------------------------------------------------*/
@@ -100,7 +108,7 @@ cpu_init_crit:
 	mrc	p15, 0, r0, c1, c0, 0
 	bic	r0, r0, #0x00003300	@ clear bits 13:12, 9:8 (--VI --RS)
 	bic	r0, r0, #0x00000087	@ clear bits 7, 2:0 (B--- -CAM)
-	orr	r0, r0, #0x00000002	@ set bit 2 (A) Align
+	orr	r0, r0, #0x00000002	@ set bit 1 (A) Align
 	mcr	p15, 0, r0, c1, c0, 0
 
 	mov	pc, lr		/* back to my caller */

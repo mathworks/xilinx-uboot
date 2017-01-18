@@ -12,16 +12,189 @@
 #include <hwconfig.h>
 #include <phy.h>
 #include <linux/compat.h>
+#include <fsl-mc/fsl_dpmac.h>
 
+#include <fsl-mc/ldpaa_wriop.h>
 #include "ldpaa_eth.h"
 
-#undef CONFIG_PHYLIB
+#ifdef CONFIG_PHYLIB
 static int init_phy(struct eth_device *dev)
 {
-	/*TODO for external PHY */
+	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)dev->priv;
+	struct phy_device *phydev = NULL;
+	struct mii_dev *bus;
 
-	return 0;
+	bus = wriop_get_mdio(priv->dpmac_id);
+	if (bus == NULL)
+		return 0;
+
+	phydev = phy_connect(bus, wriop_get_phy_address(priv->dpmac_id),
+			     dev, wriop_get_enet_if(priv->dpmac_id));
+	if (!phydev) {
+		printf("Failed to connect\n");
+		return -1;
+	}
+
+	priv->phydev = phydev;
+
+	return phy_config(phydev);
 }
+#endif
+
+#ifdef DEBUG
+static void ldpaa_eth_get_dpni_counter(void)
+{
+	int err = 0;
+	u64 value;
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_FRAME,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_FRAME failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_FRAME=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_BYTE,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_BYTE failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_BYTE=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_FRAME_DROP ,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_FRAME_DROP failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_FRAME_DROP =%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_FRAME_DISCARD,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_FRAME_DISCARD failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_FRAME_DISCARD=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_EGR_FRAME,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_EGR_FRAME failed\n");
+		return;
+	}
+	printf("DPNI_CNT_EGR_FRAME=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_EGR_BYTE ,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_EGR_BYTE failed\n");
+		return;
+	}
+	printf("DPNI_CNT_EGR_BYTE =%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_EGR_FRAME_DISCARD ,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_EGR_FRAME_DISCARD failed\n");
+		return;
+	}
+	printf("DPNI_CNT_EGR_FRAME_DISCARD =%lld\n", value);
+}
+
+static void ldpaa_eth_get_dpmac_counter(struct eth_device *net_dev)
+{
+	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)net_dev->priv;
+	int err = 0;
+	u64 value;
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_ING_BYTE,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_ING_BYTE failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_ING_BYTE=%lld\n", value);
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_ING_FRAME_DISCARD,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_ING_FRAME_DISCARD failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_ING_FRAME_DISCARD=%lld\n", value);
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_ING_ALIGN_ERR,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_ING_ALIGN_ERR failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_ING_ALIGN_ERR =%lld\n", value);
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_ING_BYTE,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_ING_BYTE failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_ING_BYTE=%lld\n", value);
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_ING_ERR_FRAME,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_ING_ERR_FRAME failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_ING_ERR_FRAME=%lld\n", value);
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_EGR_BYTE ,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_EGR_BYTE failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_EGR_BYTE =%lld\n", value);
+
+	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     priv->dpmac_handle,
+		     DPMAC_CNT_EGR_ERR_FRAME ,
+		     &value);
+	if (err < 0) {
+		printf("dpmac_get_counter: DPMAC_CNT_EGR_ERR_FRAME failed\n");
+		return;
+	}
+	printf("DPMAC_CNT_EGR_ERR_FRAME =%lld\n", value);
+}
+#endif
 
 static void ldpaa_eth_rx(struct ldpaa_eth_priv *priv,
 			 const struct dpaa_fd *fd)
@@ -31,6 +204,8 @@ static void ldpaa_eth_rx(struct ldpaa_eth_priv *priv,
 	uint32_t fd_length;
 	struct ldpaa_fas *fas;
 	uint32_t status, err;
+	u32 timeo = (CONFIG_SYS_HZ * 2) / 1000;
+	u32 time_start;
 	struct qbman_release_desc releasedesc;
 	struct qbman_swp *swp = dflt_dpio->sw_portal;
 
@@ -44,7 +219,7 @@ static void ldpaa_eth_rx(struct ldpaa_eth_priv *priv,
 		/* Read the frame annotation status word and check for errors */
 		fas = (struct ldpaa_fas *)
 				((uint8_t *)(fd_addr) +
-				priv->buf_layout.private_data_size);
+				dflt_dpni->buf_layout.private_data_size);
 		status = le32_to_cpu(fas->status);
 		if (status & LDPAA_ETH_RX_ERR_MASK) {
 			printf("Rx frame error(s): 0x%08x\n",
@@ -65,10 +240,15 @@ error:
 	flush_dcache_range(fd_addr, fd_addr + LDPAA_ETH_RX_BUFFER_SIZE);
 	qbman_release_desc_clear(&releasedesc);
 	qbman_release_desc_set_bpid(&releasedesc, dflt_dpbp->dpbp_attr.bpid);
+	time_start = get_timer(0);
 	do {
 		/* Release buffer into the QBMAN */
 		err = qbman_swp_release(swp, &releasedesc, &fd_addr, 1);
-	} while (err == -EBUSY);
+	} while (get_timer(time_start) < timeo && err == -EBUSY);
+
+	if (err == -EBUSY)
+		printf("Rx frame: QBMAN buffer release fails\n");
+
 	return;
 }
 
@@ -77,7 +257,9 @@ static int ldpaa_eth_pull_dequeue_rx(struct eth_device *dev)
 	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)dev->priv;
 	const struct ldpaa_dq *dq;
 	const struct dpaa_fd *fd;
-	int i = 5, err = 0, status, loop = 20;
+	int i = 5, err = 0, status;
+	u32 timeo = (CONFIG_SYS_HZ * 2) / 1000;
+	u32 time_start;
 	static struct qbman_pull_desc pulldesc;
 	struct qbman_swp *swp = dflt_dpio->sw_portal;
 
@@ -92,13 +274,11 @@ static int ldpaa_eth_pull_dequeue_rx(struct eth_device *dev)
 			continue;
 		}
 
-		do {
-			loop--;
-			dq = qbman_swp_dqrr_next(swp);
+		time_start = get_timer(0);
 
-			if (!loop)
-				break;
-		} while (!dq);
+		 do {
+			dq = qbman_swp_dqrr_next(swp);
+		} while (get_timer(time_start) < timeo && !dq);
 
 		if (dq) {
 			/* Check for valid frame. If not sent a consume
@@ -112,7 +292,7 @@ static int ldpaa_eth_pull_dequeue_rx(struct eth_device *dev)
 				debug("No frame delivered\n");
 
 				qbman_swp_dqrr_consume(swp, dq);
-				break;
+				continue;
 			}
 
 			fd = ldpaa_dq_fd(dq);
@@ -121,92 +301,9 @@ static int ldpaa_eth_pull_dequeue_rx(struct eth_device *dev)
 			ldpaa_eth_rx(priv, fd);
 			qbman_swp_dqrr_consume(swp, dq);
 			break;
-		}
-	}
-
-	return err;
-}
-
-static void ldpaa_eth_tx_conf(struct ldpaa_eth_priv *priv,
-			      const struct dpaa_fd *fd)
-{
-	uint64_t fd_addr;
-	struct ldpaa_fas *fas;
-	uint32_t status, err;
-	struct qbman_release_desc releasedesc;
-	struct qbman_swp *swp = dflt_dpio->sw_portal;
-
-	fd_addr = ldpaa_fd_get_addr(fd);
-
-
-	debug("TX Conf frame:data addr=0x%p\n", (u64 *)fd_addr);
-
-	/* Check the status from the Frame Annotation */
-	if (fd->simple.frc & LDPAA_FD_FRC_FASV) {
-		fas = (struct ldpaa_fas *)
-				((uint8_t *)(fd_addr) +
-				priv->buf_layout.private_data_size);
-		status = le32_to_cpu(fas->status);
-		if (status & LDPAA_ETH_TXCONF_ERR_MASK) {
-			printf("TxConf frame error(s): 0x%08x\n",
-			       status & LDPAA_ETH_TXCONF_ERR_MASK);
-		}
-	}
-
-	qbman_release_desc_clear(&releasedesc);
-	qbman_release_desc_set_bpid(&releasedesc, dflt_dpbp->dpbp_attr.bpid);
-	do {
-		/* Release buffer into the QBMAN */
-		err = qbman_swp_release(swp, &releasedesc, &fd_addr, 1);
-	} while (err == -EBUSY);
-}
-
-static int ldpaa_eth_pull_dequeue_tx_conf(struct ldpaa_eth_priv *priv)
-{
-	const struct ldpaa_dq *dq;
-	const struct dpaa_fd *fd;
-	int err = 0;
-	int i = 5, status, loop = 20;
-	static struct qbman_pull_desc pulldesc;
-	struct qbman_swp *swp = dflt_dpio->sw_portal;
-
-	while (--i) {
-		qbman_pull_desc_clear(&pulldesc);
-		qbman_pull_desc_set_numframes(&pulldesc, 1);
-		qbman_pull_desc_set_fq(&pulldesc, priv->tx_conf_fqid);
-
-		err =  qbman_swp_pull(swp, &pulldesc);
-		if (err < 0) {
-			printf("Dequeue TX conf frames error:0x%08x\n", err);
-			continue;
-		}
-
-		do {
-			loop--;
-			dq = qbman_swp_dqrr_next(swp);
-
-			if (!loop)
-				break;
-		} while (!dq);
-
-		if (dq) {
-			/* Check for valid frame. If not sent a consume
-			 * confirmation to QBMAN otherwise give it to NADK
-			 * application and then send consume confirmation to
-			 * QBMAN.
-			 */
-			status = (uint8_t)ldpaa_dq_flags(dq);
-			if ((status & LDPAA_DQ_STAT_VALIDFRAME) == 0) {
-				debug("Dequeue TX conf frames:");
-				debug("No frame is delivered\n");
-
-				qbman_swp_dqrr_consume(swp, dq);
-				break;
-			}
-			fd = ldpaa_dq_fd(dq);
-
-			ldpaa_eth_tx_conf(priv, fd);
-			qbman_swp_dqrr_consume(swp, dq);
+		} else {
+			err = -ENODATA;
+			debug("No DQRR entries\n");
 			break;
 		}
 	}
@@ -220,8 +317,11 @@ static int ldpaa_eth_tx(struct eth_device *net_dev, void *buf, int len)
 	struct dpaa_fd fd;
 	u64 buffer_start;
 	int data_offset, err;
+	u32 timeo = (CONFIG_SYS_HZ * 10) / 1000;
+	u32 time_start;
 	struct qbman_swp *swp = dflt_dpio->sw_portal;
 	struct qbman_eq_desc ed;
+	struct qbman_release_desc releasedesc;
 
 	/* Setup the FD fields */
 	memset(&fd, 0, sizeof(fd));
@@ -257,15 +357,34 @@ static int ldpaa_eth_tx(struct eth_device *net_dev, void *buf, int len)
 	qbman_eq_desc_clear(&ed);
 	qbman_eq_desc_set_no_orp(&ed, 0);
 	qbman_eq_desc_set_qd(&ed, priv->tx_qdid, priv->tx_flow_id, 0);
-	err = qbman_swp_enqueue(swp, &ed, (const struct qbman_fd *)(&fd));
-	if (err < 0)
+
+	time_start = get_timer(0);
+
+	while (get_timer(time_start) < timeo) {
+		err = qbman_swp_enqueue(swp, &ed,
+				(const struct qbman_fd *)(&fd));
+		if (err != -EBUSY)
+			break;
+	}
+
+	if (err < 0) {
 		printf("error enqueueing Tx frame\n");
+		goto error;
+	}
 
-	mdelay(1);
+	return err;
 
-	err = ldpaa_eth_pull_dequeue_tx_conf(priv);
-	if (err < 0)
-		printf("error Tx Conf frame\n");
+error:
+	qbman_release_desc_clear(&releasedesc);
+	qbman_release_desc_set_bpid(&releasedesc, dflt_dpbp->dpbp_attr.bpid);
+	time_start = get_timer(0);
+	do {
+		/* Release buffer into the QBMAN */
+		err = qbman_swp_release(swp, &releasedesc, &buffer_start, 1);
+	} while (get_timer(time_start) < timeo && err == -EBUSY);
+
+	if (err == -EBUSY)
+		printf("TX data: QBMAN buffer release fails\n");
 
 	return err;
 }
@@ -274,12 +393,72 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 {
 	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)net_dev->priv;
 	struct dpni_queue_attr rx_queue_attr;
-	struct dpni_tx_flow_attr tx_flow_attr;
-	uint8_t mac_addr[6];
-	int err;
+	struct dpmac_link_state	dpmac_link_state = { 0 };
+#ifdef DEBUG
+	struct dpni_link_state link_state;
+#endif
+	int err = 0;
+	struct mii_dev *bus;
+	phy_interface_t enet_if;
 
 	if (net_dev->state == ETH_STATE_ACTIVE)
 		return 0;
+
+	if (get_mc_boot_status() != 0) {
+		printf("ERROR (MC is not booted)\n");
+		return -ENODEV;
+	}
+
+	if (get_dpl_apply_status() == 0) {
+		printf("ERROR (DPL is deployed. No device available)\n");
+		return -ENODEV;
+	}
+
+	/* DPMAC initialization */
+	err = ldpaa_dpmac_setup(priv);
+	if (err < 0)
+		goto err_dpmac_setup;
+
+#ifdef CONFIG_PHYLIB
+	if (priv->phydev)
+		err = phy_startup(priv->phydev);
+		if (err) {
+			printf("%s: Could not initialize\n",
+			       priv->phydev->dev->name);
+			goto err_dpamc_bind;
+		}
+#else
+	priv->phydev = (struct phy_device *)malloc(sizeof(struct phy_device));
+	memset(priv->phydev, 0, sizeof(struct phy_device));
+
+	priv->phydev->speed = SPEED_1000;
+	priv->phydev->link = 1;
+	priv->phydev->duplex = DUPLEX_FULL;
+#endif
+
+	bus = wriop_get_mdio(priv->dpmac_id);
+	enet_if = wriop_get_enet_if(priv->dpmac_id);
+	if ((bus == NULL) &&
+	    (enet_if == PHY_INTERFACE_MODE_XGMII)) {
+		priv->phydev = (struct phy_device *)
+				malloc(sizeof(struct phy_device));
+		memset(priv->phydev, 0, sizeof(struct phy_device));
+
+		priv->phydev->speed = SPEED_10000;
+		priv->phydev->link = 1;
+		priv->phydev->duplex = DUPLEX_FULL;
+	}
+
+	if (!priv->phydev->link) {
+		printf("%s: No link.\n", priv->phydev->dev->name);
+		err = -1;
+		goto err_dpamc_bind;
+	}
+
+	/* DPMAC binding DPNI */
+	err = ldpaa_dpmac_bind(priv);
+	if (err)
+		goto err_dpamc_bind;
 
 	/* DPNI initialization */
 	err = ldpaa_dpni_setup(priv);
@@ -293,45 +472,56 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 	/* DPNI binding DPBP */
 	err = ldpaa_dpni_bind(priv);
 	if (err)
-		goto err_bind;
+		goto err_dpni_bind;
 
-	err = dpni_get_primary_mac_addr(dflt_mc_io, priv->dpni_handle,
-					mac_addr);
+	err = dpni_add_mac_addr(dflt_mc_io, MC_CMD_NO_FLAGS,
+				dflt_dpni->dpni_handle, net_dev->enetaddr);
 	if (err) {
-		printf("dpni_get_primary_mac_addr() failed\n");
+		printf("dpni_add_mac_addr() failed\n");
 		return err;
 	}
 
-	memcpy(net_dev->enetaddr, mac_addr, 0x6);
-
-	/* setup the MAC address */
-	if (net_dev->enetaddr[0] & 0x01) {
-		printf("%s: MacAddress is multcast address\n",	__func__);
-		return 1;
-	}
-
-#ifdef CONFIG_PHYLIB
-	/* TODO Check this path */
-	err = phy_startup(priv->phydev);
-	if (err) {
-		printf("%s: Could not initialize\n", priv->phydev->dev->name);
-		return err;
-	}
-#else
-	priv->phydev->speed = SPEED_1000;
-	priv->phydev->link = 1;
-	priv->phydev->duplex = DUPLEX_FULL;
-#endif
-
-	err = dpni_enable(dflt_mc_io, priv->dpni_handle);
+	err = dpni_enable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 	if (err < 0) {
 		printf("dpni_enable() failed\n");
 		return err;
 	}
 
+	dpmac_link_state.rate = priv->phydev->speed;
+
+	if (priv->phydev->autoneg == AUTONEG_DISABLE)
+		dpmac_link_state.options &= ~DPMAC_LINK_OPT_AUTONEG;
+	else
+		dpmac_link_state.options |= DPMAC_LINK_OPT_AUTONEG;
+
+	if (priv->phydev->duplex == DUPLEX_HALF)
+		dpmac_link_state.options |= DPMAC_LINK_OPT_HALF_DUPLEX;
+
+	dpmac_link_state.up = priv->phydev->link;
+
+	err = dpmac_set_link_state(dflt_mc_io, MC_CMD_NO_FLAGS,
+				  priv->dpmac_handle, &dpmac_link_state);
+	if (err < 0) {
+		printf("dpmac_set_link_state() failed\n");
+		return err;
+	}
+
+#ifdef DEBUG
+	err = dpni_get_link_state(dflt_mc_io, MC_CMD_NO_FLAGS,
+				  dflt_dpni->dpni_handle, &link_state);
+	if (err < 0) {
+		printf("dpni_get_link_state() failed\n");
+		return err;
+	}
+
+	printf("link status: %d - ", link_state.up);
+	link_state.up == 0 ? printf("down\n") :
+	link_state.up == 1 ? printf("up\n") : printf("error state\n");
+#endif
+
 	/* TODO: support multiple Rx flows */
-	err = dpni_get_rx_flow(dflt_mc_io, priv->dpni_handle, 0, 0,
-			       &rx_queue_attr);
+	err = dpni_get_rx_flow(dflt_mc_io, MC_CMD_NO_FLAGS,
+			       dflt_dpni->dpni_handle, 0, 0, &rx_queue_attr);
 	if (err) {
 		printf("dpni_get_rx_flow() failed\n");
 		goto err_rx_flow;
@@ -339,35 +529,26 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 
 	priv->rx_dflt_fqid = rx_queue_attr.fqid;
 
-	err = dpni_get_qdid(dflt_mc_io, priv->dpni_handle, &priv->tx_qdid);
+	err = dpni_get_qdid(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle,
+			    &priv->tx_qdid);
 	if (err) {
 		printf("dpni_get_qdid() failed\n");
 		goto err_qdid;
 	}
 
-	err = dpni_get_tx_flow(dflt_mc_io, priv->dpni_handle, priv->tx_flow_id,
-			       &tx_flow_attr);
-	if (err) {
-		printf("dpni_get_tx_flow() failed\n");
-		goto err_tx_flow;
-	}
+	return priv->phydev->link;
 
-	priv->tx_conf_fqid = tx_flow_attr.conf_err_attr.queue_attr.fqid;
-
-	if (!priv->phydev->link)
-		printf("%s: No link.\n", priv->phydev->dev->name);
-
-	return priv->phydev->link ? 0 : -1;
-
-err_tx_flow:
 err_qdid:
 err_rx_flow:
-	dpni_disable(dflt_mc_io, priv->dpni_handle);
-err_bind:
+	dpni_disable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
+err_dpni_bind:
 	ldpaa_dpbp_free();
 err_dpbp_setup:
-	dpni_close(dflt_mc_io, priv->dpni_handle);
+	dpni_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 err_dpni_setup:
+err_dpamc_bind:
+	dpmac_destroy(dflt_mc_io, MC_CMD_NO_FLAGS, priv->dpmac_handle);
+err_dpmac_setup:
 	return err;
 }
 
@@ -375,22 +556,43 @@ static void ldpaa_eth_stop(struct eth_device *net_dev)
 {
 	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)net_dev->priv;
 	int err = 0;
+#ifdef CONFIG_PHYLIB
+	struct mii_dev *bus = wriop_get_mdio(priv->dpmac_id);
+#endif
 
 	if ((net_dev->state == ETH_STATE_PASSIVE) ||
 	    (net_dev->state == ETH_STATE_INIT))
 		return;
+
+#ifdef DEBUG
+	ldpaa_eth_get_dpni_counter();
+	ldpaa_eth_get_dpmac_counter(net_dev);
+#endif
+
+	err = dprc_disconnect(dflt_mc_io, MC_CMD_NO_FLAGS,
+			      dflt_dprc_handle, &dpmac_endpoint);
+	if (err < 0)
+		printf("dprc_disconnect() failed dpmac_endpoint\n");
+
+	err = dpmac_destroy(dflt_mc_io, MC_CMD_NO_FLAGS, priv->dpmac_handle);
+	if (err < 0)
+		printf("dpmac_destroy() failed\n");
+
 	/* Stop Tx and Rx traffic */
-	err = dpni_disable(dflt_mc_io, priv->dpni_handle);
+	err = dpni_disable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 	if (err < 0)
 		printf("dpni_disable() failed\n");
 
 #ifdef CONFIG_PHYLIB
-	phy_shutdown(priv->phydev);
+	if (priv->phydev && bus != NULL)
+		phy_shutdown(priv->phydev);
+	else
+		free(priv->phydev);
 #endif
 
 	ldpaa_dpbp_free();
-	dpni_reset(dflt_mc_io, priv->dpni_handle);
-	dpni_close(dflt_mc_io, priv->dpni_handle);
+	dpni_reset(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
+	dpni_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 }
 
 static void ldpaa_dpbp_drain_cnt(int count)
@@ -432,7 +634,7 @@ static int ldpaa_bp_add_7(uint16_t bpid)
 	struct qbman_release_desc rd;
 
 	for (i = 0; i < 7; i++) {
-		addr = memalign(L1_CACHE_BYTES, LDPAA_ETH_RX_BUFFER_SIZE);
+		addr = memalign(LDPAA_ETH_BUF_ALIGN, LDPAA_ETH_RX_BUFFER_SIZE);
 		if (!addr) {
 			printf("addr allocation failed\n");
 			goto err_alloc;
@@ -484,20 +686,21 @@ static int ldpaa_dpbp_setup(void)
 {
 	int err;
 
-	err = dpbp_open(dflt_mc_io, dflt_dpbp->dpbp_attr.id,
+	err = dpbp_open(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_attr.id,
 			&dflt_dpbp->dpbp_handle);
 	if (err) {
 		printf("dpbp_open() failed\n");
 		goto err_open;
 	}
 
-	err = dpbp_enable(dflt_mc_io, dflt_dpbp->dpbp_handle);
+	err = dpbp_enable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
 	if (err) {
 		printf("dpbp_enable() failed\n");
 		goto err_enable;
 	}
 
-	err = dpbp_get_attributes(dflt_mc_io, dflt_dpbp->dpbp_handle,
+	err = dpbp_get_attributes(dflt_mc_io, MC_CMD_NO_FLAGS,
+				  dflt_dpbp->dpbp_handle,
 				  &dflt_dpbp->dpbp_attr);
 	if (err) {
 		printf("dpbp_get_attributes() failed\n");
@@ -515,9 +718,9 @@ static int ldpaa_dpbp_setup(void)
 
 err_seed:
 err_get_attr:
-	dpbp_disable(dflt_mc_io, dflt_dpbp->dpbp_handle);
+	dpbp_disable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
 err_enable:
-	dpbp_close(dflt_mc_io, dflt_dpbp->dpbp_handle);
+	dpbp_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
 err_open:
 	return err;
 }
@@ -525,9 +728,100 @@ err_open:
 static void ldpaa_dpbp_free(void)
 {
 	ldpaa_dpbp_drain();
-	dpbp_disable(dflt_mc_io, dflt_dpbp->dpbp_handle);
-	dpbp_reset(dflt_mc_io, dflt_dpbp->dpbp_handle);
-	dpbp_close(dflt_mc_io, dflt_dpbp->dpbp_handle);
+	dpbp_disable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
+	dpbp_reset(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
+	dpbp_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
+}
+
+static int ldpaa_dpmac_version_check(struct fsl_mc_io *mc_io,
+				     struct ldpaa_eth_priv *priv)
+{
+	struct dpmac_attr attr;
+	int error;
+
+	memset(&attr, 0, sizeof(struct dpmac_attr));
+	error = dpmac_get_attributes(mc_io, MC_CMD_NO_FLAGS,
+				     priv->dpmac_handle,
+				     &attr);
+	if (error == 0) {
+		if ((attr.version.major != DPMAC_VER_MAJOR) ||
+		    (attr.version.minor != DPMAC_VER_MINOR)) {
+			printf("DPMAC version mismatch found %u.%u,",
+			       attr.version.major, attr.version.minor);
+			printf("supported version is %u.%u\n",
+			       DPMAC_VER_MAJOR, DPMAC_VER_MINOR);
+		}
+	}
+
+	return error;
+}
+
+static int ldpaa_dpmac_setup(struct ldpaa_eth_priv *priv)
+{
+	int err = 0;
+	struct dpmac_cfg dpmac_cfg;
+
+	dpmac_cfg.mac_id = priv->dpmac_id;
+	err = dpmac_create(dflt_mc_io, MC_CMD_NO_FLAGS, &dpmac_cfg,
+			  &priv->dpmac_handle);
+	if (err)
+		printf("dpmac_create() failed\n");
+
+	err = ldpaa_dpmac_version_check(dflt_mc_io, priv);
+	if (err < 0)
+		printf("ldpaa_dpmac_version_check() failed: %d\n", err);
+
+	return err;
+}
+
+static int ldpaa_dpmac_bind(struct ldpaa_eth_priv *priv)
+{
+	int err = 0;
+	struct dprc_connection_cfg dprc_connection_cfg = {
+		/* If both rates are zero the connection */
+		/* will be configured in "best effort" mode. */
+		.committed_rate = 0,
+		.max_rate = 0
+	};
+
+#ifdef DEBUG
+	struct dprc_endpoint dbg_endpoint;
+	int state = 0;
+#endif
+
+	memset(&dpmac_endpoint, 0, sizeof(struct dprc_endpoint));
+	strcpy(dpmac_endpoint.type, "dpmac");
+	dpmac_endpoint.id = priv->dpmac_id;
+
+	memset(&dpni_endpoint, 0, sizeof(struct dprc_endpoint));
+	strcpy(dpni_endpoint.type, "dpni");
+	dpni_endpoint.id = dflt_dpni->dpni_id;
+
+	err = dprc_connect(dflt_mc_io, MC_CMD_NO_FLAGS,
+			     dflt_dprc_handle,
+			     &dpmac_endpoint,
+			     &dpni_endpoint,
+			     &dprc_connection_cfg);
+	if (err)
+		printf("dprc_connect() failed\n");
+
+#ifdef DEBUG
+	err = dprc_get_connection(dflt_mc_io, MC_CMD_NO_FLAGS,
+				    dflt_dprc_handle, &dpni_endpoint,
+				    &dbg_endpoint, &state);
+	printf("%s, DPMAC Type= %s\n", __func__, dbg_endpoint.type);
+	printf("%s, DPMAC ID= %d\n", __func__, dbg_endpoint.id);
+	printf("%s, DPMAC State= %d\n", __func__, state);
+
+	memset(&dbg_endpoint, 0, sizeof(struct dprc_endpoint));
+	err = dprc_get_connection(dflt_mc_io, MC_CMD_NO_FLAGS,
+				    dflt_dprc_handle, &dpmac_endpoint,
+				    &dbg_endpoint, &state);
+	printf("%s, DPNI Type= %s\n", __func__, dbg_endpoint.type);
+	printf("%s, DPNI ID= %d\n", __func__, dbg_endpoint.id);
+	printf("%s, DPNI State= %d\n", __func__, state);
+#endif
+	return err;
 }
 
 static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
@@ -535,47 +829,57 @@ static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
 	int err;
 
 	/* and get a handle for the DPNI this interface is associate with */
-	err = dpni_open(dflt_mc_io, priv->dpni_id, &priv->dpni_handle);
+	err = dpni_open(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_id,
+			&dflt_dpni->dpni_handle);
 	if (err) {
 		printf("dpni_open() failed\n");
 		goto err_open;
 	}
 
-	err = dpni_get_attributes(dflt_mc_io, priv->dpni_handle,
-				  &priv->dpni_attrs);
+	err = dpni_get_attributes(dflt_mc_io, MC_CMD_NO_FLAGS,
+				  dflt_dpni->dpni_handle,
+				  &dflt_dpni->dpni_attrs);
 	if (err) {
 		printf("dpni_get_attributes() failed (err=%d)\n", err);
 		goto err_get_attr;
 	}
 
 	/* Configure our buffers' layout */
-	priv->buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
+	dflt_dpni->buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 				   DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
-				   DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
-	priv->buf_layout.pass_parser_result = true;
-	priv->buf_layout.pass_frame_status = true;
-	priv->buf_layout.private_data_size = LDPAA_ETH_SWA_SIZE;
+				   DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
+				   DPNI_BUF_LAYOUT_OPT_DATA_ALIGN;
+	dflt_dpni->buf_layout.pass_parser_result = true;
+	dflt_dpni->buf_layout.pass_frame_status = true;
+	dflt_dpni->buf_layout.private_data_size = LDPAA_ETH_SWA_SIZE;
+	/* HW erratum mandates data alignment in multiples of 256 */
+	dflt_dpni->buf_layout.data_align = LDPAA_ETH_BUF_ALIGN;
 	/* ...rx, ... */
-	err = dpni_set_rx_buffer_layout(dflt_mc_io, priv->dpni_handle,
-					&priv->buf_layout);
+	err = dpni_set_rx_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
+					dflt_dpni->dpni_handle,
+					&dflt_dpni->buf_layout);
 	if (err) {
 		printf("dpni_set_rx_buffer_layout() failed");
 		goto err_buf_layout;
 	}
 
 	/* ... tx, ... */
-	priv->buf_layout.options &= ~DPNI_BUF_LAYOUT_OPT_PARSER_RESULT;
-	err = dpni_set_tx_buffer_layout(dflt_mc_io, priv->dpni_handle,
-					&priv->buf_layout);
+	/* remove Rx-only options */
+	dflt_dpni->buf_layout.options &= ~(DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
+				      DPNI_BUF_LAYOUT_OPT_PARSER_RESULT);
+	err = dpni_set_tx_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
+					dflt_dpni->dpni_handle,
+					&dflt_dpni->buf_layout);
 	if (err) {
 		printf("dpni_set_tx_buffer_layout() failed");
 		goto err_buf_layout;
 	}
 
 	/* ... tx-confirm. */
-	priv->buf_layout.options &= ~DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
-	err = dpni_set_tx_conf_buffer_layout(dflt_mc_io, priv->dpni_handle,
-					     &priv->buf_layout);
+	dflt_dpni->buf_layout.options &= ~DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
+	err = dpni_set_tx_conf_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
+					     dflt_dpni->dpni_handle,
+					     &dflt_dpni->buf_layout);
 	if (err) {
 		printf("dpni_set_tx_conf_buffer_layout() failed");
 		goto err_buf_layout;
@@ -584,7 +888,8 @@ static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
 	/* Now that we've set our tx buffer layout, retrieve the minimum
 	 * required tx data offset.
 	 */
-	err = dpni_get_tx_data_offset(dflt_mc_io, priv->dpni_handle,
+	err = dpni_get_tx_data_offset(dflt_mc_io, MC_CMD_NO_FLAGS,
+				      dflt_dpni->dpni_handle,
 				      &priv->tx_data_offset);
 	if (err) {
 		printf("dpni_get_tx_data_offset() failed\n");
@@ -603,7 +908,7 @@ static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
 err_data_offset:
 err_buf_layout:
 err_get_attr:
-	dpni_close(dflt_mc_io, priv->dpni_handle);
+	dpni_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 err_open:
 	return err;
 }
@@ -612,12 +917,15 @@ static int ldpaa_dpni_bind(struct ldpaa_eth_priv *priv)
 {
 	struct dpni_pools_cfg pools_params;
 	struct dpni_tx_flow_cfg dflt_tx_flow;
+	struct dpni_tx_conf_cfg tx_conf_cfg;
 	int err = 0;
 
+	memset(&pools_params, 0, sizeof(pools_params));
 	pools_params.num_dpbp = 1;
 	pools_params.pools[0].dpbp_id = (uint16_t)dflt_dpbp->dpbp_attr.id;
 	pools_params.pools[0].buffer_size = LDPAA_ETH_RX_BUFFER_SIZE;
-	err = dpni_set_pools(dflt_mc_io, priv->dpni_handle, &pools_params);
+	err = dpni_set_pools(dflt_mc_io, MC_CMD_NO_FLAGS,
+			     dflt_dpni->dpni_handle, &pools_params);
 	if (err) {
 		printf("dpni_set_pools() failed\n");
 		return err;
@@ -626,37 +934,49 @@ static int ldpaa_dpni_bind(struct ldpaa_eth_priv *priv)
 	priv->tx_flow_id = DPNI_NEW_FLOW_ID;
 	memset(&dflt_tx_flow, 0, sizeof(dflt_tx_flow));
 
-	err = dpni_set_tx_flow(dflt_mc_io, priv->dpni_handle,
-			       &priv->tx_flow_id, &dflt_tx_flow);
+	dflt_tx_flow.use_common_tx_conf_queue = 0;
+	err = dpni_set_tx_flow(dflt_mc_io, MC_CMD_NO_FLAGS,
+			       dflt_dpni->dpni_handle, &priv->tx_flow_id,
+			       &dflt_tx_flow);
 	if (err) {
 		printf("dpni_set_tx_flow() failed\n");
+		return err;
+	}
+
+	memset(&tx_conf_cfg, 0, sizeof(struct dpni_tx_conf_cfg));
+	tx_conf_cfg.errors_only = true;
+	/*Set tx-conf and error configuration*/
+	err = dpni_set_tx_conf(dflt_mc_io, MC_CMD_NO_FLAGS,
+			       dflt_dpni->dpni_handle,
+			       priv->tx_flow_id, &tx_conf_cfg);
+	if (err) {
+		printf("dpni_set_tx_conf() failed\n");
 		return err;
 	}
 
 	return 0;
 }
 
-static int ldpaa_eth_netdev_init(struct eth_device *net_dev)
+static int ldpaa_eth_netdev_init(struct eth_device *net_dev,
+				 phy_interface_t enet_if)
 {
 	int err;
 	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)net_dev->priv;
 
-	sprintf(net_dev->name, "DPNI%d", priv->dpni_id);
+	sprintf(net_dev->name, "DPMAC%d@%s", priv->dpmac_id,
+		phy_interface_strings[enet_if]);
 
 	net_dev->iobase = 0;
 	net_dev->init = ldpaa_eth_open;
 	net_dev->halt = ldpaa_eth_stop;
 	net_dev->send = ldpaa_eth_tx;
 	net_dev->recv = ldpaa_eth_pull_dequeue_rx;
-/*
-	TODO: PHY MDIO information
-	priv->bus = info->bus;
-	priv->phyaddr = info->phy_addr;
-	priv->enet_if = info->enet_if;
-*/
 
-	if (init_phy(net_dev))
-		return 0;
+#ifdef CONFIG_PHYLIB
+	err = init_phy(net_dev);
+	if (err < 0)
+		return err;
+#endif
 
 	err = eth_register(net_dev);
 	if (err < 0) {
@@ -667,7 +987,7 @@ static int ldpaa_eth_netdev_init(struct eth_device *net_dev)
 	return 0;
 }
 
-int ldpaa_eth_init(struct dprc_obj_desc obj_desc)
+int ldpaa_eth_init(int dpmac_id, phy_interface_t enet_if)
 {
 	struct eth_device		*net_dev = NULL;
 	struct ldpaa_eth_priv		*priv = NULL;
@@ -692,9 +1012,10 @@ int ldpaa_eth_init(struct dprc_obj_desc obj_desc)
 
 	net_dev->priv = (void *)priv;
 	priv->net_dev = (struct eth_device *)net_dev;
-	priv->dpni_id = obj_desc.id;
+	priv->dpmac_id = dpmac_id;
+	debug("%s dpmac_id=%d\n", __func__, dpmac_id);
 
-	err = ldpaa_eth_netdev_init(net_dev);
+	err = ldpaa_eth_netdev_init(net_dev, enet_if);
 	if (err)
 		goto err_netdev_init;
 

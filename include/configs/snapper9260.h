@@ -20,7 +20,6 @@
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000 /* External Crystal, in Hz */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* CPU */
 #define CONFIG_ARCH_CPU_INIT
@@ -30,7 +29,6 @@
 #define CONFIG_INITRD_TAG
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_FIT
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -89,7 +87,6 @@
 #define CONFIG_USART_ID			ATMEL_ID_SYS
 #endif
 #define CONFIG_BAUDRATE			115200
-#define CONFIG_SYS_PROMPT		"Snapper> "
 
 /* I2C - Bit-bashed */
 #define CONFIG_SYS_I2C
@@ -120,8 +117,6 @@
 
 /* Boot options */
 #define CONFIG_SYS_LOAD_ADDR		0x23000000
-#define CONFIG_BOOTDELAY		3
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 
 #define CONFIG_BOOTP_BOOTFILESIZE
 #define CONFIG_BOOTP_BOOTPATH
@@ -143,19 +138,11 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 
 /* U-Boot memory settings */
 #define CONFIG_SYS_MALLOC_LEN		(1 << 20)
 
 /* Command line configuration */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_GPIO
-#define CONFIG_CMD_USB
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_PCA953X
 #define CONFIG_CMD_PCA953X_INFO

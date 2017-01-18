@@ -174,7 +174,7 @@ static struct cpsw_platform_data cpsw_data = {
 };
 
 #if defined(CONFIG_DRIVER_TI_CPSW) || \
-	(defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET))
+	(defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET))
 int board_eth_init(bd_t *bis)
 {
 	struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
@@ -480,7 +480,7 @@ int board_late_init(void)
 		sprintf(tmp, "%s_%s", factory_dat.asn,
 			factory_dat.comp_version);
 	else
-		sprintf(tmp, "QMX7.E38_4.0");
+		strcpy(tmp, "QMX7.E38_4.0");
 
 	ret = setenv("boardid", tmp);
 	if (ret)

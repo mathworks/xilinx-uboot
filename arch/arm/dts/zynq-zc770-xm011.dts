@@ -7,6 +7,7 @@
  */
 /dts-v1/;
 #include "zynq-7000.dtsi"
+
 / {
 	compatible = "xlnx,zynq-zc770-xm011", "xlnx,zynq-7000";
 	model = "Xilinx Zynq";
@@ -18,9 +19,8 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyPS0,115200 root=/dev/ram rw earlyprintk";
-		linux,stdout-path = &uart1;
-		stdout-path = &uart1;
+		bootargs = "";
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory {
@@ -96,6 +96,7 @@
 };
 
 &uart1 {
+	u-boot,dm-pre-reloc;
 	status = "okay";
 };
 

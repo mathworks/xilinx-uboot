@@ -13,21 +13,20 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-
 #define MACH_TYPE_MPL_VCMA9	227
 
 /*
  * High Level Configuration Options
  * (easy to change)
  */
+#define CONFIG_SYS_THUMB_BUILD
+
 #define CONFIG_S3C24X0		/* This is a SAMSUNG S3C24x0-type SoC */
 #define CONFIG_S3C2410		/* specifically a SAMSUNG S3C2410 SoC */
 #define CONFIG_VCMA9		/* on a MPL VCMA9 Board  */
 #define CONFIG_MACH_TYPE	MACH_TYPE_MPL_VCMA9 /* Machine type */
 
 #define CONFIG_SYS_TEXT_BASE	0x0
-
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 
@@ -49,21 +48,14 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_USB
 #define CONFIG_CMD_REGINFO
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_BSP
 #define CONFIG_CMD_NAND
 
 #define CONFIG_BOARD_LATE_INIT
 
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING
 
 /*
@@ -118,16 +110,13 @@
 /* RTC */
 #define CONFIG_RTC_S3C24X0
 
-
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_BAUDRATE			9600
 
-#define CONFIG_BOOTDELAY		5
 #define CONFIG_BOOT_RETRY_TIME		-1
 #define CONFIG_RESET_TO_RETRY
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 
 #define CONFIG_NETMASK			255.255.255.0
 #define CONFIG_IPADDR			10.0.0.110
@@ -140,7 +129,6 @@
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_PROMPT		"VCMA9 # "
 #define CONFIG_SYS_CBSIZE		256
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
@@ -211,7 +199,6 @@
 #define MULTI_PURPOSE_SOCKET_ADDR	0x08000000
 
 /* File system */
-#define CONFIG_CMD_FAT
 #define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS
 #define CONFIG_CMD_JFFS2

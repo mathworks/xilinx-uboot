@@ -20,7 +20,6 @@
 #define CONFIG_USE_SPIFLASH
 #endif
 
-
 /*
  * SoC Configuration
  */
@@ -133,7 +132,6 @@
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART2_BASE /* Base address of UART2 */
@@ -142,9 +140,6 @@
 #define CONFIG_BAUDRATE		115200		/* Default baud rate */
 
 #define CONFIG_SPI
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_WINBOND
-#define CONFIG_CMD_SF
 #define CONFIG_DAVINCI_SPI
 #define CONFIG_SYS_SPI_BASE		DAVINCI_SPI1_BASE
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
@@ -258,11 +253,9 @@
 /*
  * U-Boot general configuration
  */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_MISC_INIT_R
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT	"U-Boot > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS	16 /* max number of command args */
@@ -270,12 +263,10 @@
 #define CONFIG_SYS_LOAD_ADDR	(PHYS_SDRAM_1 + 0x700000)
 #define CONFIG_VERSION_VARIABLE
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CRC32_VERIFY
 #define CONFIG_MX_CYCLIC
-#define CONFIG_OF_LIBFDT
 
 /*
  * Linux Information
@@ -287,18 +278,13 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS		\
 	"mem=32M console=ttyS2,115200n8 root=/dev/mtdblock2 rw noinitrd ip=dhcp"
-#define CONFIG_BOOTDELAY	3
 #define CONFIG_EXTRA_ENV_SETTINGS	"hwconfig=dsp:wake=yes"
 
 /*
  * U-Boot commands
  */
 #define CONFIG_CMD_ENV
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
 
 #ifdef CONFIG_CMD_BDI
@@ -306,9 +292,6 @@
 #endif
 
 #ifndef CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_CMD_DHCP
-#undef CONFIG_CMD_MII
-#undef CONFIG_CMD_PING
 #endif
 
 #ifdef CONFIG_USE_NAND
@@ -324,7 +307,6 @@
 #endif
 
 #ifdef CONFIG_USE_SPIFLASH
-#define CONFIG_CMD_SPI
 #endif
 
 #if !defined(CONFIG_USE_NAND) && \
@@ -350,9 +332,6 @@
  */
 #ifdef CONFIG_MMC
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_MMC
 #endif
 
 #ifndef CONFIG_DIRECT_NOR_BOOT

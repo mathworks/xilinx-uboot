@@ -18,8 +18,11 @@
 
 #include <asm/arch/tegra.h>		/* get chip and board defs */
 
+/* Use the Tegra US timer on ARMv7, but the architected timer on ARMv8. */
+#ifndef CONFIG_ARM64
 #define CONFIG_SYS_TIMER_RATE		1000000
 #define CONFIG_SYS_TIMER_COUNTER	NV_PA_TMRUS_BASE
+#endif
 
 /*
  * Display CPU and Board information
@@ -34,22 +37,9 @@
 #define CONFIG_ENV_SIZE			0x2000	/* Total Size Environment */
 
 /*
- * Size of malloc() pool
- */
-#ifdef CONFIG_DFU_MMC
-#define CONFIG_SYS_MALLOC_LEN		((4 << 20) + \
-					CONFIG_SYS_DFU_DATA_BUF_SIZE)
-#else
-#define CONFIG_SYS_MALLOC_LEN		(4 << 20)	/* 4MB  */
-#endif
-
-#define CONFIG_SYS_NONCACHED_MEMORY	(1 << 20)       /* 1 MiB */
-
-/*
  * NS16550 Configuration
  */
-#define CONFIG_TEGRA_SERIAL
-#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
 
 /*
  * Common HW configuration.
@@ -83,10 +73,6 @@
 #endif
 
 /*
- * Miscellaneous configurable options
- */
-#define CONFIG_SYS_PROMPT		V_PROMPT
-/*
  * Increasing the size of the IO buffer as default nfsargs size is more
  *  than 256 and so it is not possible to edit it
  */
@@ -101,14 +87,16 @@
 #define CONFIG_SYS_MEMTEST_START	(NV_PA_SDRC_CS0 + 0x600000)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x100000)
 
+#ifndef CONFIG_ARM64
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_USE_ARCH_MEMCPY
+#endif
 #endif
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS	1
+#define CONFIG_NR_DRAM_BANKS	2
 #define PHYS_SDRAM_1		NV_PA_SDRC_CS0
 #define PHYS_SDRAM_1_SIZE	0x20000000	/* 512M */
 
@@ -123,8 +111,6 @@
 						CONFIG_SYS_INIT_RAM_SIZE - \
 						GENERATED_GBL_DATA_SIZE)
 
-#define CONFIG_TEGRA_GPIO
-#define CONFIG_CMD_GPIO
 #define CONFIG_CMD_ENTERRCM
 
 /* Defines for SPL */
@@ -141,7 +127,6 @@
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
 
@@ -151,6 +136,7 @@
 
 #ifndef CONFIG_SPL_BUILD
 #include <config_distro_defaults.h>
+#define CONFIG_FAT_WRITE
 #endif
 
 #endif /* _TEGRA_COMMON_H_ */

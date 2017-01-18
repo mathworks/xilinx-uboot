@@ -55,7 +55,7 @@
  * For Interrupt transfers USB_MAX_TEMP_INT_TD Transfer descriptor are available. They
  * will be inserted after the appropriate (depending the interval setting) skeleton TD.
  * If an interrupt has been detected the dev->irqhandler is called. The status and number
- * of transfered bytes is stored in dev->irq_status resp. dev->irq_act_len. If the
+ * of transferred bytes is stored in dev->irq_status resp. dev->irq_act_len. If the
  * dev->irqhandler returns 0, the interrupt TD is removed and disabled. If an 1 is returned,
  * the interrupt TD will be reactivated.
  *
@@ -85,10 +85,11 @@
 #include <usb.h>
 #include "usb_uhci.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 #define USB_MAX_TEMP_TD      128	/* number of temporary TDs for bulk and control transfers */
 #define USB_MAX_TEMP_INT_TD  32	/* number of temporary TDs for Interrupt transfers */
 
-extern int leon3_snooping_avail;
 /*
 #define out16r(address,data) (*(unsigned short *)(address) = \
  (unsigned short)( \
@@ -228,7 +229,7 @@ unsigned long usb_uhci_td_stat(unsigned long status)
 	return result;
 }
 
-/* get the status and the transfered len of a td chain.
+/* get the status and the transferred len of a td chain.
  * called from the completion handler
  */
 int usb_get_td_status(uhci_td_t * td, struct usb_device *dev)
@@ -246,7 +247,7 @@ int usb_get_td_status(uhci_td_t * td, struct usb_device *dev)
 		stat = usb_uhci_td_stat(temp);
 		info = swap_32((unsigned long)READ32(&mytd->info));
 		if (((info & 0xff) != USB_PID_SETUP) && (((info >> 21) & 0x7ff) != 0x7ff) && (temp & 0x7FF) != 0x7ff) {	/* if not setup and not null data pack */
-			dev->act_len += (temp & 0x7FF) + 1;	/* the transfered len is act_len + 1 */
+			dev->act_len += (temp & 0x7FF) + 1;	/* the transferred len is act_len + 1 */
 		}
 		if (stat) {	/* status no ok */
 			dev->status = stat;
@@ -573,7 +574,7 @@ void usb_check_skel(void)
 	if (qh_cntrl.dev_ptr != 0) {	/* it's a device assigned check if this caused IRQ */
 		dev = (struct usb_device *)qh_cntrl.dev_ptr;
 		/* Flush cache now that hardware updated DATA and TDs/QHs */
-		if (!leon3_snooping_avail)
+		if (!gd->arch.snooping_avail)
 			sparc_dcache_flush_all();
 		usb_get_td_status(&tmp_td[0], dev);	/* update status */
 		if (!(dev->status & USB_ST_NOT_PROC)) {	/* is not active anymore, disconnect devices */
@@ -584,7 +585,7 @@ void usb_check_skel(void)
 	if (qh_bulk.dev_ptr != 0) {	/* it's a device assigned check if this caused IRQ */
 		dev = (struct usb_device *)qh_bulk.dev_ptr;
 		/* Flush cache now that hardware updated DATA and TDs/QHs */
-		if (!leon3_snooping_avail)
+		if (!gd->arch.snooping_avail)
 			sparc_dcache_flush_all();
 		usb_get_td_status(&tmp_td[0], dev);	/* update status */
 		if (!(dev->status & USB_ST_NOT_PROC)) {	/* is not active anymore, disconnect devices */
@@ -620,7 +621,7 @@ void usb_check_int_chain(void)
 			if ((td->dev_ptr != 0L) && !(status & TD_CTRL_ACTIVE)) {
 				/* td is not active and a device is assigned -> call irqhandler */
 				dev = (struct usb_device *)td->dev_ptr;
-				dev->irq_act_len = ((status & 0x7FF) == 0x7FF) ? 0 : (status & 0x7FF) + 1;	/* transfered length */
+				dev->irq_act_len = ((status & 0x7FF) == 0x7FF) ? 0 : (status & 0x7FF) + 1;	/* transferred length */
 				dev->irq_status = usb_uhci_td_stat(status);	/* get status */
 				res = dev->irq_handle(dev);	/* call irqhandler */
 				if (res == 1) {
@@ -690,11 +691,11 @@ void handle_usb_interrupt(void)
  */
 int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
 {
-	unsigned char temp;
 	ambapp_ahbdev ahbdev;
 
 	/* Find GRUSB core using AMBA Plug&Play information */
-	if (ambapp_ahbslv_first(VENDOR_GAISLER, GAISLER_UHCI, &ahbdev) != 1) {
+	if (ambapp_ahbslv_find(&ambapp_plb, VENDOR_GAISLER, GAISLER_UHCI,
+		CONFIG_SYS_GRLIB_GRUSB_INDEX, &ahbdev) != 1) {
 		printf("USB UHCI: Failed to find GRUSB controller\n");
 		return -1;
 	}

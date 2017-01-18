@@ -20,18 +20,7 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DOS_PARTITION
 
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_GPIO
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_USB
-#define CONFIG_CMD_BOOTZ
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_VIDEO
@@ -130,7 +119,6 @@
 #define CONFIG_SF_DEFAULT_BUS		2
 #define CONFIG_SF_DEFAULT_CS		0
 /* this may vary and depends on the installed chip */
-#define CONFIG_SPI_FLASH_SST
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define CONFIG_SF_DEFAULT_SPEED		24000000
 #endif
@@ -149,7 +137,6 @@
 #endif
 
 /* Boot Linux */
-#define CONFIG_BOOTDELAY	1
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_LOADADDR		0x42000000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR

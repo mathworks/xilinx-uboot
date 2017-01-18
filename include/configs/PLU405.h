@@ -21,7 +21,6 @@
 #define CONFIG_PLU405		1	/* ...on a PLU405 board		*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFF80000
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
@@ -48,7 +47,6 @@
 
 #define CONFIG_PHY_CLK_FREQ	EMAC_STACR_CLK_66MHZ /* 66 MHz OPB clock*/
 
-
 /*
  * BOOTP options
  */
@@ -57,26 +55,15 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PCI
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_IDE
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_USB
-
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
 
 #define CONFIG_MAC_PARTITION
 #define CONFIG_DOS_PARTITION
@@ -94,8 +81,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-
-#undef	CONFIG_SYS_HUSH_PARSER			/* use "hush" command parser	*/
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size	*/
@@ -116,7 +101,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 4 ... 12 MB in DRAM	*/
 
 #define CONFIG_CONS_INDEX	1	/* Use UART0			*/
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
@@ -133,8 +117,6 @@
 #define CONFIG_SYS_EXTBDINFO	1		/* To use extended board_into (bd_t) */
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
-#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check for keypress on bootdelay==0 */
-#define CONFIG_BOOTDELAY	3	/* autoboot after 3 seconds	*/
 
 #define CONFIG_VERSION_VARIABLE 1	/* include version env variable */
 

@@ -281,7 +281,7 @@ static int dwc3_setup_scratch_buffers(struct dwc3 *dwc)
 	return 0;
 
 err1:
-	dma_unmap_single((void *)dwc->scratch_addr, dwc->nr_scratch *
+	dma_unmap_single((void *)(uintptr_t)dwc->scratch_addr, dwc->nr_scratch *
 			 DWC3_SCRATCHBUF_SIZE, DMA_BIDIRECTIONAL);
 
 err0:
@@ -296,7 +296,7 @@ static void dwc3_free_scratch_buffers(struct dwc3 *dwc)
 	if (!dwc->nr_scratch)
 		return;
 
-	dma_unmap_single((void *)dwc->scratch_addr, dwc->nr_scratch *
+	dma_unmap_single((void *)(uintptr_t)dwc->scratch_addr, dwc->nr_scratch *
 			 DWC3_SCRATCHBUF_SIZE, DMA_BIDIRECTIONAL);
 	kfree(dwc->scratchbuf);
 }
@@ -613,7 +613,7 @@ static void dwc3_core_exit_mode(struct dwc3 *dwc)
 int dwc3_uboot_init(struct dwc3_device *dwc3_dev)
 {
 	struct dwc3		*dwc;
-	struct device		*dev;
+	struct device		*dev = NULL;
 	u8			lpm_nyet_threshold;
 	u8			tx_de_emphasis;
 	u8			hird_threshold;
@@ -629,7 +629,8 @@ int dwc3_uboot_init(struct dwc3_device *dwc3_dev)
 	dwc = PTR_ALIGN(mem, DWC3_ALIGN_MASK + 1);
 	dwc->mem = mem;
 
-	dwc->regs	= (int *)(dwc3_dev->base + DWC3_GLOBALS_REGS_START);
+	dwc->regs = (void *)(uintptr_t)(dwc3_dev->base +
+					DWC3_GLOBALS_REGS_START);
 
 	/* default to highest possible threshold */
 	lpm_nyet_threshold = 0xff;

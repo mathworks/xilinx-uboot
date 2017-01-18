@@ -58,11 +58,6 @@
 
 #define CONFIG_BOARD_EARLY_INIT_F
 
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_OF_LIBFDT
-
-#define CONFIG_SYS_GENERIC_BOARD
-
 /*
  * Memory Configuration
  */
@@ -122,11 +117,6 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_USB
 
 /*
  * Network Driver Setting
@@ -181,7 +171,6 @@
 /*
  * Boot option
  */
-#define CONFIG_BOOTDELAY		3
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_SDRAM_BASE + SZ_16M
@@ -193,8 +182,6 @@
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
 #define CONFIG_SYS_MAXARGS		16	/* max number of command args */
 /* Print Buffer Size */

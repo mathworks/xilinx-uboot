@@ -6,6 +6,7 @@
  */
 
 #include <common.h>
+#include <console.h>
 #include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>
@@ -299,7 +300,7 @@ int pci_pre_init(struct pci_controller *hose)
 	return 1;
 }
 
-#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+#ifdef CONFIG_OF_BOARD_SETUP
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	int rc;
@@ -321,7 +322,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	return 0;
 }
-#endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */
+#endif /* CONFIG_OF_BOARD_SETUP */
 
 #if defined(CONFIG_SYS_EEPROM_WREN)
 /* Input: <dev_addr>  I2C address of EEPROM device to enable.

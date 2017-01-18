@@ -94,8 +94,9 @@ static void setup_iomux_enet(void)
 
 	/* Reset AR8031 PHY */
 	gpio_direction_output(IMX_GPIO_NR(1, 25) , 0);
-	udelay(500);
+	mdelay(10);
 	gpio_set_value(IMX_GPIO_NR(1, 25), 1);
+	udelay(100);
 }
 
 static iomux_v3_cfg_t const usdhc2_pads[] = {
@@ -176,13 +177,27 @@ static iomux_v3_cfg_t const rgb_pads[] = {
 	MX6_PAD_DISP0_DAT21__IPU1_DISP0_DATA21 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	MX6_PAD_DISP0_DAT22__IPU1_DISP0_DATA22 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	MX6_PAD_DISP0_DAT23__IPU1_DISP0_DATA23 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+static iomux_v3_cfg_t const bl_pads[] = {
 	MX6_PAD_SD1_DAT3__GPIO1_IO21 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
+
+static void enable_backlight(void)
+{
+	imx_iomux_v3_setup_multiple_pads(bl_pads, ARRAY_SIZE(bl_pads));
+	gpio_direction_output(DISP0_PWR_EN, 1);
+}
 
 static void enable_rgb(struct display_info_t const *dev)
 {
 	imx_iomux_v3_setup_multiple_pads(rgb_pads, ARRAY_SIZE(rgb_pads));
-	gpio_direction_output(DISP0_PWR_EN, 1);
+	enable_backlight();
+}
+
+static void enable_lvds(struct display_info_t const *dev)
+{
+	enable_backlight();
 }
 
 static struct i2c_pads_info i2c_pad_info1 = {
@@ -234,6 +249,11 @@ struct fsl_esdhc_cfg usdhc_cfg[3] = {
 #define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 2)
 #define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
 
+int board_mmc_get_env_dev(int devno)
+{
+	return devno - 1;
+}
+
 int board_mmc_getcd(struct mmc *mmc)
 {
 	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
@@ -262,7 +282,7 @@ int board_mmc_init(bd_t *bis)
 
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    SD2
 	 * mmc1                    SD3
 	 * mmc2                    eMMC
@@ -340,39 +360,6 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
-int mx6_rgmii_rework(struct phy_device *phydev)
-{
-	unsigned short val;
-
-	/* To enable AR8031 ouput a 125MHz clk from CLK_25M */
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xd, 0x7);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xe, 0x8016);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xd, 0x4007);
-
-	val = phy_read(phydev, MDIO_DEVAD_NONE, 0xe);
-	val &= 0xffe3;
-	val |= 0x18;
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xe, val);
-
-	/* introduce tx clock delay */
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x5);
-	val = phy_read(phydev, MDIO_DEVAD_NONE, 0x1e);
-	val |= 0x0100;
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, val);
-
-	return 0;
-}
-
-int board_phy_config(struct phy_device *phydev)
-{
-	mx6_rgmii_rework(phydev);
-
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-
-	return 0;
-}
-
 #if defined(CONFIG_VIDEO_IPUV3)
 static void disable_lvds(struct display_info_t const *dev)
 {
@@ -392,16 +379,6 @@ static void do_enable_hdmi(struct display_info_t const *dev)
 	imx_enable_hdmi_phy();
 }
 
-static void enable_lvds(struct display_info_t const *dev)
-{
-	struct iomuxc *iomux = (struct iomuxc *)
-				IOMUXC_BASE_ADDR;
-	u32 reg = readl(&iomux->gpr[2]);
-	reg |= IOMUXC_GPR2_DATA_WIDTH_CH0_18BIT |
-	       IOMUXC_GPR2_DATA_WIDTH_CH1_18BIT;
-	writel(reg, &iomux->gpr[2]);
-}
-
 struct display_info_t const displays[] = {{
 	.bus	= -1,
 	.addr	= 0,
@@ -413,13 +390,13 @@ struct display_info_t const displays[] = {{
 		.refresh        = 60,
 		.xres           = 1024,
 		.yres           = 768,
-		.pixclock       = 15385,
-		.left_margin    = 220,
-		.right_margin   = 40,
-		.upper_margin   = 21,
-		.lower_margin   = 7,
-		.hsync_len      = 60,
-		.vsync_len      = 10,
+		.pixclock       = 15384,
+		.left_margin    = 160,
+		.right_margin   = 24,
+		.upper_margin   = 29,
+		.lower_margin   = 3,
+		.hsync_len      = 136,
+		.vsync_len      = 6,
 		.sync           = FB_SYNC_EXT,
 		.vmode          = FB_VMODE_NONINTERLACED
 } }, {
@@ -433,13 +410,13 @@ struct display_info_t const displays[] = {{
 		.refresh        = 60,
 		.xres           = 1024,
 		.yres           = 768,
-		.pixclock       = 15385,
-		.left_margin    = 220,
-		.right_margin   = 40,
-		.upper_margin   = 21,
-		.lower_margin   = 7,
-		.hsync_len      = 60,
-		.vsync_len      = 10,
+		.pixclock       = 15384,
+		.left_margin    = 160,
+		.right_margin   = 24,
+		.upper_margin   = 29,
+		.lower_margin   = 3,
+		.hsync_len      = 136,
+		.vsync_len      = 6,
 		.sync           = FB_SYNC_EXT,
 		.vmode          = FB_VMODE_NONINTERLACED
 } }, {
@@ -631,7 +608,8 @@ int board_init(void)
 int power_init_board(void)
 {
 	struct pmic *p;
-	unsigned int reg, ret;
+	unsigned int reg;
+	int ret;
 
 	p = pfuze_common_init(I2C_PMIC);
 	if (!p)
@@ -669,7 +647,7 @@ static const struct boot_mode board_boot_modes[] = {
 	{"sd2",	 MAKE_CFGVAL(0x40, 0x28, 0x00, 0x00)},
 	{"sd3",	 MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
 	/* 8 bit bus width */
-	{"emmc", MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},
+	{"emmc", MAKE_CFGVAL(0x60, 0x58, 0x00, 0x00)},
 	{NULL,	 0},
 };
 #endif
@@ -679,6 +657,18 @@ int board_late_init(void)
 #ifdef CONFIG_CMD_BMODE
 	add_board_boot_modes(board_boot_modes);
 #endif
+
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	setenv("board_name", "SABRESD");
+
+	if (is_mx6dqp())
+		setenv("board_rev", "MX6QP");
+	else if (is_mx6dq())
+		setenv("board_rev", "MX6Q");
+	else if (is_mx6sdl())
+		setenv("board_rev", "MX6DL");
+#endif
+
 	return 0;
 }
 
@@ -721,6 +711,35 @@ const struct mx6dq_iomux_ddr_regs mx6_ddr_ioregs = {
 	.dram_dqm7 =  0x00020030,
 };
 
+const struct mx6dq_iomux_ddr_regs mx6dqp_ddr_ioregs = {
+	.dram_sdclk_0 =  0x00000030,
+	.dram_sdclk_1 =  0x00000030,
+	.dram_cas =  0x00000030,
+	.dram_ras =  0x00000030,
+	.dram_reset =  0x00000030,
+	.dram_sdcke0 =  0x00003000,
+	.dram_sdcke1 =  0x00003000,
+	.dram_sdba2 =  0x00000000,
+	.dram_sdodt0 =  0x00003030,
+	.dram_sdodt1 =  0x00003030,
+	.dram_sdqs0 =  0x00000030,
+	.dram_sdqs1 =  0x00000030,
+	.dram_sdqs2 =  0x00000030,
+	.dram_sdqs3 =  0x00000030,
+	.dram_sdqs4 =  0x00000030,
+	.dram_sdqs5 =  0x00000030,
+	.dram_sdqs6 =  0x00000030,
+	.dram_sdqs7 =  0x00000030,
+	.dram_dqm0 =  0x00000030,
+	.dram_dqm1 =  0x00000030,
+	.dram_dqm2 =  0x00000030,
+	.dram_dqm3 =  0x00000030,
+	.dram_dqm4 =  0x00000030,
+	.dram_dqm5 =  0x00000030,
+	.dram_dqm6 =  0x00000030,
+	.dram_dqm7 =  0x00000030,
+};
+
 const struct mx6dq_iomux_grp_regs mx6_grp_ioregs = {
 	.grp_ddr_type =  0x000C0000,
 	.grp_ddrmode_ctl =  0x00020000,
@@ -751,6 +770,21 @@ const struct mx6_mmdc_calibration mx6_mmcd_calib = {
 	.p1_mprddlctl =  0x39393341,
 	.p0_mpwrdlctl =  0x35373933,
 	.p1_mpwrdlctl =  0x48254A36,
+};
+
+const struct mx6_mmdc_calibration mx6dqp_mmcd_calib = {
+	.p0_mpwldectrl0 =  0x001B001E,
+	.p0_mpwldectrl1 =  0x002E0029,
+	.p1_mpwldectrl0 =  0x001B002A,
+	.p1_mpwldectrl1 =  0x0019002C,
+	.p0_mpdgctrl0 =  0x43240334,
+	.p0_mpdgctrl1 =  0x0324031A,
+	.p1_mpdgctrl0 =  0x43340344,
+	.p1_mpdgctrl1 =  0x03280276,
+	.p0_mprddlctl =  0x44383A3E,
+	.p1_mprddlctl =  0x3C3C3846,
+	.p0_mpwrdlctl =  0x2E303230,
+	.p1_mpwrdlctl =  0x38283E34,
 };
 
 /* MT41K128M16JT-125 */
@@ -786,9 +820,15 @@ static void gpr_init(void)
 
 	/* enable AXI cache for VDOA/VPU/IPU */
 	writel(0xF00000CF, &iomux->gpr[4]);
-	/* set IPU AXI-id0 Qos=0xf(bypass) AXI-id1 Qos=0x7 */
-	writel(0x007F007F, &iomux->gpr[6]);
-	writel(0x007F007F, &iomux->gpr[7]);
+	if (is_mx6dqp()) {
+		/* set IPU AXI-id1 Qos=0x1 AXI-id0/2/3 Qos=0x7 */
+		writel(0x007F007F, &iomux->gpr[6]);
+		writel(0x007F007F, &iomux->gpr[7]);
+	} else {
+		/* set IPU AXI-id0 Qos=0xf(bypass) AXI-id1 Qos=0x7 */
+		writel(0x007F007F, &iomux->gpr[6]);
+		writel(0x007F007F, &iomux->gpr[7]);
+	}
 }
 
 /*
@@ -813,10 +853,16 @@ static void spl_dram_init(void)
 		.bi_on = 1,	/* Bank interleaving enabled */
 		.sde_to_rst = 0x10,	/* 14 cycles, 200us (JEDEC default) */
 		.rst_to_cke = 0x23,	/* 33 cycles, 500us (JEDEC default) */
+		.ddr_type = DDR_TYPE_DDR3,
 	};
 
-	mx6dq_dram_iocfg(64, &mx6_ddr_ioregs, &mx6_grp_ioregs);
-	mx6_dram_cfg(&sysinfo, &mx6_mmcd_calib, &mem_ddr);
+	if (is_mx6dqp()) {
+		mx6dq_dram_iocfg(64, &mx6dqp_ddr_ioregs, &mx6_grp_ioregs);
+		mx6_dram_cfg(&sysinfo, &mx6dqp_mmcd_calib, &mem_ddr);
+	} else {
+		mx6dq_dram_iocfg(64, &mx6_ddr_ioregs, &mx6_grp_ioregs);
+		mx6_dram_cfg(&sysinfo, &mx6_mmcd_calib, &mem_ddr);
+	}
 }
 
 void board_init_f(ulong dummy)
@@ -844,9 +890,5 @@ void board_init_f(ulong dummy)
 
 	/* load/boot image from boot device */
 	board_init_r(NULL, 0);
-}
-
-void reset_cpu(ulong addr)
-{
 }
 #endif

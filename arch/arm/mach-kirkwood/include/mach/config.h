@@ -80,7 +80,6 @@
  * Ethernet Driver configuration
  */
 #ifdef CONFIG_CMD_NET
-#define CONFIG_CMD_MII
 #define CONFIG_NETCONSOLE	/* include NetConsole support   */
 #define CONFIG_MII		/* expose smi ove miiphy interface */
 #define CONFIG_MVGBE		/* Enable Marvell Gbe Controller Driver */
@@ -102,7 +101,6 @@
  */
 #ifdef CONFIG_CMD_IDE
 #define __io
-#define CONFIG_CMD_EXT2
 #define CONFIG_MVSATA_IDE
 #define CONFIG_IDE_PREINIT
 #define CONFIG_MVSATA_IDE_USE_PORT1
@@ -134,5 +132,10 @@
 #define CONFIG_SYS_I2C_SLAVE		0x0
 #define CONFIG_SYS_I2C_SPEED		100000
 #endif
+
+/* Use common timer */
+#define CONFIG_SYS_TIMER_COUNTS_DOWN
+#define CONFIG_SYS_TIMER_COUNTER	(MVEBU_TIMER_BASE + 0x14)
+#define CONFIG_SYS_TIMER_RATE		CONFIG_SYS_TCLK
 
 #endif /* _KW_CONFIG_H */

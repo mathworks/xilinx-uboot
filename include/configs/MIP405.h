@@ -21,8 +21,6 @@
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFF80000
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 /***********************************************************
  * Note that it may also be a MIP405T board which is a subset of the
  * MIP405
@@ -38,7 +36,6 @@
  ***********************************************************/
 #define CONFIG_SYS_CLK_FREQ	33000000 /* external frequency to pll   */
 
-
 /*
  * BOOTP options
  */
@@ -47,33 +44,22 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_I2C
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
 #define CONFIG_CMD_SAVES
 #define CONFIG_CMD_BSP
 
 #if !defined(CONFIG_MIP405T)
-    #define CONFIG_CMD_USB
 #endif
 
-
-#define	 CONFIG_SYS_HUSH_PARSER
 /**************************************************************
  * I2C Stuff:
  * the MIP405 is equiped with an Atmel 24C128/256 EEPROM at address
@@ -96,7 +82,6 @@
 					/* last	6 bits of the address	*/
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	10	/* and takes up to 10 msec */
 
-
 #define CONFIG_ENV_IS_IN_EEPROM	1	/* use EEPROM for environment vars */
 #define CONFIG_ENV_OFFSET		0x00000	/* environment starts at the beginning of the EEPROM */
 #define CONFIG_ENV_SIZE		0x00800	/* 2k bytes may be used for env vars */
@@ -112,10 +97,8 @@
  * Environment definitions
  **************************************************************/
 #define CONFIG_BAUDRATE		9600	/* STD Baudrate */
-#define CONFIG_BOOTDELAY	5
 /* autoboot (do NOT change this set environment variable "bootdelay" to -1 instead) */
 /* #define CONFIG_BOOT_RETRY_TIME	-10	/XXX* feature is available but not enabled */
-#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check console even if bootdelay = 0 */
 
 #define CONFIG_BOOTCOMMAND	"diskboot 400000 0:1; bootm" /* autoboot command		*/
 #define CONFIG_BOOTARGS		"console=ttyS0,9600 root=/dev/hda5" /* boot arguments */
@@ -162,7 +145,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 1 ... 12 MB in DRAM	*/
 
 #define CONFIG_CONS_INDEX	1	/* Use UART0			*/
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
@@ -288,7 +270,6 @@
 #define MULTI_PURPOSE_SOCKET_ADDR 0xF8000000
 #define CONFIG_PORT_ADDR	PER_PLD_ADDR + 5
 
-
 /*-----------------------------------------------------------------------
  * Definitions for initial stack pointer and data area (in On Chip SRAM)
  */
@@ -364,11 +345,6 @@
 #define CONFIG_ISO_PARTITION /* Experimental */
 
 /************************************************************
- * Keyboard support
- ************************************************************/
-#undef CONFIG_ISA_KEYBOARD
-
-/************************************************************
  * Video support
  ************************************************************/
 #define CONFIG_VIDEO			/*To enable video controller support */
@@ -418,6 +394,5 @@
 #else
 #define CONFIG_IDENT_STRING "\n(c) 2003 by MPL AG Switzerland, PCI_BOOT Version"
 #endif
-
 
 #endif	/* __CONFIG_H */

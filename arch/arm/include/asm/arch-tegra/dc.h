@@ -364,8 +364,6 @@ struct dc_ctlr {
 	struct dc_winbuf_reg winbuf;	/* WINBUF A/B/C 0x800 ~ 0x80d */
 };
 
-#define BIT(pos)	(1U << pos)
-
 /* DC_CMD_DISPLAY_COMMAND 0x032 */
 #define CTRL_MODE_SHIFT		5
 #define CTRL_MODE_MASK		(0x3 << CTRL_MODE_SHIFT)
@@ -567,10 +565,5 @@ enum {
 #define DC_POLL_TIMEOUT_MS		50
 #define DC_N_WINDOWS			5
 #define DC_REG_SAVE_SPACE		(DC_N_WINDOWS + 5)
-
-struct display_timing;
-
-int display_init(void *lcdbase, int fb_bits_per_pixel,
-		 struct display_timing *timing);
 
 #endif /* __ASM_ARCH_TEGRA_DC_H */

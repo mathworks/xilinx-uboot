@@ -22,18 +22,11 @@
  */
 
 #define CONFIG_CMD_BMODE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FUSE
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_TIME
 #define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS
-#define CONFIG_CMD_USB
 
 /*
  * Hardware configuration
@@ -46,6 +39,8 @@
 /* I2C config */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_I2C_SPEED			100000
 
@@ -102,9 +97,6 @@
 #define CONFIG_APBH_DMA
 #define CONFIG_APBH_DMA_BURST
 #define CONFIG_APBH_DMA_BURST8
-
-/* Fuse support */
-#define CONFIG_MXC_OCOTP
 
 /* Environment in NAND */
 #define CONFIG_ENV_IS_IN_NAND

@@ -15,8 +15,8 @@
 #define __CONFIG_H
 
 #include <asm/hardware.h>
+#include <linux/sizes.h>
 
-#define CONFIG_SYS_GENERIC_BOARD
 /*
  * Warning: changing CONFIG_SYS_TEXT_BASE requires
  * adapting the initial boot program.
@@ -35,12 +35,9 @@
 #define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs	*/
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
-#define CONFIG_SKIP_LOWLEVEL_INIT
+#define CONFIG_SKIP_LOWLEVEL_INIT_ONLY
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_DISPLAY_CPUINFO
-
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_OF_LIBFDT
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
@@ -57,7 +54,6 @@
 #define CONFIG_RED_LED		AT91_PIN_PD31	/* this is the user1 led */
 #define CONFIG_GREEN_LED	AT91_PIN_PD0	/* this is the user2 led */
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * BOOTP options
@@ -70,10 +66,7 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_USB
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -81,7 +74,7 @@
 #define CONFIG_SYS_SDRAM_SIZE		0x08000000
 
 #define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_SDRAM_BASE + 4 * 1024 - GENERATED_GBL_DATA_SIZE)
+	(CONFIG_SYS_SDRAM_BASE + SZ_4K - GENERATED_GBL_DATA_SIZE)
 
 /* No NOR flash */
 #define CONFIG_SYS_NO_FLASH
@@ -113,13 +106,25 @@
 #define CONFIG_DOS_PARTITION
 #define CONFIG_USB_STORAGE
 
-#define CONFIG_SYS_LOAD_ADDR		0x72000000	/* load address */
+/* USB DFU support */
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITIONS
+
+/* DFU class support */
+#define CONFIG_USB_FUNCTION_DFU
+#define CONFIG_DFU_NAND
+#define CONFIG_SYS_DFU_DATA_BUF_SIZE	(SZ_1M)
+#define DFU_MANIFEST_POLL_TIMEOUT	25000
+
+#define CONFIG_SYS_CACHELINE_SIZE	SZ_8K
+#define CONFIG_SYS_LOAD_ADDR	ATMEL_BASE_CS6
 
 /* bootstrap + u-boot + env in nandflash */
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OFFSET		0x100000
 #define CONFIG_ENV_OFFSET_REDUND	0x180000
-#define CONFIG_ENV_SIZE			0x20000
+#define CONFIG_ENV_SIZE			SZ_128K
 
 #define CONFIG_BOOTCOMMAND						\
 	"nand read 0x70000000 0x200000 0x300000;"			\
@@ -133,7 +138,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE +	\
@@ -141,21 +145,21 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 
 /*
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN	ROUND(3 * CONFIG_ENV_SIZE + \
-				128*1024, 0x1000)
+				SZ_4M, 0x1000)
+
 /* Defines for SPL */
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_TEXT_BASE		0x300000
-#define CONFIG_SPL_MAX_SIZE		(12 * 1024)
-#define CONFIG_SPL_STACK		(16 * 1024)
+#define CONFIG_SPL_MAX_SIZE		(12 * SZ_1K)
+#define CONFIG_SPL_STACK		(SZ_16K)
 
 #define CONFIG_SPL_BSS_START_ADDR	CONFIG_SPL_MAX_SIZE
-#define CONFIG_SPL_BSS_MAX_SIZE		(2 * 1024)
+#define CONFIG_SPL_BSS_MAX_SIZE		(SZ_2K)
 
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
@@ -175,8 +179,8 @@
 #define CONFIG_SYS_NAND_U_BOOT_DST	CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 
-#define CONFIG_SYS_NAND_PAGE_SIZE	2048
-#define CONFIG_SYS_NAND_BLOCK_SIZE	(128*1024)
+#define CONFIG_SYS_NAND_PAGE_SIZE	SZ_2K
+#define CONFIG_SYS_NAND_BLOCK_SIZE	(SZ_128K)
 #define CONFIG_SYS_NAND_PAGE_COUNT	(CONFIG_SYS_NAND_BLOCK_SIZE / \
 					 CONFIG_SYS_NAND_PAGE_SIZE)
 #define CONFIG_SYS_NAND_BAD_BLOCK_POS	NAND_LARGE_BADBLOCK_POS
@@ -193,7 +197,5 @@
 #define CONFIG_SYS_AT91_PLLA		0x20c73f03
 #define CONFIG_SYS_MCKR			0x1301
 #define CONFIG_SYS_MCKR_CSS		0x1302
-
-#define ATMEL_BASE_MPDDRC		ATMEL_BASE_DDRSDRC0
 
 #endif

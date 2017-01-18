@@ -7,6 +7,7 @@
 #include <common.h>
 #include <asm/fsp/fsp_support.h>
 #include <asm/e820.h>
+#include <asm/mrccache.h>
 #include <asm/post.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -31,6 +32,11 @@ int dram_init(void)
 
 	gd->ram_size = ram_size;
 	post_code(POST_DRAM);
+
+#ifdef CONFIG_ENABLE_MRC_CACHE
+	gd->arch.mrc_output = fsp_get_nvs_data(gd->arch.hob_list,
+					       &gd->arch.mrc_output_len);
+#endif
 
 	return 0;
 }
@@ -72,10 +78,17 @@ unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
 				entries[num_entries].type = E820_RAM;
 			else if (res_desc->type == RES_MEM_RESERVED)
 				entries[num_entries].type = E820_RESERVED;
+
+			num_entries++;
 		}
 		hdr = get_next_hob(hdr);
-		num_entries++;
 	}
+
+	/* Mark PCIe ECAM address range as reserved */
+	entries[num_entries].addr = CONFIG_PCIE_ECAM_BASE;
+	entries[num_entries].size = CONFIG_PCIE_ECAM_SIZE;
+	entries[num_entries].type = E820_RESERVED;
+	num_entries++;
 
 	return num_entries;
 }

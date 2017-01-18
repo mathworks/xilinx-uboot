@@ -12,7 +12,7 @@ import terminal
 
 # Series-xxx tags that we understand
 valid_series = ['to', 'cc', 'version', 'changes', 'prefix', 'notes', 'name',
-                'cover-cc', 'process_log']
+                'cover_cc', 'process_log']
 
 class Series(dict):
     """Holds information about a patch series, including all tags.
@@ -69,7 +69,10 @@ class Series(dict):
 
         # Otherwise just set the value
         elif name in valid_series:
-            self[name] = value
+            if name=="notes":
+                self[name] = [value]
+            else:
+                self[name] = value
         else:
             raise ValueError("In %s: line '%s': Unknown 'Series-%s': valid "
                         "options are %s" % (commit.hash, line, name,

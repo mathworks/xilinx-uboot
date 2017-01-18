@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <linux/types.h>
 #include <linux/err.h>
+#include <linux/kernel.h>
 
 struct unused {};
 typedef struct unused unused_t;
@@ -24,6 +25,8 @@ extern struct p_current *current;
 	printf(fmt, ##args)
 #define dev_err(dev, fmt, args...)		\
 	printf(fmt, ##args)
+#define dev_warn(dev, fmt, args...)		\
+	printf(fmt, ##args)
 #define printk	printf
 #define printk_once	printf
 
@@ -36,20 +39,60 @@ extern struct p_current *current;
 #define KERN_INFO
 #define KERN_DEBUG
 
+#define GFP_ATOMIC ((gfp_t) 0)
+#define GFP_KERNEL ((gfp_t) 0)
+#define GFP_NOFS ((gfp_t) 0)
+#define GFP_USER ((gfp_t) 0)
+#define __GFP_NOWARN ((gfp_t) 0)
+#define __GFP_ZERO	((__force gfp_t)0x8000u)	/* Return zeroed page on success */
+
 void *kmalloc(size_t size, int flags);
-void *kzalloc(size_t size, int flags);
+
+static inline void *kzalloc(size_t size, gfp_t flags)
+{
+	return kmalloc(size, flags | __GFP_ZERO);
+}
+
+static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
+{
+	if (size != 0 && n > SIZE_MAX / size)
+		return NULL;
+	return kmalloc(n * size, flags | __GFP_ZERO);
+}
+
+static inline void *kcalloc(size_t n, size_t size, gfp_t flags)
+{
+	return kmalloc_array(n, size, flags | __GFP_ZERO);
+}
+
 #define vmalloc(size)	kmalloc(size, 0)
 #define __vmalloc(size, flags, pgsz)	kmalloc(size, flags)
-#define kfree(ptr)	free(ptr)
-#define vfree(ptr)	free(ptr)
+static inline void *vzalloc(unsigned long size)
+{
+	return kzalloc(size, 0);
+}
+static inline void kfree(const void *block)
+{
+	free((void *)block);
+}
+static inline void vfree(const void *addr)
+{
+	free((void *)addr);
+}
 
 struct kmem_cache { int sz; };
 
 struct kmem_cache *get_mem(int element_sz);
 #define kmem_cache_create(a, sz, c, d, e)	get_mem(sz)
 void *kmem_cache_alloc(struct kmem_cache *obj, int flag);
-#define kmem_cache_free(obj, size)	free(size)
-#define kmem_cache_destroy(obj)		free(obj)
+static inline void kmem_cache_free(struct kmem_cache *cachep, void *obj)
+{
+	free(obj);
+}
+static inline void kmem_cache_destroy(struct kmem_cache *cachep)
+{
+	free(cachep);
+}
 
 #define DECLARE_WAITQUEUE(...)	do { } while (0)
 #define add_wait_queue(...)	do { } while (0)
@@ -73,13 +116,6 @@ void *kmem_cache_alloc(struct kmem_cache *obj, int flag);
 /* drivers/char/random.c */
 #define get_random_bytes(...)
 
-/* idr.c */
-#define GFP_ATOMIC ((gfp_t) 0)
-#define GFP_KERNEL ((gfp_t) 0)
-#define GFP_NOFS ((gfp_t) 0)
-#define GFP_USER ((gfp_t) 0)
-#define __GFP_NOWARN ((gfp_t) 0)
-
 /* include/linux/leds.h */
 struct led_trigger {};
 
@@ -95,12 +131,6 @@ static inline void led_trigger_register_simple(const char *name,
 static inline void led_trigger_unregister_simple(struct led_trigger *trigger) {}
 static inline void led_trigger_event(struct led_trigger *trigger,
 					enum led_brightness event) {}
-
-/* include/linux/log2.h */
-static inline int is_power_of_2(unsigned long n)
-{
-	return (n != 0 && ((n & (n - 1)) == 0));
-}
 
 /* uapi/linux/limits.h */
 #define XATTR_LIST_MAX 65536	/* size of extended attribute namelist (64k) */
@@ -151,6 +181,8 @@ typedef unsigned long blkcnt_t;
 
 #define class_create(...)		__builtin_return_address(0)
 #define class_create_file(...)		0
+#define class_register(...)		0
+#define class_unregister(...)
 #define class_remove_file(...)
 #define class_destroy(...)
 #define misc_register(...)		0
@@ -163,6 +195,7 @@ typedef unsigned long blkcnt_t;
 
 #define dev_set_name(...)		do { } while (0)
 #define device_register(...)		0
+#define device_unregister(...)
 #define volume_sysfs_init(...)		0
 #define volume_sysfs_close(...)		do { } while (0)
 
@@ -188,8 +221,6 @@ struct work_struct {};
 
 unsigned long copy_from_user(void *dest, const void *src,
 			     unsigned long count);
-
-void *vzalloc(unsigned long size);
 
 typedef unused_t spinlock_t;
 typedef int	wait_queue_head_t;
@@ -314,8 +345,6 @@ struct timer_list {};
 struct notifier_block {};
 
 typedef unsigned long dmaaddr_t;
-
-#define cpu_relax() do {} while (0)
 
 #define pm_runtime_get_sync(dev) do {} while (0)
 #define pm_runtime_put(dev) do {} while (0)

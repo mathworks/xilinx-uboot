@@ -321,42 +321,22 @@ static void setup_gpmi_nand(void)
 }
 #endif
 
-int mx6_rgmii_rework(struct phy_device *phydev)
+static void setup_fec(void)
 {
-	unsigned short val;
+	if (is_mx6dqp()) {
+		/*
+		 * select ENET MAC0 TX clock from PLL
+		 */
+		imx_iomux_set_gpr_register(5, 9, 1, 1);
+		enable_fec_anatop_clock(0, ENET_125MHZ);
+	}
 
-	/* To enable AR8031 ouput a 125MHz clk from CLK_25M */
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xd, 0x7);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xe, 0x8016);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xd, 0x4007);
-
-	val = phy_read(phydev, MDIO_DEVAD_NONE, 0xe);
-	val &= 0xffe3;
-	val |= 0x18;
-	phy_write(phydev, MDIO_DEVAD_NONE, 0xe, val);
-
-	/* introduce tx clock delay */
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x5);
-	val = phy_read(phydev, MDIO_DEVAD_NONE, 0x1e);
-	val |= 0x0100;
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, val);
-
-	return 0;
-}
-
-int board_phy_config(struct phy_device *phydev)
-{
-	mx6_rgmii_rework(phydev);
-
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-
-	return 0;
+	setup_iomux_enet();
 }
 
 int board_eth_init(bd_t *bis)
 {
-	setup_iomux_enet();
+	setup_fec();
 
 	return cpu_eth_init(bis);
 }
@@ -399,12 +379,42 @@ u32 get_board_rev(void)
 }
 
 #if defined(CONFIG_VIDEO_IPUV3)
+static void disable_lvds(struct display_info_t const *dev)
+{
+	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
+
+	clrbits_le32(&iomux->gpr[2],
+		     IOMUXC_GPR2_LVDS_CH0_MODE_MASK |
+		     IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
+}
+
 static void do_enable_hdmi(struct display_info_t const *dev)
 {
+	disable_lvds(dev);
 	imx_enable_hdmi_phy();
 }
 
 struct display_info_t const displays[] = {{
+	.bus	= -1,
+	.addr	= 0,
+	.pixfmt	= IPU_PIX_FMT_RGB666,
+	.detect	= NULL,
+	.enable	= NULL,
+	.mode	= {
+		.name           = "Hannstar-XGA",
+		.refresh        = 60,
+		.xres           = 1024,
+		.yres           = 768,
+		.pixclock       = 15385,
+		.left_margin    = 220,
+		.right_margin   = 40,
+		.upper_margin   = 21,
+		.lower_margin   = 7,
+		.hsync_len      = 60,
+		.vsync_len      = 10,
+		.sync           = FB_SYNC_EXT,
+		.vmode          = FB_VMODE_NONINTERLACED
+} }, {
 	.bus	= -1,
 	.addr	= 0,
 	.pixfmt	= IPU_PIX_FMT_RGB24,
@@ -427,18 +437,69 @@ struct display_info_t const displays[] = {{
 } } };
 size_t display_count = ARRAY_SIZE(displays);
 
+iomux_v3_cfg_t const backlight_pads[] = {
+	MX6_PAD_SD4_DAT1__GPIO2_IO09 | MUX_PAD_CTRL(ENET_PAD_CTRL),
+};
+
+static void setup_iomux_backlight(void)
+{
+	gpio_direction_output(IMX_GPIO_NR(2, 9), 1);
+	imx_iomux_v3_setup_multiple_pads(backlight_pads,
+					 ARRAY_SIZE(backlight_pads));
+}
+
 static void setup_display(void)
 {
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
+	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
 	int reg;
 
+	setup_iomux_backlight();
 	enable_ipu_clock();
 	imx_setup_hdmi();
+
+	/* Turn on LDB_DI0 and LDB_DI1 clocks */
+	reg = readl(&mxc_ccm->CCGR3);
+	reg |= MXC_CCM_CCGR3_LDB_DI0_MASK | MXC_CCM_CCGR3_LDB_DI1_MASK;
+	writel(reg, &mxc_ccm->CCGR3);
+
+	/* Set LDB_DI0 and LDB_DI1 clk select to 3b'011 */
+	reg = readl(&mxc_ccm->cs2cdr);
+	reg &= ~(MXC_CCM_CS2CDR_LDB_DI0_CLK_SEL_MASK |
+		 MXC_CCM_CS2CDR_LDB_DI1_CLK_SEL_MASK);
+	reg |= (3 << MXC_CCM_CS2CDR_LDB_DI0_CLK_SEL_OFFSET) |
+	       (3 << MXC_CCM_CS2CDR_LDB_DI1_CLK_SEL_OFFSET);
+	writel(reg, &mxc_ccm->cs2cdr);
+
+	reg = readl(&mxc_ccm->cscmr2);
+	reg |= MXC_CCM_CSCMR2_LDB_DI0_IPU_DIV | MXC_CCM_CSCMR2_LDB_DI1_IPU_DIV;
+	writel(reg, &mxc_ccm->cscmr2);
 
 	reg = readl(&mxc_ccm->chsccdr);
 	reg |= (CHSCCDR_CLK_SEL_LDB_DI0
 		<< MXC_CCM_CHSCCDR_IPU1_DI0_CLK_SEL_OFFSET);
+	reg |= (CHSCCDR_CLK_SEL_LDB_DI0 <<
+		MXC_CCM_CHSCCDR_IPU1_DI1_CLK_SEL_OFFSET);
 	writel(reg, &mxc_ccm->chsccdr);
+
+	reg = IOMUXC_GPR2_DI1_VS_POLARITY_ACTIVE_LOW |
+	      IOMUXC_GPR2_DI0_VS_POLARITY_ACTIVE_LOW |
+	      IOMUXC_GPR2_BIT_MAPPING_CH1_SPWG |
+	      IOMUXC_GPR2_DATA_WIDTH_CH1_18BIT |
+	      IOMUXC_GPR2_BIT_MAPPING_CH0_SPWG |
+	      IOMUXC_GPR2_DATA_WIDTH_CH0_18BIT |
+	      IOMUXC_GPR2_LVDS_CH0_MODE_ENABLED_DI0 |
+	      IOMUXC_GPR2_LVDS_CH1_MODE_DISABLED;
+	writel(reg, &iomux->gpr[2]);
+
+	reg = readl(&iomux->gpr[3]);
+	reg &= ~(IOMUXC_GPR3_LVDS0_MUX_CTL_MASK |
+		 IOMUXC_GPR3_HDMI_MUX_CTL_MASK);
+	reg |= (IOMUXC_GPR3_MUX_SRC_IPU1_DI0 <<
+		IOMUXC_GPR3_LVDS0_MUX_CTL_OFFSET) |
+	       (IOMUXC_GPR3_MUX_SRC_IPU1_DI0 <<
+		IOMUXC_GPR3_HDMI_MUX_CTL_OFFSET);
+	writel(reg, &iomux->gpr[3]);
 }
 #endif /* CONFIG_VIDEO_IPUV3 */
 
@@ -454,9 +515,6 @@ int overwrite_console(void)
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
-#ifdef CONFIG_VIDEO_IPUV3
-	setup_display();
-#endif
 
 #ifdef CONFIG_NAND_MXS
 	setup_gpmi_nand();
@@ -481,6 +539,9 @@ int board_init(void)
 	gpio_direction_output(IMX_GPIO_NR(1, 15), 1);
 	imx_iomux_v3_setup_multiple_pads(port_exp, ARRAY_SIZE(port_exp));
 
+#ifdef CONFIG_VIDEO_IPUV3
+	setup_display();
+#endif
 	setup_iomux_eimnor();
 	return 0;
 }
@@ -495,17 +556,21 @@ int board_spi_cs_gpio(unsigned bus, unsigned cs)
 int power_init_board(void)
 {
 	struct pmic *p;
-	unsigned int ret;
+	unsigned int value;
 
 	p = pfuze_common_init(I2C_PMIC);
 	if (!p)
 		return -ENODEV;
 
-	ret = pfuze_mode_init(p, APS_PFM);
-	if (ret < 0)
-		return ret;
+	if (is_mx6dqp()) {
+		/* set SW2 staby volatage 0.975V*/
+		pmic_reg_read(p, PFUZE100_SW2STBY, &value);
+		value &= ~0x3f;
+		value |= 0x17;
+		pmic_reg_write(p, PFUZE100_SW2STBY, value);
+	}
 
-	return 0;
+	return pfuze_mode_init(p, APS_PFM);
 }
 
 #ifdef CONFIG_CMD_BMODE
@@ -520,6 +585,17 @@ int board_late_init(void)
 {
 #ifdef CONFIG_CMD_BMODE
 	add_board_boot_modes(board_boot_modes);
+#endif
+
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	setenv("board_name", "SABREAUTO");
+
+	if (is_mx6dqp())
+		setenv("board_rev", "MX6QP");
+	else if (is_mx6dq())
+		setenv("board_rev", "MX6Q");
+	else if (is_mx6sdl())
+		setenv("board_rev", "MX6DL");
 #endif
 
 	return 0;

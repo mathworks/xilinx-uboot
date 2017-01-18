@@ -14,6 +14,11 @@
  */
 #define ROM_TABLE_ADDR	0xf0000
 
+#define ROM_TABLE_ALIGN	1024
+
+/* SeaBIOS expects coreboot tables at address range 0x0000-0x1000 */
+#define CB_TABLE_ADDR	0x800
+
 /**
  * table_compute_checksum() - Compute a table checksum
  *
@@ -26,6 +31,20 @@
  * @return:	the 8-bit checksum
  */
 u8 table_compute_checksum(void *v, int len);
+
+/**
+ * table_fill_string() - Fill a string with pad in the configuration table
+ *
+ * This fills a string in the configuration table. It copies number of bytes
+ * from the source string, and if source string length is shorter than the
+ * required size to copy, pad the table string with the given pad character.
+ *
+ * @dest:	where to fill a string
+ * @src:	where to copy from
+ * @n:		number of bytes to copy
+ * @pad:	character to pad the remaining bytes
+ */
+void table_fill_string(char *dest, const char *src, size_t n, char pad);
 
 /**
  * write_tables() - Write x86 configuration tables

@@ -18,8 +18,6 @@
 #ifndef __CONFIG_ZYNQ_CC108_H
 #define __CONFIG_ZYNQ_CC108_H
 
-#define CONFIG_SYS_SDRAM_SIZE (512 * 1024 * 1024)
-
 /*
  * UART is connected to EMIO, making it very likely that this board uses a
  * boot.bin which includes a bitstream, whose file size  exceeds the default
@@ -27,16 +25,11 @@
  */
 #define CONFIG_ENV_OFFSET	0xF00000
 
-#define CONFIG_ZYNQ_SERIAL_UART1
-#define CONFIG_ZYNQ_GEM0
-#define CONFIG_ZYNQ_GEM_PHY_ADDR0	7
-
-#define CONFIG_SYS_NO_FLASH
-
 #define CONFIG_ZYNQ_SDHCI1
-#define CONFIG_ZYNQ_QSPI
-#define CONFIG_ZYNQ_BOOT_FREEBSD
 
 #include <configs/zynq-common.h>
+
+/* SERIAL in SPL is unused */
+/* #undef CONFIG_SPL_SERIAL_SUPPORT */
 
 #endif /* __CONFIG_ZYNQ_CC108_H */

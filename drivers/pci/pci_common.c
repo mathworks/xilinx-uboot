@@ -11,6 +11,7 @@
  */
 
 #include <common.h>
+#include <dm.h>
 #include <errno.h>
 #include <pci.h>
 #include <asm/io.h>
@@ -78,48 +79,6 @@ const char *pci_class_str(u8 class)
 	};
 }
 
-pci_dev_t pci_find_class(uint find_class, int index)
-{
-	int bus;
-	int devnum;
-	pci_dev_t bdf;
-	uint32_t class;
-
-	for (bus = 0; bus <= pci_last_busno(); bus++) {
-		for (devnum = 0; devnum < PCI_MAX_PCI_DEVICES - 1; devnum++) {
-			pci_read_config_dword(PCI_BDF(bus, devnum, 0),
-					      PCI_CLASS_REVISION, &class);
-			if (class >> 16 == 0xffff)
-				continue;
-
-			for (bdf = PCI_BDF(bus, devnum, 0);
-					bdf <= PCI_BDF(bus, devnum,
-						PCI_MAX_PCI_FUNCTIONS - 1);
-					bdf += PCI_BDF(0, 0, 1)) {
-				pci_read_config_dword(bdf, PCI_CLASS_REVISION,
-						      &class);
-				class >>= 8;
-
-				if (class != find_class)
-					continue;
-				/*
-				 * Decrement the index. We want to return the
-				 * correct device, so index is 0 for the first
-				 * matching device, 1 for the second, etc.
-				 */
-				if (index) {
-					index--;
-					continue;
-				}
-				/* Return index'th controller. */
-				return bdf;
-			}
-		}
-	}
-
-	return -ENODEV;
-}
-
 __weak int pci_skip_dev(struct pci_controller *hose, pci_dev_t dev)
 {
 	/*
@@ -140,6 +99,7 @@ __weak int pci_skip_dev(struct pci_controller *hose, pci_dev_t dev)
 	return 0;
 }
 
+#if !defined(CONFIG_DM_PCI) || defined(CONFIG_DM_PCI_COMPAT)
 /* Get a virtual address associated with a BAR region */
 void *pci_map_bar(pci_dev_t pdev, int bar, int flags)
 {
@@ -221,11 +181,16 @@ phys_addr_t pci_hose_bus_to_phys(struct pci_controller *hose,
 		return phys_addr;
 	}
 
+#ifdef CONFIG_DM_PCI
+	/* The root controller has the region information */
+	hose = pci_bus_to_hose(0);
+#endif
+
 	/*
 	 * if PCI_REGION_MEM is set we do a two pass search with preference
 	 * on matches that don't have PCI_REGION_SYS_MEMORY set
 	 */
-	if ((flags & PCI_REGION_MEM) == PCI_REGION_MEM) {
+	if ((flags & PCI_REGION_TYPE) == PCI_REGION_MEM) {
 		ret = __pci_hose_bus_to_phys(hose, bus_addr,
 				flags, PCI_REGION_SYS_MEMORY, &phys_addr);
 		if (!ret)
@@ -262,7 +227,7 @@ int __pci_hose_phys_to_bus(struct pci_controller *hose,
 		bus_addr = phys_addr - res->phys_start + res->bus_start;
 
 		if (bus_addr >= res->bus_start &&
-		    bus_addr < res->bus_start + res->size) {
+		    (bus_addr - res->bus_start) < res->size) {
 			*ba = bus_addr;
 			return 0;
 		}
@@ -283,11 +248,16 @@ pci_addr_t pci_hose_phys_to_bus(struct pci_controller *hose,
 		return bus_addr;
 	}
 
+#ifdef CONFIG_DM_PCI
+	/* The root controller has the region information */
+	hose = pci_bus_to_hose(0);
+#endif
+
 	/*
 	 * if PCI_REGION_MEM is set we do a two pass search with preference
 	 * on matches that don't have PCI_REGION_SYS_MEMORY set
 	 */
-	if ((flags & PCI_REGION_MEM) == PCI_REGION_MEM) {
+	if ((flags & PCI_REGION_TYPE) == PCI_REGION_MEM) {
 		ret = __pci_hose_phys_to_bus(hose, phys_addr,
 				flags, PCI_REGION_SYS_MEMORY, &bus_addr);
 		if (!ret)
@@ -352,3 +322,46 @@ pci_dev_t pci_hose_find_devices(struct pci_controller *hose, int busnum,
 
 	return -1;
 }
+
+pci_dev_t pci_find_class(uint find_class, int index)
+{
+	int bus;
+	int devnum;
+	pci_dev_t bdf;
+	uint32_t class;
+
+	for (bus = 0; bus <= pci_last_busno(); bus++) {
+		for (devnum = 0; devnum < PCI_MAX_PCI_DEVICES - 1; devnum++) {
+			pci_read_config_dword(PCI_BDF(bus, devnum, 0),
+					      PCI_CLASS_REVISION, &class);
+			if (class >> 16 == 0xffff)
+				continue;
+
+			for (bdf = PCI_BDF(bus, devnum, 0);
+					bdf <= PCI_BDF(bus, devnum,
+						PCI_MAX_PCI_FUNCTIONS - 1);
+					bdf += PCI_BDF(0, 0, 1)) {
+				pci_read_config_dword(bdf, PCI_CLASS_REVISION,
+						      &class);
+				class >>= 8;
+
+				if (class != find_class)
+					continue;
+				/*
+				 * Decrement the index. We want to return the
+				 * correct device, so index is 0 for the first
+				 * matching device, 1 for the second, etc.
+				 */
+				if (index) {
+					index--;
+					continue;
+				}
+				/* Return index'th controller. */
+				return bdf;
+			}
+		}
+	}
+
+	return -ENODEV;
+}
+#endif /* !CONFIG_DM_PCI || CONFIG_DM_PCI_COMPAT */

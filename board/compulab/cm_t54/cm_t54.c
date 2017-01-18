@@ -30,7 +30,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #if !defined(CONFIG_SPL_BUILD)
-inline void set_muxconf_regs_essential(void){};
+inline void set_muxconf_regs(void){};
 #endif
 
 const struct omap_sysinfo sysinfo = {
@@ -82,7 +82,7 @@ static int cm_t54_palmas_regulator_set(u8 vreg, u8 vval, u8 creg, u8 cval)
 #ifdef CONFIG_SYS_MMC_ENV_PART
 uint mmc_get_env_part(struct mmc *mmc)
 {
-	u32 bootmode = gd->arch.omap_boot_params.omap_bootmode;
+	u32 bootmode = gd->arch.omap_boot_mode;
 	uint bootpart = CONFIG_SYS_MMC_ENV_PART;
 
 	/*

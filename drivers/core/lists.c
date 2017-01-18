@@ -86,20 +86,20 @@ int device_bind_driver_to_node(struct udevice *parent, const char *drv_name,
 
 	drv = lists_driver_lookup_name(drv_name);
 	if (!drv) {
-		printf("Cannot find driver '%s'\n", drv_name);
+		debug("Cannot find driver '%s'\n", drv_name);
 		return -ENOENT;
 	}
 	ret = device_bind(parent, drv, dev_name, NULL, node, devp);
 	if (ret) {
-		printf("Cannot create device named '%s' (err=%d)\n",
-		       dev_name, ret);
+		debug("Cannot create device named '%s' (err=%d)\n",
+		      dev_name, ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 /**
  * driver_check_compatible() - Check if a driver is compatible with this node
  *
@@ -170,12 +170,17 @@ int lists_bind_fdt(struct udevice *parent, const void *blob, int offset,
 		}
 
 		dm_dbg("   - found match at '%s'\n", entry->name);
-		ret = device_bind(parent, entry, name, NULL, offset, &dev);
+		ret = device_bind_with_driver_data(parent, entry, name,
+						   id->data, offset, &dev);
+		if (ret == -ENODEV) {
+			dm_dbg("Driver '%s' refuses to bind\n", entry->name);
+			continue;
+		}
 		if (ret) {
-			dm_warn("Error binding driver '%s'\n", entry->name);
+			dm_warn("Error binding driver '%s': %d\n", entry->name,
+				ret);
 			return ret;
 		} else {
-			dev->driver_data = id->data;
 			found = true;
 			if (devp)
 				*devp = dev;

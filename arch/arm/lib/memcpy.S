@@ -13,12 +13,6 @@
 #include <linux/linkage.h>
 #include <asm/assembler.h>
 
-#ifdef CONFIG_SYS_THUMB_BUILD
-#define W(instr)	instr.w
-#else
-#define W(instr)	instr
-#endif
-
 #define LDR1W_SHIFT	0
 #define STR1W_SHIFT	0
 
@@ -62,7 +56,7 @@
 
 /* Prototype: void *memcpy(void *dest, const void *src, size_t n); */
 	.syntax unified
-#ifdef CONFIG_SYS_THUMB_BUILD
+#if defined(CONFIG_SYS_THUMB_BUILD) && !defined(MEMCPY_NO_THUMB_BUILD)
 	.thumb
 	.thumb_func
 #endif

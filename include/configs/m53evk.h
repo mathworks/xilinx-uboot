@@ -9,7 +9,6 @@
 #define __M53EVK_CONFIG_H__
 
 #define CONFIG_MX53
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_MXC_GPIO
 
 #include <asm/arch/imx-regs.h>
@@ -18,8 +17,7 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_REVISION_TAG
 #define CONFIG_SYS_NO_FLASH
-
-#define CONFIG_FIT
+#define CONFIG_SYS_FSL_CLK
 
 #define CONFIG_TIMESTAMP		/* Print image info with timestamp */
 
@@ -30,24 +28,12 @@
 #define CONFIG_DOS_PARTITION
 #define CONFIG_FAT_WRITE
 
-#define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_BMP
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_FS_GENERIC
-#define CONFIG_CMD_GREPENV
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_MMC
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_PING
+#define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_CMD_SATA
-#define CONFIG_CMD_USB
 #define CONFIG_VIDEO
-
 
 /*
  * Memory configurations
@@ -87,7 +73,6 @@
 #define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
 #define CONFIG_AUTO_COMPLETE			/* Command auto complete */
 #define CONFIG_CMDLINE_EDITING			/* Command history etc */
-#define CONFIG_SYS_HUSH_PARSER
 
 /*
  * Serial Driver
@@ -172,6 +157,8 @@
 #ifdef CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_RTC_BUS_NUM		1 /* I2C2 */
 #endif
@@ -239,13 +226,11 @@
 #define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTFILE		"fitImage"
 #define CONFIG_BOOTARGS		"console=ttymxc1,115200"
 #define CONFIG_LOADADDR		0x70800000
 #define CONFIG_BOOTCOMMAND	"run mmc_mmc"
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
-#define CONFIG_OF_LIBFDT
 
 /*
  * NAND SPL

@@ -10,8 +10,9 @@
 
 /dts-v1/;
 
-/include/ "zynqmp.dtsi"
-/include/ "zynqmp-clk.dtsi"
+#include "zynqmp.dtsi"
+#include "zynqmp-clk.dtsi"
+
 / {
 	model = "ZynqMP zc1751-xm016-dc2 RevA";
 	compatible = "xlnx,zynqmp-zc1751", "xlnx,zynqmp";
@@ -31,13 +32,13 @@
 	};
 
 	chosen {
-		bootargs = "earlycon=cdns,mmio,0xff000000,115200n8";
+		bootargs = "earlycon";
 		stdout-path = "serial0:115200n8";
 	};
 
 	memory {
 		device_type = "memory";
-		reg = <0x0 0x0 0x80000000>, <0x8 0x00000000 0x80000000>;
+		reg = <0x0 0x0 0x0 0x80000000>, <0x8 0x00000000 0x0 0x80000000>;
 	};
 };
 
@@ -96,7 +97,7 @@
 	local-mac-address = [00 0a 35 00 02 90];
 	phy-handle = <&phy0>;
 	phy-mode = "rgmii-id";
-	phy0: phy@5{
+	phy0: phy@5 {
 		reg = <5>;
 		ti,rx-internal-delay = <0x8>;
 		ti,tx-internal-delay = <0xa>;
@@ -223,8 +224,11 @@
 /* ULPI SMSC USB3320 */
 &usb1 {
 	status = "okay";
-	dr_mode = "peripheral";
-	maximum-speed = "high-speed";
+};
+
+&dwc3_1 {
+	status = "okay";
+	dr_mode = "host";
 };
 
 &uart0 {

@@ -44,7 +44,6 @@
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_SPI
 #define CONFIG_SH_QSPI
-#define CONFIG_SPI_FLASH_SPANSION
 
 /* SH Ether */
 #define CONFIG_SH_ETHER
@@ -97,7 +96,6 @@
 
 /* SDHI */
 #define CONFIG_MMC
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_SH_SDHI_FREQ		97500000
 

@@ -14,9 +14,6 @@
 
 #include <configs/exynos4-common.h>
 
-#define CONFIG_SYS_PROMPT	"Odroid # "	/* Monitor Command Prompt */
-
-
 #define CONFIG_SYS_L2CACHE_OFF
 #ifndef CONFIG_SYS_L2CACHE_OFF
 #define CONFIG_SYS_L2_PL310
@@ -49,9 +46,6 @@
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV
 
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_FIT
-#define CONFIG_FIT_VERBOSE
 #define CONFIG_BOOTARGS			"Please use defined boot"
 #define CONFIG_BOOTCOMMAND		"run autoboot"
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC1,115200n8\0"
@@ -111,11 +105,13 @@
  * 2.  ROOT:  -
 */
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"loadkernel=fatload mmc ${mmcbootdev}:${mmcbootpart} ${kerneladdr} " \
+	"loadbootscript=load mmc ${mmcbootdev}:${mmcbootpart} ${scriptaddr} " \
+		"boot.scr\0" \
+	"loadkernel=load mmc ${mmcbootdev}:${mmcbootpart} ${kerneladdr} " \
 		"${kernelname}\0" \
-	"loadinitrd=fatload mmc ${mmcbootdev}:${mmcbootpart} ${initrdaddr} " \
+	"loadinitrd=load mmc ${mmcbootdev}:${mmcbootpart} ${initrdaddr} " \
 		"${initrdname}\0" \
-	"loaddtb=fatload mmc ${mmcbootdev}:${mmcbootpart} ${fdtaddr} " \
+	"loaddtb=load mmc ${mmcbootdev}:${mmcbootpart} ${fdtaddr} " \
 		"${fdtfile}\0" \
 	"check_ramdisk=" \
 		"if run loadinitrd; then " \
@@ -132,6 +128,9 @@
 	"kernel_args=" \
 		"setenv bootargs root=/dev/mmcblk${mmcrootdev}p${mmcrootpart}" \
 		" rootwait ${console} ${opts}\0" \
+	"boot_script=" \
+		"run loadbootscript;" \
+		"source ${scriptaddr}\0" \
 	"boot_fit=" \
 		"setenv kerneladdr 0x42000000;" \
 		"setenv kernelname Image.itb;" \
@@ -155,7 +154,9 @@
 		"run kernel_args;" \
 		"bootz ${kerneladdr} ${initrd_addr} ${fdt_addr};\0" \
 	"autoboot=" \
-		"if test -e mmc 0 Image.itb; then; " \
+		"if test -e mmc 0 boot.scr; then; " \
+			"run boot_script; " \
+		"elif test -e mmc 0 Image.itb; then; " \
 			"run boot_fit;" \
 		"elif test -e mmc 0 zImage; then; " \
 			"run boot_zimg;" \
@@ -174,10 +175,10 @@
 	"consoleoff=set console console=ram; save; reset\0" \
 	"initrdname=uInitrd\0" \
 	"initrdaddr=42000000\0" \
+	"scriptaddr=0x42000000\0" \
 	"fdtaddr=40800000\0"
 
 /* I2C */
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C_S3C24X0
 #define CONFIG_SYS_I2C_S3C24X0_SPEED	100000
 #define CONFIG_SYS_I2C_S3C24X0_SLAVE	0
@@ -189,17 +190,12 @@
 #define CONFIG_EXYNOS_ACE_SHA
 #define CONFIG_LIB_HW_RAND
 
-#define CONFIG_CMD_GPIO
-
 /* USB */
-#define CONFIG_CMD_USB
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_EXYNOS
 #define CONFIG_USB_STORAGE
 
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	3
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 #define CONFIG_USB_HOST_ETHER
 #define CONFIG_USB_ETHER_SMSC95XX
 

@@ -10,7 +10,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define	CONFIG_SYS_GENERIC_BOARD
 #define	CONFIG_DISPLAY_BOARDINFO
 #if defined(CONFIG_TWR_P1025)
 #define CONFIG_BOARDNAME "TWR-P1025"
@@ -49,8 +48,8 @@
 
 #define CONFIG_FSL_ELBC
 #define CONFIG_PCI
-#define CONFIG_PCIE1	/* PCIE controler 1 (slot 1) */
-#define CONFIG_PCIE2	/* PCIE controler 2 (slot 2) */
+#define CONFIG_PCIE1	/* PCIE controller 1 (slot 1) */
+#define CONFIG_PCIE2	/* PCIE controller 2 (slot 2) */
 #define CONFIG_FSL_PCI_INIT	/* Use common FSL init code */
 #define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_FSL_PCIE_RESET	/* need PCIe reset errata */
@@ -216,7 +215,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  */
 #define CONFIG_CONS_INDEX		1
 #undef CONFIG_SERIAL_SOFTWARE_FIFO
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -226,23 +224,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_CCSRBAR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-#ifdef CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2 "> "
-#endif
-
-/*
- * Pass open firmware flat tree
- */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-#define CONFIG_OF_STDOUT_VIA_ALIAS
-
-/* new uImage format support */
-#define CONFIG_FIT
-#define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -263,7 +244,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 /* enable read and write access to EEPROM */
 #define CONFIG_CMD_EEPROM
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 5
@@ -272,7 +252,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  * eSPI - Enhanced SPI
  */
 #define CONFIG_HARD_SPI
-#define CONFIG_FSL_ESPI
 
 #if defined(CONFIG_PCI)
 /*
@@ -303,7 +282,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_PCIE1_IO_SIZE	0x00010000	/* 64k */
 
 #define CONFIG_PCI_PNP	/* do pci plug-and-play */
-#define CONFIG_E1000	/* Defind e1000 pci Ethernet card*/
 #define CONFIG_CMD_PCI
 
 #define CONFIG_PCI_SCAN_SHOW	/* show pci devices on startup */
@@ -423,10 +401,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  * Command line configuration.
  */
 #define CONFIG_CMD_IRQ
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_REGINFO
 
 /*
@@ -438,7 +412,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_USB_EHCI
 
 #ifdef CONFIG_USB_EHCI
-#define CONFIG_CMD_USB
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_USB_EHCI_FSL
 #define CONFIG_USB_STORAGE
@@ -450,14 +423,11 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #ifdef CONFIG_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
 #endif
 
 #if defined(CONFIG_MMC) || defined(CONFIG_USB_EHCI) \
 		 || defined(CONFIG_FSL_SATA)
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
 #endif
 
@@ -498,7 +468,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 /* default location for tftp and bootm */
 #define CONFIG_LOADADDR	1000000
 
-#define CONFIG_BOOTDELAY 10	/* -1 disables auto-boot */
 #define CONFIG_BOOTARGS	/* the boot command will set bootargs */
 
 #define CONFIG_BAUDRATE	115200

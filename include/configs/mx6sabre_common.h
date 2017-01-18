@@ -11,7 +11,7 @@
 
 #include "mx6_common.h"
 
-#define CONFIG_IMX6_THERMAL
+#define CONFIG_IMX_THERMAL
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(10 * SZ_1M)
@@ -21,17 +21,9 @@
 
 #define CONFIG_MXC_UART
 
-#define CONFIG_CMD_FUSE
-#if defined(CONFIG_CMD_FUSE) || defined(CONFIG_IMX6_THERMAL)
-#define CONFIG_MXC_OCOTP
-#endif
-
 /* MMC Configs */
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
 
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_MII
 #define CONFIG_FEC_MXC
 #define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
@@ -42,9 +34,7 @@
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_ATHEROS
 
-#define CONFIG_CMD_SF
 #ifdef CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS		0
 #define CONFIG_SF_DEFAULT_CS		0
@@ -75,14 +65,20 @@
 #define EMMC_ENV ""
 #endif
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
-	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
+	"fdt_file=undefined\0" \
 	"fdt_addr=0x18000000\0" \
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
 	"console=" CONFIG_CONSOLE_DEV "\0" \
+	"dfuspi=dfu 0 sf 0:0:10000000:0\0" \
+	"dfu_alt_info_spl=spl raw 0x400\0" \
+	"dfu_alt_info_img=u-boot raw 0x10000\0" \
+	"dfu_alt_info=spl raw 0x400\0" \
 	"fdt_high=0xffffffff\0"	  \
 	"initrd_high=0xffffffff\0" \
 	"mmcdev=" __stringify(CONFIG_SYS_MMC_ENV_DEV) "\0" \
@@ -148,9 +144,27 @@
 			"fi; " \
 		"else " \
 			"bootz; " \
-		"fi;\0"
+		"fi;\0" \
+		"findfdt="\
+			"if test $fdt_file = undefined; then " \
+				"if test $board_name = SABREAUTO && test $board_rev = MX6QP; then " \
+					"setenv fdt_file imx6qp-sabreauto.dtb; fi; " \
+				"if test $board_name = SABREAUTO && test $board_rev = MX6Q; then " \
+					"setenv fdt_file imx6q-sabreauto.dtb; fi; " \
+				"if test $board_name = SABREAUTO && test $board_rev = MX6DL; then " \
+					"setenv fdt_file imx6dl-sabreauto.dtb; fi; " \
+				"if test $board_name = SABRESD && test $board_rev = MX6QP; then " \
+					"setenv fdt_file imx6qp-sabresd.dtb; fi; " \
+				"if test $board_name = SABRESD && test $board_rev = MX6Q; then " \
+					"setenv fdt_file imx6q-sabresd.dtb; fi; " \
+				"if test $board_name = SABRESD && test $board_rev = MX6DL; then " \
+					"setenv fdt_file imx6dl-sabresd.dtb; fi; " \
+				"if test $fdt_file = undefined; then " \
+					"echo WARNING: Could not determine dtb to use; fi; " \
+			"fi;\0" \
 
 #define CONFIG_BOOTCOMMAND \
+	"run findfdt;" \
 	"mmc dev ${mmcdev};" \
 	"if mmc rescan; then " \
 		"if run loadbootscript; then " \
@@ -190,7 +204,7 @@
 #define CONFIG_ENV_IS_IN_MMC
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_ENV_OFFSET		(8 * 64 * 1024)
+#define CONFIG_ENV_OFFSET		(768 * 1024)
 #endif
 
 /* Framebuffer */
@@ -206,24 +220,29 @@
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
-#define CONFIG_IPUV3_CLK 260000000
+#ifdef CONFIG_MX6DL
+#define CONFIG_IPUV3_CLK 198000000
+#else
+#define CONFIG_IPUV3_CLK 264000000
+#endif
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 
 #ifndef CONFIG_SPL
-#define CONFIG_CI_UDC
 #define CONFIG_USBD_HS
-#define CONFIG_USB_GADGET_DUALSPEED
 
-#define CONFIG_USB_GADGET
-#define CONFIG_CMD_USB_MASS_STORAGE
-#define CONFIG_USB_GADGET_MASS_STORAGE
-#define CONFIG_USBDOWNLOAD_GADGET
-#define CONFIG_USB_GADGET_VBUS_DRAW	2
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 
-#define CONFIG_G_DNL_VENDOR_NUM		0x0525
-#define CONFIG_G_DNL_PRODUCT_NUM	0xa4a5
-#define CONFIG_G_DNL_MANUFACTURER	"FSL"
+#define CONFIG_USB_FUNCTION_FASTBOOT
+#define CONFIG_CMD_FASTBOOT
+#define CONFIG_ANDROID_BOOT_IMAGE
+#define CONFIG_FASTBOOT_BUF_ADDR   CONFIG_SYS_LOAD_ADDR
+#define CONFIG_FASTBOOT_BUF_SIZE   0x07000000
+
+/* USB Device Firmware Update support */
+#define CONFIG_USB_FUNCTION_DFU
+#define CONFIG_DFU_MMC
+#define CONFIG_DFU_SF
 #endif
 
 #endif                         /* __MX6QSABRE_COMMON_CONFIG_H */

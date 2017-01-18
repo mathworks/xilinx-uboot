@@ -6,9 +6,9 @@
 
 #include <linux/io.h>
 #include <linux/serial_reg.h>
+#include <linux/sizes.h>
 #include <asm/errno.h>
 #include <dm/device.h>
-#include <dm/platform_data/serial-uniphier.h>
 #include <mapmem.h>
 #include <serial.h>
 #include <fdtdec.h>
@@ -34,6 +34,7 @@ struct uniphier_serial {
 
 struct uniphier_serial_private_data {
 	struct uniphier_serial __iomem *membase;
+	unsigned int uartclk;
 };
 
 #define uniphier_serial_port(dev)	\
@@ -41,12 +42,12 @@ struct uniphier_serial_private_data {
 
 static int uniphier_serial_setbrg(struct udevice *dev, int baudrate)
 {
-	struct uniphier_serial_platform_data *plat = dev_get_platdata(dev);
+	struct uniphier_serial_private_data *priv = dev_get_priv(dev);
 	struct uniphier_serial __iomem *port = uniphier_serial_port(dev);
 	const unsigned int mode_x_div = 16;
 	unsigned int divisor;
 
-	divisor = DIV_ROUND_CLOSEST(plat->uartclk, mode_x_div * baudrate);
+	divisor = DIV_ROUND_CLOSEST(priv->uartclk, mode_x_div * baudrate);
 
 	writel(divisor, &port->dlr);
 
@@ -87,16 +88,24 @@ static int uniphier_serial_pending(struct udevice *dev, bool input)
 
 static int uniphier_serial_probe(struct udevice *dev)
 {
-	u32 tmp;
+	DECLARE_GLOBAL_DATA_PTR;
 	struct uniphier_serial_private_data *priv = dev_get_priv(dev);
-	struct uniphier_serial_platform_data *plat = dev_get_platdata(dev);
 	struct uniphier_serial __iomem *port;
+	fdt_addr_t base;
+	u32 tmp;
 
-	port = map_sysmem(plat->base, sizeof(struct uniphier_serial));
+	base = dev_get_addr(dev);
+	if (base == FDT_ADDR_T_NONE)
+		return -EINVAL;
+
+	port = map_sysmem(base, SZ_64);
 	if (!port)
 		return -ENOMEM;
 
 	priv->membase = port;
+
+	priv->uartclk = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
+				       "clock-frequency", 0);
 
 	tmp = readl(&port->lcr_mcr);
 	tmp &= ~LCR_MASK;
@@ -113,24 +122,10 @@ static int uniphier_serial_remove(struct udevice *dev)
 	return 0;
 }
 
-#ifdef CONFIG_OF_CONTROL
 static const struct udevice_id uniphier_uart_of_match[] = {
 	{ .compatible = "socionext,uniphier-uart" },
 	{ /* sentinel */ }
 };
-
-static int uniphier_serial_ofdata_to_platdata(struct udevice *dev)
-{
-	struct uniphier_serial_platform_data *plat = dev_get_platdata(dev);
-	DECLARE_GLOBAL_DATA_PTR;
-
-	plat->base = fdtdec_get_addr(gd->fdt_blob, dev->of_offset, "reg");
-	plat->uartclk = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
-				       "clock-frequency", 0);
-
-	return 0;
-}
-#endif
 
 static const struct dm_serial_ops uniphier_serial_ops = {
 	.setbrg = uniphier_serial_setbrg,
@@ -140,15 +135,11 @@ static const struct dm_serial_ops uniphier_serial_ops = {
 };
 
 U_BOOT_DRIVER(uniphier_serial) = {
-	.name = DRIVER_NAME,
+	.name = "uniphier-uart",
 	.id = UCLASS_SERIAL,
-	.of_match = of_match_ptr(uniphier_uart_of_match),
-	.ofdata_to_platdata = of_match_ptr(uniphier_serial_ofdata_to_platdata),
+	.of_match = uniphier_uart_of_match,
 	.probe = uniphier_serial_probe,
 	.remove = uniphier_serial_remove,
 	.priv_auto_alloc_size = sizeof(struct uniphier_serial_private_data),
-	.platdata_auto_alloc_size =
-				sizeof(struct uniphier_serial_platform_data),
 	.ops = &uniphier_serial_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

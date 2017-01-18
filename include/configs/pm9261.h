@@ -20,8 +20,6 @@
 #include <asm/hardware.h>
 /* ARM asynchronous clock */
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define MASTER_PLL_DIV		15
@@ -170,7 +168,6 @@
 #define CONFIG_GREEN_LED	GPIO_PIN_PC(13)
 #define CONFIG_YELLOW_LED	GPIO_PIN_PC(15)
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * BOOTP options
@@ -183,11 +180,7 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_PING		1
-#define CONFIG_CMD_DHCP		1
 #define CONFIG_CMD_NAND		1
-#define CONFIG_CMD_USB		1
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS			1
@@ -336,7 +329,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_PROMPT		"pm9261> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		\

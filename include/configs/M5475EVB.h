@@ -29,15 +29,9 @@
 #define CONFIG_WATCHDOG_TIMEOUT	5000	/* timeout in milliseconds, max timeout is 6.71sec */
 
 /* Command line configuration */
-#define CONFIG_CMD_CACHE
 #undef CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_USB
 
 #define CONFIG_SLTTMR
 
@@ -122,7 +116,6 @@
 #define CONFIG_SYS_PCI_CFG_SIZE	0x01000000
 #endif
 
-#define CONFIG_BOOTDELAY	1	/* autoboot after 5 seconds */
 #define CONFIG_UDP_CHECKSUM
 
 #ifdef CONFIG_MCFFEC
@@ -146,7 +139,6 @@
 	""
 
 #define CONFIG_PRAM		512	/* 512 KB */
-#define CONFIG_SYS_PROMPT		"-> "
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 #ifdef CONFIG_CMD_KGDB

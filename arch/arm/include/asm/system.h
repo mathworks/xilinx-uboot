@@ -1,6 +1,9 @@
 #ifndef __ASM_ARM_SYSTEM_H
 #define __ASM_ARM_SYSTEM_H
 
+#include <common.h>
+#include <linux/compiler.h>
+
 #ifdef CONFIG_ARM64
 
 /*
@@ -14,14 +17,21 @@
 #define CR_WXN		(1 << 19)	/* Write Permision Imply XN	*/
 #define CR_EE		(1 << 25)	/* Exception (Big) Endian	*/
 
-#define PGTABLE_SIZE	(0x10000)
-/* 2MB granularity */
-#define MMU_SECTION_SHIFT	21
-
 #ifndef __ASSEMBLY__
 
+u64 get_page_table_size(void);
+#define PGTABLE_SIZE	get_page_table_size()
+
+/* 2MB granularity */
+#define MMU_SECTION_SHIFT	21
+#define MMU_SECTION_SIZE	(1 << MMU_SECTION_SHIFT)
+
+/* These constants need to be synced to the MT_ types in asm/armv8/mmu.h */
 enum dcache_option {
-	DCACHE_OFF = 0x3,
+	DCACHE_OFF = 0 << 2,
+	DCACHE_WRITETHROUGH = 3 << 2,
+	DCACHE_WRITEBACK = 4 << 2,
+	DCACHE_WRITEALLOC = 4 << 2,
 };
 
 #define isb()				\
@@ -71,12 +81,24 @@ static inline void set_sctlr(unsigned int val)
 	asm volatile("isb");
 }
 
+static inline unsigned long read_mpidr(void)
+{
+	unsigned long val;
+
+	asm volatile("mrs %0, mpidr_el1" : "=r" (val));
+
+	return val;
+}
+
+#define BSP_COREID	0
+
 void __asm_flush_dcache_all(void);
 void __asm_invalidate_dcache_all(void);
 void __asm_flush_dcache_range(u64 start, u64 end);
 void __asm_invalidate_tlb_all(void);
 void __asm_invalidate_icache_all(void);
 int __asm_flush_l3_cache(void);
+void __asm_switch_ttbr(u64 new_ttbr);
 
 void armv8_switch_to_el2(void);
 void armv8_switch_to_el1(void);
@@ -87,6 +109,26 @@ void protect_secure_region(void);
 void smp_kick_all_cpus(void);
 
 void flush_l3_cache(void);
+
+/*
+ *Issue a hypervisor call in accordance with ARM "SMC Calling convention",
+ * DEN0028A
+ *
+ * @args: input and output arguments
+ *
+ */
+void hvc_call(struct pt_regs *args);
+
+/*
+ *Issue a secure monitor call in accordance with ARM "SMC Calling convention",
+ * DEN0028A
+ *
+ * @args: input and output arguments
+ *
+ */
+void smc_call(struct pt_regs *args);
+
+void __noreturn psci_system_reset(bool smc);
 
 #endif	/* __ASSEMBLY__ */
 
@@ -136,7 +178,11 @@ void flush_l3_cache(void);
 #define CR_AFE	(1 << 29)	/* Access flag enable			*/
 #define CR_TE	(1 << 30)	/* Thumb exception enable		*/
 
+#if defined(CONFIG_ARMV7_LPAE) && !defined(PGTABLE_SIZE)
+#define PGTABLE_SIZE		(4096 * 5)
+#elif !defined(PGTABLE_SIZE)
 #define PGTABLE_SIZE		(4096 * 4)
+#endif
 
 /*
  * This is used to ensure the compiler did actually allocate the register we
@@ -191,17 +237,50 @@ void save_boot_params_ret(void);
 #define wfi()
 #endif
 
+static inline unsigned long get_cpsr(void)
+{
+	unsigned long cpsr;
+
+	asm volatile("mrs %0, cpsr" : "=r"(cpsr): );
+	return cpsr;
+}
+
+static inline int is_hyp(void)
+{
+#ifdef CONFIG_ARMV7_LPAE
+	/* HYP mode requires LPAE ... */
+	return ((get_cpsr() & 0x1f) == 0x1a);
+#else
+	/* ... so without LPAE support we can optimize all hyp code away */
+	return 0;
+#endif
+}
+
 static inline unsigned int get_cr(void)
 {
 	unsigned int val;
-	asm("mrc p15, 0, %0, c1, c0, 0	@ get CR" : "=r" (val) : : "cc");
+
+	if (is_hyp())
+		asm volatile("mrc p15, 4, %0, c1, c0, 0	@ get CR" : "=r" (val)
+								  :
+								  : "cc");
+	else
+		asm volatile("mrc p15, 0, %0, c1, c0, 0	@ get CR" : "=r" (val)
+								  :
+								  : "cc");
 	return val;
 }
 
 static inline void set_cr(unsigned int val)
 {
-	asm volatile("mcr p15, 0, %0, c1, c0, 0	@ set CR"
-	  : : "r" (val) : "cc");
+	if (is_hyp())
+		asm volatile("mcr p15, 4, %0, c1, c0, 0	@ set CR" :
+								  : "r" (val)
+								  : "cc");
+	else
+		asm volatile("mcr p15, 0, %0, c1, c0, 0	@ set CR" :
+								  : "r" (val)
+								  : "cc");
 	isb();
 }
 
@@ -219,12 +298,59 @@ static inline void set_dacr(unsigned int val)
 	isb();
 }
 
-#ifdef CONFIG_ARMV7
+#ifdef CONFIG_ARMV7_LPAE
+/* Long-Descriptor Translation Table Level 1/2 Bits */
+#define TTB_SECT_XN_MASK	(1ULL << 54)
+#define TTB_SECT_NG_MASK	(1 << 11)
+#define TTB_SECT_AF		(1 << 10)
+#define TTB_SECT_SH_MASK	(3 << 8)
+#define TTB_SECT_NS_MASK	(1 << 5)
+#define TTB_SECT_AP		(1 << 6)
+/* Note: TTB AP bits are set elsewhere */
+#define TTB_SECT_MAIR(x)	((x & 0x7) << 2) /* Index into MAIR */
+#define TTB_SECT		(1 << 0)
+#define TTB_PAGETABLE		(3 << 0)
+
+/* TTBCR flags */
+#define TTBCR_EAE		(1 << 31)
+#define TTBCR_T0SZ(x)		((x) << 0)
+#define TTBCR_T1SZ(x)		((x) << 16)
+#define TTBCR_USING_TTBR0	(TTBCR_T0SZ(0) | TTBCR_T1SZ(0))
+#define TTBCR_IRGN0_NC		(0 << 8)
+#define TTBCR_IRGN0_WBWA	(1 << 8)
+#define TTBCR_IRGN0_WT		(2 << 8)
+#define TTBCR_IRGN0_WBNWA	(3 << 8)
+#define TTBCR_IRGN0_MASK	(3 << 8)
+#define TTBCR_ORGN0_NC		(0 << 10)
+#define TTBCR_ORGN0_WBWA	(1 << 10)
+#define TTBCR_ORGN0_WT		(2 << 10)
+#define TTBCR_ORGN0_WBNWA	(3 << 10)
+#define TTBCR_ORGN0_MASK	(3 << 10)
+#define TTBCR_SHARED_NON	(0 << 12)
+#define TTBCR_SHARED_OUTER	(2 << 12)
+#define TTBCR_SHARED_INNER	(3 << 12)
+#define TTBCR_EPD0		(0 << 7)
+
+/*
+ * Memory types
+ */
+#define MEMORY_ATTRIBUTES	((0x00 << (0 * 8)) | (0x88 << (1 * 8)) | \
+				 (0xcc << (2 * 8)) | (0xff << (3 * 8)))
+
+/* options available for data cache on each page */
+enum dcache_option {
+	DCACHE_OFF = TTB_SECT | TTB_SECT_MAIR(0),
+	DCACHE_WRITETHROUGH = TTB_SECT | TTB_SECT_MAIR(1),
+	DCACHE_WRITEBACK = TTB_SECT | TTB_SECT_MAIR(2),
+	DCACHE_WRITEALLOC = TTB_SECT | TTB_SECT_MAIR(3),
+};
+#elif defined(CONFIG_CPU_V7)
 /* Short-Descriptor Translation Table Level 1 Bits */
 #define TTB_SECT_NS_MASK	(1 << 19)
 #define TTB_SECT_NG_MASK	(1 << 17)
 #define TTB_SECT_S_MASK		(1 << 16)
 /* Note: TTB AP bits are set elsewhere */
+#define TTB_SECT_AP		(3 << 10)
 #define TTB_SECT_TEX(x)		((x & 0x7) << 12)
 #define TTB_SECT_DOMAIN(x)	((x & 0xf) << 5)
 #define TTB_SECT_XN_MASK	(1 << 4)
@@ -234,13 +360,13 @@ static inline void set_dacr(unsigned int val)
 
 /* options available for data cache on each page */
 enum dcache_option {
-	DCACHE_OFF = TTB_SECT_S_MASK | TTB_SECT_DOMAIN(0) |
-					TTB_SECT_XN_MASK | TTB_SECT,
+	DCACHE_OFF = TTB_SECT_DOMAIN(0) | TTB_SECT_XN_MASK | TTB_SECT,
 	DCACHE_WRITETHROUGH = DCACHE_OFF | TTB_SECT_C_MASK,
 	DCACHE_WRITEBACK = DCACHE_WRITETHROUGH | TTB_SECT_B_MASK,
 	DCACHE_WRITEALLOC = DCACHE_WRITEBACK | TTB_SECT_TEX(1),
 };
 #else
+#define TTB_SECT_AP		(3 << 10)
 /* options available for data cache on each page */
 enum dcache_option {
 	DCACHE_OFF = 0x12,
@@ -252,11 +378,15 @@ enum dcache_option {
 
 /* Size of an MMU section */
 enum {
-	MMU_SECTION_SHIFT	= 20,
+#ifdef CONFIG_ARMV7_LPAE
+	MMU_SECTION_SHIFT	= 21, /* 2MB */
+#else
+	MMU_SECTION_SHIFT	= 20, /* 1MB */
+#endif
 	MMU_SECTION_SIZE	= 1 << MMU_SECTION_SHIFT,
 };
 
-#ifdef CONFIG_ARMV7
+#ifdef CONFIG_CPU_V7
 /* TTBR0 bits */
 #define TTBR0_BASE_ADDR_MASK	0xFFFFC000
 #define TTBR0_RGN_NC			(0 << 3)
@@ -278,11 +408,6 @@ enum {
  */
 void mmu_page_table_flush(unsigned long start, unsigned long stop);
 
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-void noncached_init(void);
-phys_addr_t noncached_alloc(size_t size, size_t align);
-#endif /* CONFIG_SYS_NONCACHED_MEMORY */
-
 #endif /* __ASSEMBLY__ */
 
 #define arch_align_stack(x) (x)
@@ -301,6 +426,12 @@ phys_addr_t noncached_alloc(size_t size, size_t align);
  */
 void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 				     enum dcache_option option);
+
+#ifdef CONFIG_SYS_NONCACHED_MEMORY
+void noncached_init(void);
+phys_addr_t noncached_alloc(size_t size, size_t align);
+#endif /* CONFIG_SYS_NONCACHED_MEMORY */
+
 #endif /* __ASSEMBLY__ */
 
 #endif

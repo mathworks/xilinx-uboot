@@ -9,13 +9,16 @@
  */
 
 #include <common.h>
+#include <console.h>
 #include <asm/errno.h>
 #include <linux/netdevice.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/cdc.h>
 #include <linux/usb/gadget.h>
 #include <net.h>
+#include <usb.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <linux/ctype.h>
 
 #include "gadget_chips.h"
@@ -253,7 +256,7 @@ static inline int BITRATE(struct usb_gadget *g)
 #if defined(CONFIG_USBNET_MANUFACTURER)
 static char *iManufacturer = CONFIG_USBNET_MANUFACTURER;
 #else
-static char *iManufacturer = "U-boot";
+static char *iManufacturer = "U-Boot";
 #endif
 
 /* These probably need to be configurable. */
@@ -2312,6 +2315,8 @@ static int usb_eth_init(struct eth_device *netdev, bd_t *bd)
 		goto fail;
 	}
 
+	board_usb_init(0, USB_INIT_DEVICE);
+
 	/* Configure default mac-addresses for the USB ethernet device */
 #ifdef CONFIG_USBNET_DEV_ADDR
 	strlcpy(dev_addr, CONFIG_USBNET_DEV_ADDR, sizeof(dev_addr));
@@ -2492,6 +2497,7 @@ void usb_eth_halt(struct eth_device *netdev)
 	}
 
 	usb_gadget_unregister_driver(&eth_driver);
+	board_usb_cleanup(0, USB_INIT_DEVICE);
 }
 
 static struct usb_gadget_driver eth_driver = {
@@ -2501,6 +2507,7 @@ static struct usb_gadget_driver eth_driver = {
 	.unbind		= eth_unbind,
 
 	.setup		= eth_setup,
+	.reset		= eth_disconnect,
 	.disconnect	= eth_disconnect,
 
 	.suspend	= eth_suspend,

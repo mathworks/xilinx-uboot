@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <version.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <linux/sizes.h>
 #include <asm/arch/cpu.h>
 #include <asm/gpio.h>
@@ -84,6 +85,9 @@ void set_board_info(void)
 
 #ifdef CONFIG_BOARD_TYPES
 	bdtype = get_board_type();
+	if (!bdtype)
+		bdtype = "";
+
 	sprintf(info, "%s%s", bdname, bdtype);
 	setenv("boardname", info);
 #endif
@@ -143,6 +147,7 @@ static int key_pressed(int key)
 	return value;
 }
 
+#ifdef CONFIG_LCD
 static int check_keys(void)
 {
 	int keys = 0;
@@ -231,9 +236,11 @@ static void display_board_info(void)
 
 	lcd_printf("\tDisplay BPP: %u\n", 1 << vid->vl_bpix);
 }
+#endif
 
 static int mode_leave_menu(int mode)
 {
+#ifdef CONFIG_LCD
 	char *exit_option;
 	char *exit_reset = "reset";
 	char *exit_back = "back";
@@ -255,9 +262,9 @@ static int mode_leave_menu(int mode)
 		cmd = find_cmd(mode_name[mode][1]);
 		if (cmd) {
 			printf("Enter: %s %s\n", mode_name[mode][0],
-						 mode_info[mode]);
+			       mode_info[mode]);
 			lcd_printf("\n\n\t%s %s\n", mode_name[mode][0],
-						    mode_info[mode]);
+				   mode_info[mode]);
 			lcd_puts("\n\tDo not turn off device before finish!\n");
 
 			cmd_result = run_command(mode_cmd[mode], 0);
@@ -297,8 +304,12 @@ static int mode_leave_menu(int mode)
 
 	lcd_clear();
 	return leave;
+#else
+	return 0;
+#endif
 }
 
+#ifdef CONFIG_LCD
 static void display_download_menu(int mode)
 {
 	char *selection[BOOT_MODE_EXIT + 1];
@@ -314,12 +325,13 @@ static void display_download_menu(int mode)
 
 	for (i = 0; i <= BOOT_MODE_EXIT; i++)
 		lcd_printf("\t%s  %s - %s\n\n", selection[i],
-						mode_name[i][0],
-						mode_info[i]);
+			   mode_name[i][0], mode_info[i]);
 }
+#endif
 
 static void download_menu(void)
 {
+#ifdef CONFIG_LCD
 	int mode = 0;
 	int last_mode = 0;
 	int run;
@@ -390,6 +402,7 @@ static void download_menu(void)
 	}
 
 	lcd_clear();
+#endif
 }
 
 void check_boot_mode(void)

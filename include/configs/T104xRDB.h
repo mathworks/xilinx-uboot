@@ -12,7 +12,6 @@
  */
 #define CONFIG_T104xRDB
 #define CONFIG_PHYS_64BIT
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_E500			/* BOOKE e500 family */
@@ -28,6 +27,14 @@
 #endif
 #ifdef CONFIG_T1042RDB
 #define CONFIG_SYS_FSL_PBL_RCW $(SRCTREE)/board/freescale/t104xrdb/t1042_rcw.cfg
+#endif
+#ifdef CONFIG_T1040D4RDB
+#define CONFIG_SYS_FSL_PBL_RCW \
+$(SRCTREE)/board/freescale/t104xrdb/t1040d4_rcw.cfg
+#endif
+#ifdef CONFIG_T1042D4RDB
+#define CONFIG_SYS_FSL_PBL_RCW \
+$(SRCTREE)/board/freescale/t104xrdb/t1042d4_rcw.cfg
 #endif
 
 #define CONFIG_SPL_MPC8XXX_INIT_DDR_SUPPORT
@@ -123,10 +130,10 @@
 #define CONFIG_FSL_CAAM			/* Enable SEC/CAAM */
 #define CONFIG_PCI			/* Enable PCI/PCIE */
 #define CONFIG_PCI_INDIRECT_BRIDGE
-#define CONFIG_PCIE1			/* PCIE controler 1 */
-#define CONFIG_PCIE2			/* PCIE controler 2 */
-#define CONFIG_PCIE3			/* PCIE controler 3 */
-#define CONFIG_PCIE4			/* PCIE controler 4 */
+#define CONFIG_PCIE1			/* PCIE controller 1 */
+#define CONFIG_PCIE2			/* PCIE controller 2 */
+#define CONFIG_PCIE3			/* PCIE controller 3 */
+#define CONFIG_PCIE4			/* PCIE controller 4 */
 
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
@@ -220,7 +227,9 @@
 #define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
 
 #define CONFIG_DDR_SPD
+#ifndef CONFIG_SYS_FSL_DDR4
 #define CONFIG_SYS_FSL_DDR3
+#endif
 
 #define CONFIG_SYS_SPD_BUS_NUM	0
 #define SPD_EEPROM_ADDRESS	0x51
@@ -278,8 +287,23 @@
 #define CPLD_LBMAP_DFLTBANK		0x40 /* BANK OR | BANK0 */
 #define CPLD_LBMAP_RESET		0xFF
 #define CPLD_LBMAP_SHIFT		0x03
-#ifdef CONFIG_T1042RDB_PI
+
+#if defined(CONFIG_T1042RDB_PI)
 #define CPLD_DIU_SEL_DFP		0x80
+#elif defined(CONFIG_T1042D4RDB)
+#define CPLD_DIU_SEL_DFP		0xc0
+#endif
+
+#if defined(CONFIG_T1040D4RDB)
+#define CPLD_INT_MASK_ALL		0xFF
+#define CPLD_INT_MASK_THERM		0x80
+#define CPLD_INT_MASK_DVI_DFP		0x40
+#define CPLD_INT_MASK_QSGMII1		0x20
+#define CPLD_INT_MASK_QSGMII2		0x10
+#define CPLD_INT_MASK_SGMI1		0x08
+#define CPLD_INT_MASK_SGMI2		0x04
+#define CPLD_INT_MASK_TDMR1		0x02
+#define CPLD_INT_MASK_TDMR2		0x01
 #endif
 
 #define CONFIG_SYS_CPLD_BASE	0xffdf0000
@@ -407,7 +431,7 @@
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xfdd00000	/* Initial L1 address */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH	0xf
-#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe0ec000
+#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe03c000
 /* The assembler doesn't like typecast */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS \
 	((CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH * 1ull << 32) | \
@@ -426,7 +450,6 @@
  * shorted - index 1
  */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(get_bus_freq(0)/2)
@@ -438,16 +461,11 @@
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR+0x11C600)
 #define CONFIG_SYS_NS16550_COM3	(CONFIG_SYS_CCSRBAR+0x11D500)
 #define CONFIG_SYS_NS16550_COM4	(CONFIG_SYS_CCSRBAR+0x11D600)
-#define CONFIG_SERIAL_MULTI		/* Enable both serial ports */
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV	/* determine from environment */
 #endif
 
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2 "> "
-
-#ifdef CONFIG_T1042RDB_PI
+#if defined(CONFIG_T1042RDB_PI) || defined(CONFIG_T1042D4RDB)
 /* Video */
 #define CONFIG_FSL_DIU_FB
 
@@ -464,15 +482,6 @@
 #define CONFIG_VIDEO_BMP_LOGO
 #endif
 #endif
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-#define CONFIG_OF_STDOUT_VIA_ALIAS
-
-/* new uImage format support */
-#define CONFIG_FIT
-#define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -492,11 +501,11 @@
 
 /* I2C bus multiplexer */
 #define I2C_MUX_PCA_ADDR                0x70
-#if defined(CONFIG_T1040RDB) || defined(CONFIG_T1042RDB)
+#if defined(CONFIG_T104xRDB) || defined(CONFIG_T104XD4RDB)
 #define I2C_MUX_CH_DEFAULT      0x8
 #endif
 
-#ifdef CONFIG_T1042RDB_PI
+#if defined(CONFIG_T1042RDB_PI) || defined(CONFIG_T104XD4RDB)
 /* LDI/DVI Encoder for display */
 #define CONFIG_SYS_I2C_LDI_ADDR		0x38
 #define CONFIG_SYS_I2C_DVI_ADDR		0x75
@@ -515,10 +524,7 @@
 /*
  * eSPI - Enhanced SPI
  */
-#define CONFIG_FSL_ESPI
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_SPI_FLASH_BAR
-#define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED         10000000
 #define CONFIG_SF_DEFAULT_MODE          0
 #define CONFIG_ENV_SPI_BUS              0
@@ -581,7 +587,6 @@
 #endif
 
 #define CONFIG_PCI_PNP			/* do pci plug-and-play */
-#define CONFIG_E1000
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #define CONFIG_DOS_PARTITION
@@ -601,7 +606,6 @@
 #define CONFIG_LBA48
 #define CONFIG_CMD_SATA
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_EXT2
 #endif
 
 /*
@@ -613,11 +617,9 @@
 #define CONFIG_USB_EHCI
 
 #ifdef CONFIG_USB_EHCI
-#define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
 #define CONFIG_USB_EHCI_FSL
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-#define CONFIG_CMD_EXT2
 #endif
 #endif
 
@@ -626,10 +628,7 @@
 #ifdef CONFIG_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR       CONFIG_SYS_MPC85xx_ESDHC_ADDR
-#define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
 #endif
 
@@ -664,7 +663,7 @@
 #define CONFIG_SYS_DPAA_FMAN
 #define CONFIG_SYS_DPAA_PME
 
-#if defined(CONFIG_T1040RDB) || defined(CONFIG_T1042RDB)
+#if defined(CONFIG_T104xRDB) || defined(CONFIG_T104XD4RDB)
 #define CONFIG_QE
 #define CONFIG_U_QE
 #endif
@@ -693,7 +692,7 @@
 #define CONFIG_SYS_FMAN_FW_ADDR		0xEFF00000
 #endif
 
-#if defined(CONFIG_T1040RDB) || defined(CONFIG_T1042RDB)
+#if defined(CONFIG_T104xRDB) || defined(CONFIG_T104XD4RDB)
 #if defined(CONFIG_SPIFLASH)
 #define CONFIG_SYS_QE_FW_ADDR		0x130000
 #elif defined(CONFIG_SDCARD)
@@ -704,7 +703,6 @@
 #define CONFIG_SYS_QE_FW_ADDR		0xEFF10000
 #endif
 #endif
-
 
 #define CONFIG_SYS_QE_FMAN_FW_LENGTH	0x10000
 #define CONFIG_SYS_FDT_PAD		(0x3000 + CONFIG_SYS_QE_FMAN_FW_LENGTH)
@@ -718,17 +716,34 @@
 
 #ifdef CONFIG_FMAN_ENET
 #if defined(CONFIG_T1040RDB) || defined(CONFIG_T1042RDB)
-#define CONFIG_SYS_SGMII1_PHY_ADDR		0x03
+#define CONFIG_SYS_SGMII1_PHY_ADDR             0x03
+#elif defined(CONFIG_T1040D4RDB)
+#define CONFIG_SYS_SGMII1_PHY_ADDR             0x01
+#elif defined(CONFIG_T1042D4RDB)
+#define CONFIG_SYS_SGMII1_PHY_ADDR             0x02
+#define CONFIG_SYS_SGMII2_PHY_ADDR             0x03
+#define CONFIG_SYS_SGMII3_PHY_ADDR             0x01
 #endif
-#define CONFIG_SYS_RGMII1_PHY_ADDR		0x01
-#define CONFIG_SYS_RGMII2_PHY_ADDR		0x02
+
+#ifdef CONFIG_T104XD4RDB
+#define CONFIG_SYS_RGMII1_PHY_ADDR             0x04
+#define CONFIG_SYS_RGMII2_PHY_ADDR             0x05
+#else
+#define CONFIG_SYS_RGMII1_PHY_ADDR             0x01
+#define CONFIG_SYS_RGMII2_PHY_ADDR             0x02
+#endif
 
 /* Enable VSC9953 L2 Switch driver on T1040 SoC */
-#ifdef CONFIG_T1040RDB
+#if defined(CONFIG_T1040RDB) || defined(CONFIG_T1040D4RDB)
 #define CONFIG_VSC9953
-#define CONFIG_VSC9953_CMD
+#define CONFIG_CMD_ETHSW
+#ifdef CONFIG_T1040RDB
 #define CONFIG_SYS_FM1_QSGMII11_PHY_ADDR	0x04
 #define CONFIG_SYS_FM1_QSGMII21_PHY_ADDR	0x08
+#else
+#define CONFIG_SYS_FM1_QSGMII11_PHY_ADDR	0x08
+#define CONFIG_SYS_FM1_QSGMII21_PHY_ADDR	0x0c
+#endif
 #endif
 
 #define CONFIG_MII		/* MII PHY management */
@@ -748,14 +763,8 @@
 #ifdef CONFIG_T1042RDB_PI
 #define CONFIG_CMD_DATE
 #endif
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_ERRATA
-#define CONFIG_CMD_GREPENV
 #define CONFIG_CMD_IRQ
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
 
 #ifdef CONFIG_PCI
@@ -823,7 +832,6 @@
 /* default location for tftp and bootm */
 #define CONFIG_LOADADDR		1000000
 
-#define CONFIG_BOOTDELAY	10	/*-1 disables auto-boot*/
 
 #define CONFIG_BAUDRATE	115200
 
@@ -836,6 +844,10 @@
 #define FDTFILE		"t1042rdb_pi/t1042rdb_pi.dtb"
 #elif defined(CONFIG_T1042RDB)
 #define FDTFILE		"t1042rdb/t1042rdb.dtb"
+#elif defined(CONFIG_T1040D4RDB)
+#define FDTFILE		"t1042rdb/t1040d4rdb.dtb"
+#elif defined(CONFIG_T1042D4RDB)
+#define FDTFILE		"t1042rdb/t1042d4rdb.dtb"
 #endif
 
 #ifdef CONFIG_FSL_DIU_FB
@@ -899,9 +911,6 @@
 
 #define CONFIG_BOOTCOMMAND		CONFIG_LINUX
 
-#ifdef CONFIG_SECURE_BOOT
 #include <asm/fsl_secure_boot.h>
-#define CONFIG_CMD_BLOB
-#endif
 
 #endif	/* __CONFIG_H */

@@ -35,8 +35,6 @@
 /*
  * UART configuration
  */
-#define CONFIG_DW_SERIAL
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_CLK		166666666
 #define CONFIG_BAUDRATE			115200
@@ -44,7 +42,6 @@
 /*
  * Ethernet PHY configuration
  */
-#define CONFIG_PHYLIB
 #define CONFIG_PHY_GIGE
 
 /*
@@ -68,11 +65,6 @@
 /*
  * Command line configuration
  */
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_PING
-
-#define CONFIG_OF_LIBFDT
 
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_MAXARGS		16
@@ -87,7 +79,6 @@
 /*
  * Environment configuration
  */
-#define CONFIG_BOOTDELAY		3
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"console=ttyS0,115200n8"
 #define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR
@@ -96,7 +87,6 @@
  * Console configuration
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"[tb100]:~# "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \

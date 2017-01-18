@@ -84,11 +84,14 @@ static int bcm54xx_parse_status(struct phy_device *phydev)
 
 static int bcm54xx_startup(struct phy_device *phydev)
 {
-	/* Read the Status (2x to make sure link is right) */
-	genphy_update_link(phydev);
-	bcm54xx_parse_status(phydev);
+	int ret;
 
-	return 0;
+	/* Read the Status (2x to make sure link is right) */
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return bcm54xx_parse_status(phydev);
 }
 
 /* Broadcom BCM5482S */
@@ -133,6 +136,27 @@ static int bcm5482_config(struct phy_device *phydev)
 			MIIM_BCM54XX_SHD_WR_ENCODE(0x1e, 0x201));
 
 	genphy_config_aneg(phydev);
+
+	return 0;
+}
+
+static int bcm_cygnus_startup(struct phy_device *phydev)
+{
+	int ret;
+
+	/* Read the Status (2x to make sure link is right) */
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return genphy_parse_link(phydev);
+}
+
+static int bcm_cygnus_config(struct phy_device *phydev)
+{
+	genphy_config_aneg(phydev);
+
+	phy_reset(phydev);
 
 	return 0;
 }
@@ -221,17 +245,21 @@ static u32 bcm5482_parse_serdes_sr(struct phy_device *phydev)
  */
 static int bcm5482_startup(struct phy_device *phydev)
 {
+	int ret;
+
 	if (bcm5482_is_serdes(phydev)) {
 		bcm5482_parse_serdes_sr(phydev);
 		phydev->port = PORT_FIBRE;
-	} else {
-		/* Wait for auto-negotiation to complete or fail */
-		genphy_update_link(phydev);
-		/* Parse BCM54xx copper aux status register */
-		bcm54xx_parse_status(phydev);
+		return 0;
 	}
 
-	return 0;
+	/* Wait for auto-negotiation to complete or fail */
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	/* Parse BCM54xx copper aux status register */
+	return bcm54xx_parse_status(phydev);
 }
 
 static struct phy_driver BCM5461S_driver = {
@@ -264,11 +292,22 @@ static struct phy_driver BCM5482S_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
+static struct phy_driver BCM_CYGNUS_driver = {
+	.name = "Broadcom CYGNUS GPHY",
+	.uid = 0xae025200,
+	.mask = 0xfffff0,
+	.features = PHY_GBIT_FEATURES,
+	.config = &bcm_cygnus_config,
+	.startup = &bcm_cygnus_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 int phy_broadcom_init(void)
 {
 	phy_register(&BCM5482S_driver);
 	phy_register(&BCM5464S_driver);
 	phy_register(&BCM5461S_driver);
+	phy_register(&BCM_CYGNUS_driver);
 
 	return 0;
 }

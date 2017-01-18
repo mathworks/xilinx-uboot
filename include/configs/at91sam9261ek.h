@@ -31,10 +31,6 @@
 
 #define CONFIG_DISPLAY_CPUINFO
 
-#define CONFIG_OF_LIBFDT
-
-#define CONFIG_SYS_GENERIC_BOARD
-
 #define CONFIG_ATMEL_LEGACY
 #define CONFIG_SYS_TEXT_BASE		0x21f00000
 
@@ -73,7 +69,6 @@
 #define	CONFIG_GREEN_LED	AT91_PIN_PA13	/* this is the user1 led */
 #define	CONFIG_YELLOW_LED	AT91_PIN_PA14	/* this is the user2 led */
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * BOOTP options
@@ -86,10 +81,7 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_USB
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -150,7 +142,6 @@
 #endif
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
 #define CONFIG_USB_STORAGE
-#define CONFIG_CMD_FAT
 
 #define CONFIG_SYS_LOAD_ADDR			0x22000000	/* load address */
 
@@ -201,10 +192,8 @@
 	"root=/dev/mtdblock7 rw rootfstype=jffs2"
 #endif
 
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE

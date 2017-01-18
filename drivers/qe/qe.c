@@ -12,7 +12,7 @@
 #include "asm/errno.h"
 #include "asm/io.h"
 #include "linux/immap_qe.h"
-#include "qe.h"
+#include <fsl_qe.h>
 #ifdef CONFIG_LS102XA
 #include <asm/arch/immap_ls102xa.h>
 #endif
@@ -20,7 +20,9 @@
 #define MPC85xx_DEVDISR_QE_DISABLE	0x1
 
 qe_map_t		*qe_immr = NULL;
+#ifdef CONFIG_QE
 static qe_snum_t	snums[QE_NUM_OF_SNUM];
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -81,6 +83,7 @@ void *qe_muram_addr(uint offset)
 	return (void *)&qe_immr->muram[offset];
 }
 
+#ifdef CONFIG_QE
 static void qe_sdma_init(void)
 {
 	volatile sdma_t	*p;
@@ -184,12 +187,12 @@ void qe_init(uint qe_base)
 	qe_sdma_init();
 	qe_snums_init();
 }
+#endif
 
 #ifdef CONFIG_U_QE
 void u_qe_init(void)
 {
-	uint qe_base = CONFIG_SYS_IMMR + 0x01400000; /* QE immr base */
-	qe_immr = (qe_map_t *)qe_base;
+	qe_immr = (qe_map_t *)(CONFIG_SYS_IMMR + QE_IMMR_OFFSET);
 
 	u_qe_upload_firmware((const void *)CONFIG_SYS_QE_FW_ADDR);
 	out_be32(&qe_immr->iram.iready, QE_IRAM_READY);
@@ -200,9 +203,8 @@ void u_qe_init(void)
 void u_qe_resume(void)
 {
 	qe_map_t *qe_immrr;
-	uint qe_base = CONFIG_SYS_IMMR + QE_IMMR_OFFSET; /* QE immr base */
-	qe_immrr = (qe_map_t *)qe_base;
 
+	qe_immrr = (qe_map_t *)(CONFIG_SYS_IMMR + QE_IMMR_OFFSET);
 	u_qe_firmware_resume((const void *)CONFIG_SYS_QE_FW_ADDR, qe_immrr);
 	out_be32(&qe_immrr->iram.iready, QE_IRAM_READY);
 }
@@ -214,6 +216,7 @@ void qe_reset(void)
 			 (u8) QE_CR_PROTOCOL_UNSPECIFIED, 0);
 }
 
+#ifdef CONFIG_QE
 void qe_assign_page(uint snum, uint para_ram_base)
 {
 	u32	cecr;
@@ -229,6 +232,7 @@ void qe_assign_page(uint snum, uint para_ram_base)
 
 	return;
 }
+#endif
 
 /*
  * brg: 0~15 as BRG1~BRG16
@@ -313,9 +317,10 @@ static void qe_upload_microcode(const void *base,
 
 	if (ucode->major || ucode->minor || ucode->revision)
 		printf("QE: uploading microcode '%s' version %u.%u.%u\n",
-			ucode->id, ucode->major, ucode->minor, ucode->revision);
+		       (char *)ucode->id, (u16)ucode->major, (u16)ucode->minor,
+		       (u16)ucode->revision);
 	else
-		printf("QE: uploading microcode '%s'\n", ucode->id);
+		printf("QE: uploading microcode '%s'\n", (char *)ucode->id);
 
 	/* Use auto-increment */
 	out_be32(&qe_immr->iram.iadd, be32_to_cpu(ucode->iram_offset) |
@@ -434,7 +439,7 @@ int qe_upload_firmware(const struct qe_firmware *firmware)
 	 * saved microcode information and put in the new.
 	 */
 	memset(&qe_firmware_info, 0, sizeof(qe_firmware_info));
-	strcpy(qe_firmware_info.id, (char *)firmware->id);
+	strncpy(qe_firmware_info.id, (char *)firmware->id, 62);
 	qe_firmware_info.extended_modes = firmware->extended_modes;
 	memcpy(qe_firmware_info.vtraps, firmware->vtraps,
 		sizeof(firmware->vtraps));

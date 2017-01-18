@@ -11,6 +11,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_DISPLAY_BOARDINFO
+
 /* High Level Configuration Options */
 #define CONFIG_BOOKE		1	/* BOOKE */
 #define CONFIG_E500		1	/* BOOKE e500 family */
@@ -23,16 +25,15 @@
 
 #define CONFIG_PCI		1	/* Enable PCI/PCIE */
 #define CONFIG_PCI1		1	/* PCI controller 1 */
-#define CONFIG_PCIE1		1	/* PCIE controler 1 (slot 1) */
-#define CONFIG_PCIE2		1	/* PCIE controler 2 (slot 2) */
-#define CONFIG_PCIE3		1	/* PCIE controler 3 (ULI bridge) */
+#define CONFIG_PCIE1		1	/* PCIE controller 1 (slot 1) */
+#define CONFIG_PCIE2		1	/* PCIE controller 2 (slot 2) */
+#define CONFIG_PCIE3		1	/* PCIE controller 3 (ULI bridge) */
 #define CONFIG_FSL_PCI_INIT	1	/* Use common FSL init code */
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_FSL_PCIE_RESET	1	/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 
 #define CONFIG_FSL_LAW		1	/* Use common FSL init code */
-#define CONFIG_E1000		1	/* Defind e1000 pci Ethernet card*/
 
 #define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
@@ -178,11 +179,9 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define PIXIS_VSPEED2_MASK	(PIXIS_VSPEED2_TSEC1SER|PIXIS_VSPEED2_TSEC3SER)
 #define PIXIS_VCFGEN1_MASK	(PIXIS_VCFGEN1_TSEC1SER|PIXIS_VCFGEN1_TSEC3SER)
 
-
 #define CONFIG_SYS_INIT_RAM_LOCK      1
 #define CONFIG_SYS_INIT_RAM_ADDR      0xf4010000      /* Initial L1 address */
 #define CONFIG_SYS_INIT_RAM_SIZE       0x00004000      /* Size of used area in RAM */
-
 
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
@@ -195,7 +194,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  * shorted - index 1
  */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -205,14 +203,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_CCSRBAR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_OF_BOARD_SETUP		1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -296,7 +286,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_VGA_AS_SINGLE_DEVICE
 #define CONFIG_ATI_RADEON_FB
 #define CONFIG_VIDEO_LOGO
-/*#define CONFIG_CONSOLE_CURSOR*/
 #define CONFIG_SYS_ISA_IO_BASE_ADDRESS VIDEO_IO_OFFSET
 #endif
 
@@ -304,7 +293,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
-#define CONFIG_RTL8139
 
 #ifndef CONFIG_PCI_PNP
 	#define PCI_ENET0_IOADDR	CONFIG_SYS_PCI1_IO_BUS
@@ -326,7 +314,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #endif /* SCSCI */
 
 #endif	/* CONFIG_PCI */
-
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -378,21 +365,15 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
-    #define CONFIG_CMD_SCSI
-    #define CONFIG_CMD_EXT2
+    #define CONFIG_SCSI
 #endif
 
 /*
@@ -401,7 +382,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_USB_EHCI
 
 #ifdef CONFIG_USB_EHCI
-#define CONFIG_CMD_USB
 #define CONFIG_USB_EHCI_PCI
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_USB_STORAGE
@@ -461,7 +441,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_LOADADDR	1000000	/*default location for tftp and bootm*/
 
-#define CONFIG_BOOTDELAY 10	/* -1 disables auto-boot */
 #undef	CONFIG_BOOTARGS		/* the boot command will set bootargs*/
 
 #define CONFIG_BAUDRATE	115200

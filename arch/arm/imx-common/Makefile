@@ -7,20 +7,29 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-ifeq ($(SOC),$(filter $(SOC),mx25 mx35 mx5 mx6 vf610))
+ifeq ($(SOC),$(filter $(SOC),mx25 mx35 mx5 mx6 mx7 vf610))
 obj-y	= iomux-v3.o
 endif
 ifeq ($(SOC),$(filter $(SOC),mx5 mx6))
 obj-y	+= timer.o cpu.o speed.o
 obj-$(CONFIG_SYS_I2C_MXC) += i2c-mxv7.o
 endif
-ifeq ($(SOC),$(filter $(SOC),mx6 mxs))
+ifeq ($(SOC),$(filter $(SOC),mx7 mx6 mxs))
 obj-y	+= misc.o
 obj-$(CONFIG_SPL_BUILD)	+= spl.o
 endif
-ifeq ($(SOC),$(filter $(SOC),mx6))
+ifeq ($(SOC),$(filter $(SOC),mx7))
+obj-y 	+= cpu.o
+obj-$(CONFIG_SYS_I2C_MXC) += i2c-mxv7.o
+obj-$(CONFIG_SYSCOUNTER_TIMER) += syscounter.o
+endif
+ifeq ($(SOC),$(filter $(SOC),mx6 mx7))
+obj-y 	+= cache.o init.o
 obj-$(CONFIG_CMD_SATA) += sata.o
 obj-$(CONFIG_IMX_VIDEO_SKIP) += video.o
+obj-$(CONFIG_IMX_RDC) += rdc-sema.o
+obj-$(CONFIG_IMX_BOOTAUX) += imx_bootaux.o
+obj-$(CONFIG_SECURE_BOOT)    += hab.o
 endif
 ifeq ($(SOC),$(filter $(SOC),vf610))
 obj-y += ddrmc-vf610.o
@@ -59,7 +68,7 @@ SPL: spl/u-boot-spl.bin $(IMX_CONFIG) FORCE
 	$(call if_changed,mkimage)
 
 MKIMAGEFLAGS_u-boot.uim = -A arm -O U-Boot -a $(CONFIG_SYS_TEXT_BASE) \
-		-e $(CONFIG_SYS_TEXT_BASE) -C none
+		-e $(CONFIG_SYS_TEXT_BASE) -C none -T firmware
 
 u-boot.uim: u-boot.bin FORCE
 	$(call if_changed,mkimage)
@@ -77,7 +86,7 @@ u-boot-with-nand-spl.imx: spl/u-boot-nand-spl.imx u-boot.uim FORCE
 	$(call if_changed,pad_cat)
 
 quiet_cmd_u-boot-nand-spl_imx = GEN     $@
-cmd_u-boot-nand-spl_imx = (echo -ne '\x00\x00\x00\x00\x46\x43\x42\x20\x01' && \
+cmd_u-boot-nand-spl_imx = (printf '\000\000\000\000\106\103\102\040\001' && \
 	dd bs=1015 count=1 if=/dev/zero 2>/dev/null) | cat - $< > $@
 
 spl/u-boot-nand-spl.imx: SPL FORCE

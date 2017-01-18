@@ -3,10 +3,8 @@
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
-#ifndef __CONFIG_SOCFPGA_CYCLONE5_COMMON_H__
-#define __CONFIG_SOCFPGA_CYCLONE5_COMMON_H__
-
-#define CONFIG_SYS_GENERIC_BOARD
+#ifndef __CONFIG_SOCFPGA_COMMON_H__
+#define __CONFIG_SOCFPGA_COMMON_H__
 
 /* Virtual target or real hardware */
 #undef CONFIG_SOCFPGA_VIRTUAL_TARGET
@@ -18,15 +16,19 @@
  */
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO_LATE
+#define CONFIG_ARCH_MISC_INIT
 #define CONFIG_ARCH_EARLY_INIT_R
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_CLOCKS
 
-#define CONFIG_FIT
-#define CONFIG_OF_LIBFDT
+#define CONFIG_CRC32_VERIFY
+
 #define CONFIG_SYS_BOOTMAPSZ		(64 * 1024 * 1024)
 
 #define CONFIG_TIMESTAMP		/* Print image info with timestamp */
+
+/* add target to build it automatically upon "make" */
+#define CONFIG_BUILD_TARGET		"u-boot-with-spl.sfp"
 
 /*
  * Memory configurations
@@ -38,10 +40,11 @@
 #define CONFIG_SYS_MEMTEST_END		PHYS_SDRAM_1_SIZE
 
 #define CONFIG_SYS_INIT_RAM_ADDR	0xFFFF0000
-#define CONFIG_SYS_INIT_RAM_SIZE	(0x10000 - CONFIG_SYS_SPL_MALLOC_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR					\
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE -	\
-	GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x10000
+#define CONFIG_SYS_INIT_SP_OFFSET		\
+	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_ADDR			\
+	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
@@ -64,25 +67,28 @@
 #define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
 #define CONFIG_AUTO_COMPLETE			/* Command auto complete */
 #define CONFIG_CMDLINE_EDITING			/* Command history etc */
-#define CONFIG_SYS_HUSH_PARSER
+
+#ifndef CONFIG_SYS_HOSTNAME
+#define CONFIG_SYS_HOSTNAME	CONFIG_SYS_BOARD
+#endif
 
 /*
  * Cache
  */
-#define CONFIG_SYS_ARM_CACHE_WRITEALLOC
 #define CONFIG_SYS_CACHELINE_SIZE 32
 #define CONFIG_SYS_L2_PL310
 #define CONFIG_SYS_PL310_BASE		SOCFPGA_MPUL2_ADDRESS
 
 /*
+ * SDRAM controller
+ */
+#define CONFIG_ALTERA_SDRAM
+
+/*
  * EPCS/EPCQx1 Serial Flash Controller
  */
 #ifdef CONFIG_ALTERA_SPI
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED		30000000
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_BAR
 /*
  * The base address is configurable in QSys, each board must specify the
  * base address based on it's particular FPGA configuration. Please note
@@ -99,7 +105,6 @@
 #define CONFIG_DW_ALTDESCRIPTOR
 #define CONFIG_MII
 #define CONFIG_AUTONEG_TIMEOUT		(15 * CONFIG_SYS_HZ)
-#define CONFIG_PHYLIB
 #define CONFIG_PHY_GIGE
 #endif
 
@@ -146,18 +151,28 @@
 #define CONFIG_DWMMC
 #define CONFIG_SOCFPGA_DWMMC
 #define CONFIG_SOCFPGA_DWMMC_FIFO_DEPTH	1024
-#define CONFIG_SOCFPGA_DWMMC_DRVSEL	3
-#define CONFIG_SOCFPGA_DWMMC_SMPSEL	0
 /* FIXME */
 /* using smaller max blk cnt to avoid flooding the limited stack we have */
 #define CONFIG_SYS_MMC_MAX_BLK_COUNT	256	/* FIXME -- SPL only? */
 #endif
 
 /*
+ * NAND Support
+ */
+#ifdef CONFIG_NAND_DENALI
+#define CONFIG_SYS_MAX_NAND_DEVICE	1
+#define CONFIG_SYS_NAND_MAX_CHIPS	1
+#define CONFIG_SYS_NAND_ONFI_DETECTION
+#define CONFIG_NAND_DENALI_ECC_SIZE	512
+#define CONFIG_SYS_NAND_REGS_BASE	SOCFPGA_NANDREGS_ADDRESS
+#define CONFIG_SYS_NAND_DATA_BASE	SOCFPGA_NANDDATA_ADDRESS
+#define CONFIG_SYS_NAND_BASE		(CONFIG_SYS_NAND_DATA_BASE + 0x10)
+#endif
+
+/*
  * I2C support
  */
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_DW
 #define CONFIG_SYS_I2C_BUS_MAX		4
 #define CONFIG_SYS_I2C_BASE		SOCFPGA_I2C0_ADDRESS
 #define CONFIG_SYS_I2C_BASE1		SOCFPGA_I2C1_ADDRESS
@@ -178,35 +193,32 @@
 unsigned int cm_get_l4_sp_clk_hz(void);
 #define IC_CLK				(cm_get_l4_sp_clk_hz() / 1000000)
 #endif
-#define CONFIG_CMD_I2C
 
 /*
  * QSPI support
  */
-#ifdef CONFIG_OF_CONTROL	/* QSPI is controlled via DT */
-#define CONFIG_CADENCE_QSPI
 /* Enable multiple SPI NOR flash manufacturers */
-#define CONFIG_SPI_FLASH_STMICRO	/* Micron/Numonyx flash */
-#define CONFIG_SPI_FLASH_SPANSION	/* Spansion flash */
+#ifndef CONFIG_SPL_BUILD
 #define CONFIG_SPI_FLASH_MTD
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITIONS
+#define MTDIDS_DEFAULT			"nor0=ff705000.spi.0"
+#endif
 /* QSPI reference clock */
 #ifndef __ASSEMBLY__
 unsigned int cm_get_qspi_controller_clk_hz(void);
 #define CONFIG_CQSPI_REF_CLK		cm_get_qspi_controller_clk_hz()
 #endif
 #define CONFIG_CQSPI_DECODER		0
-#define CONFIG_CMD_SF
-#endif
 
-#ifdef CONFIG_OF_CONTROL	/* DW SPI is controlled via DT */
-#define CONFIG_DESIGNWARE_SPI
-#define CONFIG_CMD_SPI
-#endif
+/*
+ * Designware SPI support
+ */
 
 /*
  * Serial Driver
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4
 #define CONFIG_SYS_NS16550_COM1		SOCFPGA_UART0_ADDRESS
@@ -224,41 +236,24 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_DWC2
 #define CONFIG_USB_STORAGE
-/*
- * NOTE: User must define either of the following to select which
- *       of the two USB controllers available on SoCFPGA to use.
- *       The DWC2 driver doesn't support multiple USB controllers.
- * #define CONFIG_USB_DWC2_REG_ADDR	SOCFPGA_USB0_ADDRESS
- * #define CONFIG_USB_DWC2_REG_ADDR	SOCFPGA_USB1_ADDRESS
- */
 #endif
 
 /*
  * USB Gadget (DFU, UMS)
  */
 #if defined(CONFIG_CMD_DFU) || defined(CONFIG_CMD_USB_MASS_STORAGE)
-#define CONFIG_USB_GADGET
-#define CONFIG_USB_GADGET_S3C_UDC_OTG
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW	2
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 
-/* USB Composite download gadget - g_dnl */
-#define CONFIG_USBDOWNLOAD_GADGET
-#define CONFIG_USB_GADGET_MASS_STORAGE
-
-#define CONFIG_DFU_FUNCTION
+#define CONFIG_USB_FUNCTION_DFU
+#ifdef CONFIG_DM_MMC
 #define CONFIG_DFU_MMC
+#endif
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	(32 * 1024 * 1024)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
 
 /* USB IDs */
-#define CONFIG_G_DNL_VENDOR_NUM		0x0525	/* NetChip */
-#define CONFIG_G_DNL_PRODUCT_NUM	0xA4A5	/* Linux-USB File-backed Storage Gadget */
-#define CONFIG_G_DNL_UMS_VENDOR_NUM	CONFIG_G_DNL_VENDOR_NUM
-#define CONFIG_G_DNL_UMS_PRODUCT_NUM	CONFIG_G_DNL_PRODUCT_NUM
-#ifndef CONFIG_G_DNL_MANUFACTURER
-#define CONFIG_G_DNL_MANUFACTURER	"Altera"
-#endif
+#define CONFIG_G_DNL_UMS_VENDOR_NUM	0x0525
+#define CONFIG_G_DNL_UMS_PRODUCT_NUM	0xA4A5
 #endif
 
 /*
@@ -267,8 +262,52 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV
 #define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
 #define CONFIG_SYS_CONSOLE_ENV_OVERWRITE
-#define CONFIG_ENV_IS_NOWHERE
+#if !defined(CONFIG_ENV_SIZE)
 #define CONFIG_ENV_SIZE			4096
+#endif
+
+/* Environment for SDMMC boot */
+#if defined(CONFIG_ENV_IS_IN_MMC) && !defined(CONFIG_ENV_OFFSET)
+#define CONFIG_SYS_MMC_ENV_DEV		0	/* device 0 */
+#define CONFIG_ENV_OFFSET		512	/* just after the MBR */
+#endif
+
+/* Environment for QSPI boot */
+#if defined(CONFIG_ENV_IS_IN_SPI_FLASH) && !defined(CONFIG_ENV_OFFSET)
+#define CONFIG_ENV_OFFSET		0x00100000
+#define CONFIG_ENV_SECT_SIZE		(64 * 1024)
+#endif
+
+/*
+ * mtd partitioning for serial NOR flash
+ *
+ * device nor0 <ff705000.spi.0>, # parts = 6
+ * #: name                size            offset          mask_flags
+ * 0: u-boot              0x00100000      0x00000000      0
+ * 1: env1                0x00040000      0x00100000      0
+ * 2: env2                0x00040000      0x00140000      0
+ * 3: UBI                 0x03e80000      0x00180000      0
+ * 4: boot                0x00e80000      0x00180000      0
+ * 5: rootfs              0x01000000      0x01000000      0
+ *
+ */
+#if defined(CONFIG_CMD_SF) && !defined(MTDPARTS_DEFAULT)
+#define MTDPARTS_DEFAULT	"mtdparts=ff705000.spi.0:"\
+				"1m(u-boot),"		\
+				"256k(env1),"		\
+				"256k(env2),"		\
+				"14848k(boot),"		\
+				"16m(rootfs),"		\
+				"-@1536k(UBI)\0"
+#endif
+
+/* UBI and UBIFS support */
+#if defined(CONFIG_CMD_SF) || defined(CONFIG_CMD_NAND)
+#define CONFIG_CMD_UBI
+#define CONFIG_CMD_UBIFS
+#define CONFIG_RBTREE
+#define CONFIG_LZO
+#endif
 
 /*
  * SPL
@@ -282,31 +321,54 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
  * 0xFFFF_FF00 ...... End of SRAM
  */
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_RAM_DEVICE
 #define CONFIG_SPL_TEXT_BASE		CONFIG_SYS_INIT_RAM_ADDR
-#define CONFIG_SYS_SPL_MALLOC_START	CONFIG_SYS_INIT_SP_ADDR
-#define CONFIG_SYS_SPL_MALLOC_SIZE	(5 * 1024)
 #define CONFIG_SPL_MAX_SIZE		(64 * 1024)
-
-#define CHUNKSZ_CRC32			(1 * 1024)	/* FIXME: ewww */
-#define CONFIG_CRC32_VERIFY
-
-/* Linker script for SPL */
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/mach-socfpga/u-boot-spl.lds"
 
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_WATCHDOG_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
+#ifdef CONFIG_DM_MMC
+#define CONFIG_SPL_MMC_SUPPORT
+#endif
+#ifdef CONFIG_DM_SPI
+#define CONFIG_SPL_SPI_SUPPORT
+#endif
+#ifdef CONFIG_SPL_NAND_DENALI
+#define CONFIG_SPL_NAND_SUPPORT
+#endif
+
+/* SPL SDMMC boot support */
+#ifdef CONFIG_SPL_MMC_SUPPORT
+#if defined(CONFIG_SPL_FAT_SUPPORT) || defined(CONFIG_SPL_EXT_SUPPORT)
+#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	2
+#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot-dtb.img"
+#define CONFIG_SPL_LIBDISK_SUPPORT
+#else
+#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION	1
+#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x200 /* offset 512 sect (256k) */
+#define CONFIG_SPL_LIBDISK_SUPPORT
+#endif
+#endif
+
+/* SPL QSPI boot support */
+#ifdef CONFIG_SPL_SPI_SUPPORT
+#define CONFIG_SPL_SPI_FLASH_SUPPORT
+#define CONFIG_SPL_SPI_LOAD
+#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x40000
+#endif
+
+/* SPL NAND boot support */
+#ifdef CONFIG_SPL_NAND_SUPPORT
+#define CONFIG_SYS_NAND_USE_FLASH_BBT
+#define CONFIG_SYS_NAND_BAD_BLOCK_POS	0
+#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x40000
+#endif
 
 /*
  * Stack setup
  */
 #define CONFIG_SPL_STACK		CONFIG_SYS_INIT_SP_ADDR
 
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_PARTITIONS
-#endif
-
-#endif	/* __CONFIG_SOCFPGA_CYCLONE5_COMMON_H__ */
+#endif	/* __CONFIG_SOCFPGA_COMMON_H__ */

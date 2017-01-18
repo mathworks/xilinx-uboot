@@ -3,7 +3,7 @@
  * Yuri Tikhonov, Emcraft Systems, yur@emcraft.com
  *
  * (C) Copyright 2015
- * Kamil Lulko, <rev13@wp.pl>
+ * Kamil Lulko, <kamil.lulko@gmail.com>
  *
  * Copyright 2015 ATS Advanced Telematics Systems GmbH
  * Copyright 2015 Konsulko Group, Matt Porter <mporter@konsulko.com>
@@ -23,6 +23,14 @@
 #define STM32_AHB1PERIPH_BASE	(STM32_PERIPH_BASE + 0x00018000)
 
 #define STM32_BUS_MASK		0xFFFF0000
+
+#define STM32_GPIOA_BASE	(STM32_APB2PERIPH_BASE + 0x0800)
+#define STM32_GPIOB_BASE	(STM32_APB2PERIPH_BASE + 0x0C00)
+#define STM32_GPIOC_BASE	(STM32_APB2PERIPH_BASE + 0x1000)
+#define STM32_GPIOD_BASE	(STM32_APB2PERIPH_BASE + 0x1400)
+#define STM32_GPIOE_BASE	(STM32_APB2PERIPH_BASE + 0x1800)
+#define STM32_GPIOF_BASE	(STM32_APB2PERIPH_BASE + 0x1C00)
+#define STM32_GPIOG_BASE	(STM32_APB2PERIPH_BASE + 0x2000)
 
 /*
  * Register maps

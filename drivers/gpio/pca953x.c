@@ -1,19 +1,7 @@
 /*
  * Copyright 2008 Extreme Engineering Solutions, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 /*
@@ -88,8 +76,10 @@ static int pca953x_reg_write(uint8_t chip, uint addr, uint mask, uint data)
 		if (i2c_read(chip, addr << 1, 1, (u8*)&valw, 2))
 			return -1;
 
+		valw = le16_to_cpu(valw);
 		valw &= ~mask;
 		valw |= data;
+		valw = cpu_to_le16(valw);
 
 		return i2c_write(chip, addr << 1, 1, (u8*)&valw, 2);
 	}
@@ -107,7 +97,7 @@ static int pca953x_reg_read(uint8_t chip, uint addr, uint *data)
 	} else {
 		if (i2c_read(chip, addr << 1, 1, (u8*)&valw, 2))
 			return -1;
-		*data = (int)valw;
+		*data = (uint)le16_to_cpu(valw);
 	}
 	return 0;
 }
@@ -227,7 +217,7 @@ int do_pca953x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* All commands but "device" require 'maxargs' arguments */
 	if (!c || !((argc == (c->maxargs)) ||
-		(((int)c->cmd == PCA953X_CMD_DEVICE) &&
+		(((long)c->cmd == PCA953X_CMD_DEVICE) &&
 		 (argc == (c->maxargs - 1))))) {
 		return CMD_RET_USAGE;
 	}
@@ -240,7 +230,7 @@ int do_pca953x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc > 3)
 		ul_arg3 = simple_strtoul(argv[3], NULL, 16) & 0x1;
 
-	switch ((int)c->cmd) {
+	switch ((long)c->cmd) {
 #ifdef CONFIG_CMD_PCA953X_INFO
 	case PCA953X_CMD_INFO:
 		ret = pca953x_info(chip);

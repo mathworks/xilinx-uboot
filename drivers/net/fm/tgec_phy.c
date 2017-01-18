@@ -9,7 +9,7 @@
 #include <miiphy.h>
 #include <phy.h>
 #include <asm/io.h>
-#include <asm/fsl_tgec.h>
+#include <fsl_tgec.h>
 #include <fm_eth.h>
 
 /*
@@ -118,7 +118,7 @@ int fm_tgec_mdio_init(bd_t *bis, struct tgec_mdio_info *info)
 	bus->read = tgec_mdio_read;
 	bus->write = tgec_mdio_write;
 	bus->reset = tgec_mdio_reset;
-	sprintf(bus->name, info->name);
+	strcpy(bus->name, info->name);
 
 	bus->priv = info->regs;
 

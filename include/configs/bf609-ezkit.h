@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF609 EZ-Kit board
+ * U-Boot - Configuration file for BF609 EZ-Kit board
  */
 
 #ifndef __CONFIG_BF609_EZKIT_H__
@@ -12,7 +12,6 @@
  */
 #define CONFIG_BFIN_CPU             bf609-0.0
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_PARA
-
 
 /* For ez-board version 1.0, else undef this */
 #define CONFIG_BFIN_BOARD_VERSION_1_0
@@ -73,9 +72,7 @@
 #define CONFIG_PHY_ADDR		1
 #define CONFIG_DW_PORTS		1
 #define CONFIG_DW_ALTDESCRIPTOR
-#define CONFIG_CMD_MII
 #define CONFIG_MII
-#define CONFIG_PHYLIB
 
 /* i2c Settings */
 #define CONFIG_SYS_I2C

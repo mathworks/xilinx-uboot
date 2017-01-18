@@ -17,6 +17,7 @@
 /* CPU and board */
 #define CONFIG_MPC5200		1	/* This is a MPC5200 CPU */
 #define CONFIG_MOTIONPRO	1	/* ... on Promess Motion-PRO board */
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
@@ -33,20 +34,13 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_BEDBUG
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DTT
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_I2C
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_IMMAP
 #define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
 
 /*
@@ -69,12 +63,9 @@
 /*
  * Autobooting
  */
-#define CONFIG_BOOTDELAY	2	/* autoboot after 2 seconds */
 #undef CONFIG_BOOTARGS
 
 #define CONFIG_CMDLINE_EDITING		1	/* add command line history	*/
-#define	CONFIG_SYS_HUSH_PARSER		1	/* use "hush" command parser	*/
-#define	CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 
 #define CONFIG_VERSION_VARIABLE	1	/* include version env variable */
 
@@ -285,7 +276,6 @@
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	1	/* 2 bytes per write cycle */
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	5	/* 2ms/cycle + 3ms extra */
-#define CONFIG_SYS_I2C_MULTI_EEPROMS		1	/* 2 EEPROMs (addr:50,52) */
 
 /*
  * RTC configuration
@@ -377,10 +367,6 @@ extern void __led_set(led_id_t id, int state);
 
 /* Not needed for MPC 5xxx U-Boot, but used by tools/updater */
 #define CONFIG_SYS_RESET_ADDRESS	0xfff00100
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT	1
-#define CONFIG_OF_BOARD_SETUP	1
 
 #define OF_CPU			"PowerPC,5200@0"
 #define OF_SOC			"soc5200@f0000000"

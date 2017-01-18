@@ -74,7 +74,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_BOOTDELAY		1
 
 /*
  * After booting the board for the first time, new ethernet addresses
@@ -93,13 +92,9 @@
  * Command line configuration.
  */
 /* add useful commands */
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
 
-#define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_CMDLINE_EDITING
 
@@ -144,7 +139,6 @@
 #define CONFIG_SYS_BOOTPARAMS_LEN	(16 * 1024)
 
 /* Other configuration settings that shouldn't have to change all that often */
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \

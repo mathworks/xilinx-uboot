@@ -1,5 +1,5 @@
 /*
- * sh_eth.c - Driver for Renesas ethernet controler.
+ * sh_eth.c - Driver for Renesas ethernet controller.
  *
  * Copyright (C) 2008, 2011 Renesas Solutions Corp.
  * Copyright (c) 2008, 2011, 2014 2014 Nobuhiro Iwamatsu
@@ -560,7 +560,7 @@ int sh_eth_initialize(bd_t *bd)
 	dev->recv = sh_eth_recv;
 	eth->port_info[eth->port].dev = dev;
 
-	sprintf(dev->name, SHETHER_NAME);
+	strcpy(dev->name, SHETHER_NAME);
 
 	/* Register Device to EtherNet subsystem  */
 	eth_register(dev);

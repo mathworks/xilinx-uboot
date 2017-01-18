@@ -21,12 +21,19 @@
 
 #include <common.h>
 #include <command.h>
-#include <cpu.h>
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
+#include <syscon.h>
 #include <asm/control_regs.h>
+#include <asm/coreboot_tables.h>
 #include <asm/cpu.h>
+#include <asm/lapic.h>
+#include <asm/microcode.h>
+#include <asm/mp.h>
+#include <asm/mrccache.h>
+#include <asm/msr.h>
+#include <asm/mtrr.h>
 #include <asm/post.h>
 #include <asm/processor.h>
 #include <asm/processor-flags.h>
@@ -68,7 +75,7 @@ struct cpuinfo_x86 {
  * List of cpu vendor strings along with their normalized
  * id values.
  */
-static struct {
+static const struct {
 	int vendor;
 	const char *name;
 } x86_vendors[] = {
@@ -133,19 +140,27 @@ static void load_gdt(const u64 *boot_gdt, u16 num_entries)
 	asm volatile("lgdtl %0\n" : : "m" (gdt));
 }
 
-void setup_gdt(gd_t *id, u64 *gdt_addr)
+void arch_setup_gd(gd_t *new_gd)
 {
-	id->arch.gdt = gdt_addr;
-	/* CS: code, read/execute, 4 GB, base 0 */
+	u64 *gdt_addr;
+
+	gdt_addr = new_gd->arch.gdt;
+
+	/*
+	 * CS: code, read/execute, 4 GB, base 0
+	 *
+	 * Some OS (like VxWorks) requires GDT entry 1 to be the 32-bit CS
+	 */
+	gdt_addr[X86_GDT_ENTRY_UNUSED] = GDT_ENTRY(0xc09b, 0, 0xfffff);
 	gdt_addr[X86_GDT_ENTRY_32BIT_CS] = GDT_ENTRY(0xc09b, 0, 0xfffff);
 
 	/* DS: data, read/write, 4 GB, base 0 */
 	gdt_addr[X86_GDT_ENTRY_32BIT_DS] = GDT_ENTRY(0xc093, 0, 0xfffff);
 
 	/* FS: data, read/write, 4 GB, base (Global Data Pointer) */
-	id->arch.gd_addr = id;
+	new_gd->arch.gd_addr = new_gd;
 	gdt_addr[X86_GDT_ENTRY_32BIT_FS] = GDT_ENTRY(0xc093,
-		     (ulong)&id->arch.gd_addr, 0xfffff);
+		     (ulong)&new_gd->arch.gd_addr, 0xfffff);
 
 	/* 16-bit CS: code, read/execute, 64 kB, base 0 */
 	gdt_addr[X86_GDT_ENTRY_16BIT_CS] = GDT_ENTRY(0x009b, 0, 0x0ffff);
@@ -163,6 +178,26 @@ void setup_gdt(gd_t *id, u64 *gdt_addr)
 	load_ss(X86_GDT_ENTRY_32BIT_DS);
 	load_fs(X86_GDT_ENTRY_32BIT_FS);
 }
+
+#ifdef CONFIG_HAVE_FSP
+/*
+ * Setup FSP execution environment GDT
+ *
+ * Per Intel FSP external architecture specification, before calling any FSP
+ * APIs, we need make sure the system is in flat 32-bit mode and both the code
+ * and data selectors should have full 4GB access range. Here we reuse the one
+ * we used in arch/x86/cpu/start16.S, and reload the segement registers.
+ */
+void setup_fsp_gdt(void)
+{
+	load_gdt((const u64 *)(gdt_rom + CONFIG_RESET_SEG_START), 4);
+	load_ds(X86_GDT_ENTRY_32BIT_DS);
+	load_ss(X86_GDT_ENTRY_32BIT_DS);
+	load_es(X86_GDT_ENTRY_32BIT_DS);
+	load_fs(X86_GDT_ENTRY_32BIT_DS);
+	load_gs(X86_GDT_ENTRY_32BIT_DS);
+}
+#endif
 
 int __weak x86_cleanup_before_linux(void)
 {
@@ -302,18 +337,30 @@ static inline void get_fms(struct cpuinfo_x86 *c, uint32_t tfms)
 		c->x86_model += ((tfms >> 16) & 0xF) << 4;
 }
 
+u32 cpu_get_family_model(void)
+{
+	return gd->arch.x86_device & 0x0fff0ff0;
+}
+
+u32 cpu_get_stepping(void)
+{
+	return gd->arch.x86_mask;
+}
+
 int x86_cpu_init_f(void)
 {
 	const u32 em_rst = ~X86_CR0_EM;
 	const u32 mp_ne_set = X86_CR0_MP | X86_CR0_NE;
 
-	/* initialize FPU, reset EM, set MP and NE */
-	asm ("fninit\n" \
-	     "movl %%cr0, %%eax\n" \
-	     "andl %0, %%eax\n" \
-	     "orl  %1, %%eax\n" \
-	     "movl %%eax, %%cr0\n" \
-	     : : "i" (em_rst), "i" (mp_ne_set) : "eax");
+	if (ll_boot_init()) {
+		/* initialize FPU, reset EM, set MP and NE */
+		asm ("fninit\n" \
+		"movl %%cr0, %%eax\n" \
+		"andl %0, %%eax\n" \
+		"orl  %1, %%eax\n" \
+		"movl %%eax, %%cr0\n" \
+		: : "i" (em_rst), "i" (mp_ne_set) : "eax");
+	}
 
 	/* identify CPU via cpuid and store the decoded info into gd->arch */
 	if (has_cpuid()) {
@@ -330,6 +377,46 @@ int x86_cpu_init_f(void)
 
 		gd->arch.has_mtrr = has_mtrr();
 	}
+	/* Don't allow PCI region 3 to use memory in the 2-4GB memory hole */
+	gd->pci_ram_top = 0x80000000U;
+
+	/* Configure fixed range MTRRs for some legacy regions */
+	if (gd->arch.has_mtrr) {
+		u64 mtrr_cap;
+
+		mtrr_cap = native_read_msr(MTRR_CAP_MSR);
+		if (mtrr_cap & MTRR_CAP_FIX) {
+			/* Mark the VGA RAM area as uncacheable */
+			native_write_msr(MTRR_FIX_16K_A0000_MSR,
+					 MTRR_FIX_TYPE(MTRR_TYPE_UNCACHEABLE),
+					 MTRR_FIX_TYPE(MTRR_TYPE_UNCACHEABLE));
+
+			/*
+			 * Mark the PCI ROM area as cacheable to improve ROM
+			 * execution performance.
+			 */
+			native_write_msr(MTRR_FIX_4K_C0000_MSR,
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+			native_write_msr(MTRR_FIX_4K_C8000_MSR,
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+			native_write_msr(MTRR_FIX_4K_D0000_MSR,
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+			native_write_msr(MTRR_FIX_4K_D8000_MSR,
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+
+			/* Enable the fixed range MTRRs */
+			msr_setbits_64(MTRR_DEF_TYPE_MSR, MTRR_DEF_TYPE_FIX_EN);
+		}
+	}
+
+#ifdef CONFIG_I8254_TIMER
+	/* Set up the i8254 timer if required */
+	i8254_init();
+#endif
 
 	return 0;
 }
@@ -386,19 +473,19 @@ void  flush_cache(unsigned long dummy1, unsigned long dummy2)
 __weak void reset_cpu(ulong addr)
 {
 	/* Do a hard reset through the chipset's reset control register */
-	outb(SYS_RST | RST_CPU, PORT_RESET);
+	outb(SYS_RST | RST_CPU, IO_PORT_RESET);
 	for (;;)
 		cpu_hlt();
 }
 
 void x86_full_reset(void)
 {
-	outb(FULL_RST | SYS_RST | RST_CPU, PORT_RESET);
+	outb(FULL_RST | SYS_RST | RST_CPU, IO_PORT_RESET);
 }
 
 int dcache_status(void)
 {
-	return !(read_cr0() & 0x40000000);
+	return !(read_cr0() & X86_CR0_CD);
 }
 
 /* Define these functions to allow ehch-hcd to function */
@@ -520,16 +607,6 @@ char *cpu_get_name(char *name)
 	return ptr;
 }
 
-int x86_cpu_get_desc(struct udevice *dev, char *buf, int size)
-{
-	if (size < CPU_MAX_NAME_LEN)
-		return -ENOSPC;
-
-	cpu_get_name(buf);
-
-	return 0;
-}
-
 int default_print_cpuinfo(void)
 {
 	printf("CPU: %s, vendor %s, device %xh\n",
@@ -583,58 +660,116 @@ int cpu_jump_to_64bit(ulong setup_base, ulong target)
 
 void show_boot_progress(int val)
 {
-#if MIN_PORT80_KCLOCKS_DELAY
-	/*
-	 * Scale the time counter reading to avoid using 64 bit arithmetics.
-	 * Can't use get_timer() here becuase it could be not yet
-	 * initialized or even implemented.
-	 */
-	if (!gd->arch.tsc_prev) {
-		gd->arch.tsc_base_kclocks = rdtsc() / 1000;
-		gd->arch.tsc_prev = 0;
-	} else {
-		uint32_t now;
-
-		do {
-			now = rdtsc() / 1000 - gd->arch.tsc_base_kclocks;
-		} while (now < (gd->arch.tsc_prev + MIN_PORT80_KCLOCKS_DELAY));
-		gd->arch.tsc_prev = now;
-	}
-#endif
 	outb(val, POST_PORT);
 }
 
 #ifndef CONFIG_SYS_COREBOOT
+/*
+ * Implement a weak default function for boards that optionally
+ * need to clean up the system before jumping to the kernel.
+ */
+__weak void board_final_cleanup(void)
+{
+}
+
 int last_stage_init(void)
 {
 	write_tables();
+
+	board_final_cleanup();
 
 	return 0;
 }
 #endif
 
-__weak int x86_init_cpus(void)
+#ifdef CONFIG_SMP
+static int enable_smis(struct udevice *cpu, void *unused)
 {
+	return 0;
+}
+
+static struct mp_flight_record mp_steps[] = {
+	MP_FR_BLOCK_APS(mp_init_cpu, NULL, mp_init_cpu, NULL),
+	/* Wait for APs to finish initialization before proceeding */
+	MP_FR_BLOCK_APS(NULL, NULL, enable_smis, NULL),
+};
+
+static int x86_mp_init(void)
+{
+	struct mp_params mp_params;
+
+	mp_params.parallel_microcode_load = 0,
+	mp_params.flight_plan = &mp_steps[0];
+	mp_params.num_records = ARRAY_SIZE(mp_steps);
+	mp_params.microcode_pointer = 0;
+
+	if (mp_init(&mp_params)) {
+		printf("Warning: MP init failure\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+#endif
+
+static int x86_init_cpus(void)
+{
+#ifdef CONFIG_SMP
+	debug("Init additional CPUs\n");
+	x86_mp_init();
+#else
+	struct udevice *dev;
+
+	/*
+	 * This causes the cpu-x86 driver to be probed.
+	 * We don't check return value here as we want to allow boards
+	 * which have not been converted to use cpu uclass driver to boot.
+	 */
+	uclass_first_device(UCLASS_CPU, &dev);
+#endif
+
 	return 0;
 }
 
 int cpu_init_r(void)
 {
-	return x86_init_cpus();
+	struct udevice *dev;
+	int ret;
+
+	if (!ll_boot_init())
+		return 0;
+
+	ret = x86_init_cpus();
+	if (ret)
+		return ret;
+
+	/*
+	 * Set up the northbridge, PCH and LPC if available. Note that these
+	 * may have had some limited pre-relocation init if they were probed
+	 * before relocation, but this is post relocation.
+	 */
+	uclass_first_device(UCLASS_NORTHBRIDGE, &dev);
+	uclass_first_device(UCLASS_PCH, &dev);
+	uclass_first_device(UCLASS_LPC, &dev);
+
+	/* Set up pin control if available */
+	ret = syscon_get_by_driver_data(X86_SYSCON_PINCONF, &dev);
+	debug("%s, pinctrl=%p, ret=%d\n", __func__, dev, ret);
+
+	return 0;
 }
 
-static const struct cpu_ops cpu_x86_ops = {
-	.get_desc	= x86_cpu_get_desc,
-};
+#ifndef CONFIG_EFI_STUB
+int reserve_arch(void)
+{
+#ifdef CONFIG_ENABLE_MRC_CACHE
+	mrccache_reserve();
+#endif
 
-static const struct udevice_id cpu_x86_ids[] = {
-	{ .compatible = "cpu-x86" },
-	{ }
-};
+#ifdef CONFIG_SEABIOS
+	high_table_reserve();
+#endif
 
-U_BOOT_DRIVER(cpu_x86_drv) = {
-	.name		= "cpu_x86",
-	.id		= UCLASS_CPU,
-	.of_match	= cpu_x86_ids,
-	.ops		= &cpu_x86_ops,
-};
+	return 0;
+}
+#endif

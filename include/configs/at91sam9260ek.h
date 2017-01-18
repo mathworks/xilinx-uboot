@@ -45,11 +45,6 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_DISPLAY_CPUINFO
 
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_OF_LIBFDT
-
-#define CONFIG_SYS_GENERIC_BOARD
-
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
 #define CONFIG_AT91_GPIO
@@ -66,7 +61,6 @@
 #define	CONFIG_RED_LED		AT91_PIN_PA9	/* this is the power led */
 #define	CONFIG_GREEN_LED	AT91_PIN_PA6	/* this is the user led */
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * BOOTP options
@@ -79,11 +73,7 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING		1
-#define CONFIG_CMD_DHCP		1
 #define CONFIG_CMD_NAND		1
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_USB		1
 
 /*
  * SDRAM: 1 bank, min 32, max 128 MB
@@ -134,7 +124,6 @@
 #define AT91_SPI_CLK			15000000
 #else
 /* Enable MMC. The MCCK is conflicted with DataFlash */
-#define CONFIG_CMD_MMC
 #endif
 
 #ifdef CONFIG_AT91SAM9G20EK
@@ -254,10 +243,8 @@
 	"root=/dev/mmcblk0p2 rw rootfstype=ext4 rootwait"
 #endif
 
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_LONGHELP		1
 #define CONFIG_CMDLINE_EDITING	1
 #define CONFIG_AUTO_COMPLETE

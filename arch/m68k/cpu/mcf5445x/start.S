@@ -34,7 +34,7 @@
 
 #if defined(CONFIG_SERIAL_BOOT)
 #define ASM_DRAMINIT	(asm_dram_init - CONFIG_SYS_TEXT_BASE + CONFIG_SYS_INIT_RAM_ADDR)
-#define ASM_DRAMINIT_N	(asm_dram_init - TEXT_BASE)
+#define ASM_DRAMINIT_N	(asm_dram_init - CONFIG_SYS_TEXT_BASE)
 #define ASM_SBF_IMG_HDR	(asm_sbf_img_hdr - CONFIG_SYS_TEXT_BASE + CONFIG_SYS_INIT_RAM_ADDR)
 #endif
 
@@ -490,7 +490,7 @@ asm_dspi_rd_status:
 	/* copy 4 boot pages to dram as soon as possible */
 	/* each page is 996 bytes (1056 total with 60 ECC bytes */
 	move.l  #0x00000000, %a1	/* src */
-	move.l	#TEXT_BASE, %a2		/* dst */
+	move.l	#CONFIG_SYS_TEXT_BASE, %a2		/* dst */
 	move.l	#0x3E0, %d0		/* sz in long */
 
 asm_boot_nand_copy:
@@ -571,7 +571,7 @@ asm_nand_init:
 	move.l	#4, %d2			/* start at 4 */
 	move.l  #0xFC0FFF04, %a0	/* cmd2 */
 	move.l  #0xFC0FFF0C, %a1	/* rar */
-	move.l	#(TEXT_BASE + 0xF80), %a2	/* dst */
+	move.l	#(CONFIG_SYS_TEXT_BASE + 0xF80), %a2	/* dst */
 
 asm_nand_read:
 	move.l	#0x11000000, %d0	/* rar */
@@ -609,7 +609,7 @@ asm_nand_copy:
 	bgt	asm_nand_read
 
 	/* jump to memory and execute */
-	move.l	#(TEXT_BASE + 0x400), %a0
+	move.l	#(CONFIG_SYS_TEXT_BASE + 0x400), %a0
 	jmp	(%a0)
 
 #endif			/* CONFIG_SYS_NAND_BOOT */
@@ -657,15 +657,36 @@ _start:
 	movec	%d0, %RAMBAR1
 #endif
 
-	/* set stackpointer to end of internal ram to get some stackspace for
-	   the first c-code */
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET), %sp
-	clr.l %sp@-
+	/* put relocation table address to a5 */
+	move.l #__got_start, %a5
 
-	move.l #__got_start, %a5	/* put relocation table address to a5 */
+	/* setup stack initially on top of internal static ram  */
+	move.l  #(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE), %sp
 
-	bsr cpu_init_f			/* run low-level CPU init code (from flash) */
-	bsr board_init_f		/* run low-level board init code (from flash) */
+	/*
+	 * if configured, malloc_f arena will be reserved first,
+	 * then (and always) gd struct space will be reserved
+	 */
+	move.l	%sp, -(%sp)
+	move.l	#board_init_f_alloc_reserve, %a1
+	jsr	(%a1)
+
+	/* update stack and frame-pointers */
+	move.l  %d0, %sp
+	move.l  %sp, %fp
+
+	/* initialize reserved area */
+	move.l  %d0, -(%sp)
+	move.l	#board_init_f_init_reserve, %a1
+	jsr	(%a1)
+
+	/* run low-level CPU init code (from flash) */
+	move.l #cpu_init_f, %a1
+	jsr (%a1)
+	/* run low-level board init code (from flash) */
+	clr.l   %sp@-
+	move.l #board_init_f, %a1
+	jsr (%a1)
 
 	/* board_init_f() does not return */
 

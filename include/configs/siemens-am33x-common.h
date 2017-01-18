@@ -26,9 +26,6 @@
 #define CONFIG_ENV_SIZE			(0x2000)
 #define CONFIG_SYS_MALLOC_LEN		(16 * 1024 * 1024)
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT		"U-Boot# "
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_SYS_NO_FLASH
 #ifdef CONFIG_SIEMENS_MACH_TYPE
@@ -42,11 +39,6 @@
 #define CONFIG_SYS_CACHELINE_SIZE       64
 
 /* commands to include */
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_TIME
-
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_ENV_VARS_UBOOT_CONFIG
 #ifndef CONFIG_SPL_BUILD
@@ -91,16 +83,11 @@
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_OMAP_HSMMC
-#define CONFIG_CMD_MMC
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_EXT2
 
 #define CONFIG_SPI
 #define CONFIG_OMAP3_SPI
 #define CONFIG_MTD_DEVICE
-#define CONFIG_SPI_FLASH_WINBOND
-#define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED		(75000000)
 
  /* Physical Memory Map */
@@ -115,10 +102,10 @@
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
 /* NS16550 Configuration */
-#define CONFIG_SYS_NS16550
+#ifdef CONFIG_SPL_BUILD
 #define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SERIAL_MULTI
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
+#endif
 #define CONFIG_SYS_NS16550_CLK		(48000000)
 #define CONFIG_SYS_NS16550_COM1		0x44e09000
 #define CONFIG_SYS_NS16550_COM4		0x481a6000
@@ -131,9 +118,8 @@
 
 /* I2C Configuration */
 #define CONFIG_I2C
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_OMAP24_I2C_SPEED	OMAP_I2C_STANDARD
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
 #define CONFIG_SYS_OMAP24_I2C_SLAVE	1
 #define CONFIG_SYS_I2C_OMAP24XX
 
@@ -175,6 +161,7 @@
 #define CONFIG_SPL_NAND_BASE
 #define CONFIG_SPL_NAND_DRIVERS
 #define CONFIG_SPL_NAND_ECC
+#define CONFIG_SYS_NAND_ONFI_DETECTION
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_PAGE_COUNT	(CONFIG_SYS_NAND_BLOCK_SIZE / \
 					 CONFIG_SYS_NAND_PAGE_SIZE)
@@ -226,41 +213,30 @@
  */
 #define CONFIG_USB_MUSB_DSPS
 #define CONFIG_ARCH_MISC_INIT
-#define CONFIG_MUSB_GADGET
-#define CONFIG_MUSB_PIO_ONLY
-#define CONFIG_MUSB_DISABLE_BULK_COMBINE_SPLIT
+#define CONFIG_USB_MUSB_PIO_ONLY
+#define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
 #undef CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW	2
-#define CONFIG_MUSB_HOST
 
 #define CONFIG_AM335X_USB0
 #define CONFIG_AM335X_USB0_MODE	MUSB_PERIPHERAL
 #define CONFIG_AM335X_USB1
 #define CONFIG_AM335X_USB1_MODE MUSB_HOST
-#ifdef CONFIG_MUSB_HOST
-#define CONFIG_CMD_USB
+#ifdef CONFIG_USB_MUSB_HOST
 #define CONFIG_USB_STORAGE
 #endif
 
-#ifdef CONFIG_MUSB_GADGET
+#ifdef CONFIG_USB_MUSB_GADGET
 #define CONFIG_USB_ETHER
 #define CONFIG_USB_ETH_RNDIS
 #define CONFIG_USBNET_HOST_ADDR	"de:ad:be:af:00:00"
-#endif /* CONFIG_MUSB_GADGET */
-
-#define CONFIG_USB_GADGET
-#define CONFIG_USBDOWNLOAD_GADGET
+#endif /* CONFIG_USB_MUSB_GADGET */
 
 /* USB DRACO ID as default */
 #define CONFIG_USBD_HS
-#define CONFIG_G_DNL_VENDOR_NUM 0x0908
-#define CONFIG_G_DNL_PRODUCT_NUM 0x02d2
-#define CONFIG_G_DNL_MANUFACTURER "Siemens AG"
 
 /* USB Device Firmware Update support */
-#define CONFIG_DFU_FUNCTION
+#define CONFIG_USB_FUNCTION_DFU
 #define CONFIG_DFU_NAND
-#define CONFIG_CMD_DFU
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	(1 << 20)
 #define DFU_MANIFEST_POLL_TIMEOUT	25000
 
@@ -289,13 +265,10 @@
 /* Unsupported features */
 #undef CONFIG_USE_IRQ
 
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_PING
 #define CONFIG_DRIVER_TI_CPSW
 #define CONFIG_MII
 #define CONFIG_PHY_GIGE
 #define CONFIG_PHYLIB
-#define CONFIG_CMD_MII
 #define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
@@ -318,6 +291,8 @@
 #define CONFIG_LZO
 #define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS
+#define CONFIG_MTD_UBI_FASTMAP
+#define CONFIG_MTD_UBI_FASTMAP_AUTOCONVERT      1
 #endif
 
 /* Commen environment */
@@ -449,7 +424,7 @@
 			"setenv nand_src_addr ${nand_src_addr_B};" \
 		"fi;" \
 		"setenv nand_root ubi0:${nand_active_ubi_vol} rw " \
-		"ubi.mtd=9,2048;" \
+		"ubi.mtd=9,${ubi_off};" \
 		"setenv bootargs ${bootargs} " \
 		"root=${nand_root} noinitrd ${mtdparts} " \
 		"rootfstype=${nand_root_fs_type} ip=${ip_method} " \
@@ -507,7 +482,6 @@
 					"512k(mtdoops)," \
 					"-(rootfs)"
 
-
 #define DFU_ALT_INFO_NAND_V2 \
 	"spl part 0 1;" \
 	"spl.backup1 part 0 2;" \
@@ -542,7 +516,7 @@
 	COMMON_ENV_DFU_ARGS \
 		"dfu_alt_info=" DFU_ALT_INFO_NAND_V2 "\0" \
 	COMMON_ENV_NAND_BOOT \
-		"ubi part rootfs 2048;" \
+		"ubi part rootfs ${ubi_off};" \
 		"ubifsmount ubi0:${nand_active_ubi_vol};" \
 		"ubifsload ${kloadaddr} boot/${kernel_name};" \
 		"ubifsload ${loadaddr} boot/${dtb_name}.dtb;" \
@@ -599,7 +573,6 @@
 					"512k(mtdoops),"	\
 					"-(configuration)"
 
-
 #define CONFIG_NAND_OMAP_GPMC
 #define CONFIG_NAND_OMAP_ELM
 #define CONFIG_SYS_NAND_BASE		(0x08000000)	/* physical address */
@@ -618,7 +591,6 @@
 #define CONFIG_OMAP_GPIO
 
 /* Gpio cmd support */
-#define CONFIG_CMD_GPIO
 
 /* Watchdog */
 #define CONFIG_HW_WATCHDOG
@@ -629,9 +601,5 @@
 
 #define CONFIG_BOOTCOUNT_LIMIT
 #define CONFIG_BOOTCOUNT_ENV
-
-/* Enable Device-Tree (FDT) support */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_FDT
 
 #endif	/* ! __CONFIG_SIEMENS_AM33X_COMMON_H */

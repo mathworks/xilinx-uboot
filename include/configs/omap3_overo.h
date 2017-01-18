@@ -12,9 +12,9 @@
 
 #include <configs/ti_omap3_common.h>
 #undef CONFIG_SPL_MAX_SIZE
-#define CONFIG_SPL_MAX_SIZE	(64*1024)
 #undef CONFIG_SPL_TEXT_BASE
 #define CONFIG_SPL_TEXT_BASE	0x40200000
+#define CONFIG_SPL_MAX_SIZE    (SRAM_SCRATCH_SPACE_ADDR - CONFIG_SPL_TEXT_BASE)
 
 #define CONFIG_BCH
 
@@ -56,8 +56,6 @@
 #define CONFIG_OMAP3_GPIO_6	/* GPIO160..191 is in GPIO Bank 6 */
 
 /* commands to include */
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_USB
 
 #ifdef CONFIG_NAND
 #define CONFIG_CMD_UBI		/* UBI-formated MTD partition support */
@@ -88,7 +86,6 @@
 #endif /* CONFIG_NAND */
 
 /* Board NAND Info. */
-#define CONFIG_SYS_NAND_QUIET_TEST
 #define CONFIG_SYS_NAND_ADDR		NAND_BASE	/* physical address */
 							/* to access nand */
 /* Environment information */
@@ -105,7 +102,7 @@
 	"defaultdisplay=dvi\0" \
 	"mmcdev=0\0" \
 	"mmcroot=/dev/mmcblk0p2 rw\0" \
-	"mmcrootfstype=ext3 rootwait\0" \
+	"mmcrootfstype=ext4 rootwait\0" \
 	"nandroot=ubi0:rootfs ubi.mtd=4\0" \
 	"nandrootfstype=ubifs\0" \
 	"mtdparts=" MTDPARTS_DEFAULT "\0" \
@@ -186,12 +183,6 @@
 	"fi;" \
 	"run nanddtsboot; " \
 
-/*
- * Miscellaneous configurable options
- */
-#undef CONFIG_SYS_PROMPT
-#define CONFIG_SYS_PROMPT		"Overo # "
-
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)
 #define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + \
@@ -227,7 +218,7 @@
 #define CONFIG_SYS_CACHELINE_SIZE	64
 
 /* NAND boot config */
-#define CONFIG_SYS_NAND_BUSWIDTH_16BIT	16
+#define CONFIG_SYS_NAND_BUSWIDTH_16BIT
 #define CONFIG_SYS_NAND_MAX_ECCPOS  56
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_PAGE_COUNT	64

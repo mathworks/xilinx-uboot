@@ -14,21 +14,38 @@
 		bootargs = "console=ttyS0,115200";
 	};
 
- 	aliases {
-		spi0 = "/spi@ff705000";		/* QSPI */
-		spi1 = "/spi@fff00000";
-		spi2 = "/spi@fff01000";
- 	};
+	aliases {
+		/*
+		 * This allows the ethaddr uboot environment variable
+		 * contents to be added to the gmac1 device tree blob.
+		 */
+		ethernet0 = &gmac1;
+		udc0 = &usb1;
+	};
 
 	memory {
 		name = "memory";
 		device_type = "memory";
 		reg = <0x0 0x40000000>; /* 1GB */
 	};
+
+	soc {
+		u-boot,dm-pre-reloc;
+	};
 };
 
 &gmac1 {
 	status = "okay";
+	phy-mode = "rgmii";
+
+	rxd0-skew-ps = <0>;
+	rxd1-skew-ps = <0>;
+	rxd2-skew-ps = <0>;
+	rxd3-skew-ps = <0>;
+	txen-skew-ps = <0>;
+	txc-skew-ps = <2600>;
+	rxdv-skew-ps = <0>;
+	rxc-skew-ps = <2000>;
 };
 
 &i2c0 {
@@ -40,8 +57,9 @@
 	};
 };
 
-&mmc {
+&mmc0 {
 	status = "okay";
+	u-boot,dm-pre-reloc;
 };
 
 &qspi {
@@ -62,4 +80,9 @@
 		tchsh-ns = <4>;
 		tslch-ns = <4>;
 	};
+};
+
+&usb1 {
+	disable-over-current;
+	status = "okay";
 };

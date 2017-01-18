@@ -1,65 +1,73 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0+
+ */
+
+/*
+ * THIS FILE IS AUTO-GENERATED - DO NOT EDIT!
+ *
+ * To generate this file, use the tegra-pinmux-scripts tool available from
+ * https://github.com/NVIDIA/tegra-pinmux-scripts
+ * Run "board-to-uboot.py nyan-big".
  */
 
 #ifndef _PINMUX_CONFIG_NYAN_BIG_H_
 #define _PINMUX_CONFIG_NYAN_BIG_H_
 
-#define GPIO_INIT(_gpio, _init)				\
+#define GPIO_INIT(_port, _gpio, _init)			\
 	{						\
-		.gpio	= GPIO_P##_gpio,		\
+		.gpio	= TEGRA_GPIO(_port, _gpio),	\
 		.init	= TEGRA_GPIO_INIT_##_init,	\
 	}
 
 static const struct tegra_gpio_config nyan_big_gpio_inits[] = {
-	/*        gpio, init_val */
-	GPIO_INIT(A0,   IN),
-	GPIO_INIT(C7,   IN),
-	GPIO_INIT(G0,   IN),
-	GPIO_INIT(G1,   IN),
-	GPIO_INIT(G2,   IN),
-	GPIO_INIT(G3,   IN),
-	GPIO_INIT(H2,   IN),
-	GPIO_INIT(H4,   IN),
-	GPIO_INIT(H6,   IN),
-	GPIO_INIT(H7,   OUT1),
-	GPIO_INIT(I0,   IN),
-	GPIO_INIT(I1,   IN),
-	GPIO_INIT(I5,   OUT1),
-	GPIO_INIT(I6,   IN),
-	GPIO_INIT(I7,   IN),
-	GPIO_INIT(J0,   IN),
-	GPIO_INIT(J7,   IN),
-	GPIO_INIT(K1,   OUT0),
-	GPIO_INIT(K2,   IN),
-	GPIO_INIT(K4,   OUT0),
-	GPIO_INIT(K6,   OUT0),
-	GPIO_INIT(K7,   IN),
-	GPIO_INIT(N7,   IN),
-	GPIO_INIT(P2,   OUT0),
-	GPIO_INIT(Q0,   IN),
-	GPIO_INIT(Q2,   IN),
-	GPIO_INIT(Q3,   IN),
-	GPIO_INIT(Q6,   IN),
-	GPIO_INIT(Q7,   IN),
-	GPIO_INIT(R0,   OUT0),
-	GPIO_INIT(R1,   IN),
-	GPIO_INIT(R4,   IN),
-	GPIO_INIT(R7,   IN),
-	GPIO_INIT(S3,   OUT0),
-	GPIO_INIT(S4,   OUT0),
-	GPIO_INIT(S7,   IN),
-	GPIO_INIT(T1,   IN),
-	GPIO_INIT(U4,   IN),
-	GPIO_INIT(U5,   IN),
-	GPIO_INIT(U6,   IN),
-	GPIO_INIT(V0,   IN),
-	GPIO_INIT(W3,   IN),
-	GPIO_INIT(X1,   IN),
-	GPIO_INIT(X4,   IN),
-	GPIO_INIT(X7,   OUT0),
+	/*        port, pin, init_val */
+	GPIO_INIT(A,    0,   IN),
+	GPIO_INIT(C,    7,   IN),
+	GPIO_INIT(G,    0,   IN),
+	GPIO_INIT(G,    1,   IN),
+	GPIO_INIT(G,    2,   IN),
+	GPIO_INIT(G,    3,   IN),
+	GPIO_INIT(H,    2,   IN),
+	GPIO_INIT(H,    4,   IN),
+	GPIO_INIT(H,    6,   IN),
+	GPIO_INIT(H,    7,   OUT1),
+	GPIO_INIT(I,    0,   IN),
+	GPIO_INIT(I,    1,   IN),
+	GPIO_INIT(I,    5,   OUT1),
+	GPIO_INIT(I,    6,   IN),
+	GPIO_INIT(I,    7,   IN),
+	GPIO_INIT(J,    0,   IN),
+	GPIO_INIT(J,    7,   IN),
+	GPIO_INIT(K,    1,   OUT0),
+	GPIO_INIT(K,    2,   IN),
+	GPIO_INIT(K,    4,   OUT0),
+	GPIO_INIT(K,    6,   OUT0),
+	GPIO_INIT(K,    7,   IN),
+	GPIO_INIT(N,    7,   IN),
+	GPIO_INIT(P,    2,   OUT0),
+	GPIO_INIT(Q,    0,   IN),
+	GPIO_INIT(Q,    2,   IN),
+	GPIO_INIT(Q,    3,   IN),
+	GPIO_INIT(Q,    6,   IN),
+	GPIO_INIT(Q,    7,   IN),
+	GPIO_INIT(R,    0,   OUT0),
+	GPIO_INIT(R,    1,   IN),
+	GPIO_INIT(R,    4,   IN),
+	GPIO_INIT(R,    7,   IN),
+	GPIO_INIT(S,    3,   OUT0),
+	GPIO_INIT(S,    4,   OUT0),
+	GPIO_INIT(S,    7,   IN),
+	GPIO_INIT(T,    1,   IN),
+	GPIO_INIT(U,    4,   IN),
+	GPIO_INIT(U,    5,   IN),
+	GPIO_INIT(U,    6,   IN),
+	GPIO_INIT(V,    0,   IN),
+	GPIO_INIT(W,    3,   IN),
+	GPIO_INIT(X,    1,   IN),
+	GPIO_INIT(X,    4,   IN),
+	GPIO_INIT(X,    7,   OUT0),
 };
 
 #define PINCFG(_pingrp, _mux, _pull, _tri, _io, _od, _rcv_sel)	\
@@ -234,8 +242,8 @@ static const struct pmux_pingrp_config nyan_big_pingrps[] = {
 	PINCFG(SDMMC4_DAT6_PAA6,       SDMMC4,      UP,     NORMAL,   INPUT,   DEFAULT, DEFAULT),
 	PINCFG(SDMMC4_DAT7_PAA7,       SDMMC4,      UP,     NORMAL,   INPUT,   DEFAULT, DEFAULT),
 	PINCFG(PBB0,                   VGP6,        DOWN,   TRISTATE, OUTPUT,  DEFAULT, DEFAULT),
-	PINCFG(CAM_I2C_SCL_PBB1,       RSVD3,       DOWN,   TRISTATE, OUTPUT,  DISABLE, DEFAULT),
-	PINCFG(CAM_I2C_SDA_PBB2,       RSVD3,       DOWN,   TRISTATE, OUTPUT,  DISABLE, DEFAULT),
+	PINCFG(CAM_I2C_SCL_PBB1,       I2C3,        NORMAL, NORMAL,   INPUT,   ENABLE,  DEFAULT),
+	PINCFG(CAM_I2C_SDA_PBB2,       I2C3,        NORMAL, NORMAL,   INPUT,   ENABLE,  DEFAULT),
 	PINCFG(PBB3,                   VGP3,        DOWN,   TRISTATE, OUTPUT,  DEFAULT, DEFAULT),
 	PINCFG(PBB4,                   VGP4,        DOWN,   TRISTATE, OUTPUT,  DEFAULT, DEFAULT),
 	PINCFG(PBB5,                   RSVD3,       DOWN,   TRISTATE, OUTPUT,  DEFAULT, DEFAULT),
@@ -257,7 +265,7 @@ static const struct pmux_pingrp_config nyan_big_pingrps[] = {
 	PINCFG(HDMI_CEC_PEE3,          CEC,         NORMAL, NORMAL,   INPUT,   ENABLE,  DEFAULT),
 	PINCFG(SDMMC3_CLK_LB_OUT_PEE4, SDMMC3,      NORMAL, NORMAL,   OUTPUT,  DEFAULT, DEFAULT),
 	PINCFG(SDMMC3_CLK_LB_IN_PEE5,  SDMMC3,      UP,     NORMAL,   INPUT,   DEFAULT, DEFAULT),
-	PINCFG(DP_HPD_PFF0,            DP,          UP,     NORMAL,   INPUT,   DEFAULT, DEFAULT),
+	PINCFG(DP_HPD_PFF0,            DP,          NORMAL, NORMAL,   INPUT,   DEFAULT, DEFAULT),
 	PINCFG(USB_VBUS_EN2_PFF1,      RSVD2,       DOWN,   TRISTATE, OUTPUT,  DISABLE, DEFAULT),
 	PINCFG(PFF2,                   RSVD2,       DOWN,   TRISTATE, OUTPUT,  DISABLE, DEFAULT),
 	PINCFG(CORE_PWR_REQ,           PWRON,       NORMAL, NORMAL,   OUTPUT,  DEFAULT, DEFAULT),

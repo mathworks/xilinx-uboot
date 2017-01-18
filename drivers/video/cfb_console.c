@@ -15,8 +15,10 @@
  * logo can be placed in the upper left corner and additional board
  * information strings (that normally goes to serial port) can be drawn.
  *
- * The console driver can use the standard PC keyboard interface (i8042)
- * for character input. Character output goes to a memory mapped video
+ * The console driver can use a keyboard interface for character input
+ * but this is deprecated. Only rk51 uses it.
+ *
+ * Character output goes to a memory-mapped video
  * framebuffer with little or big-endian organisation.
  * With environment setting 'console=serial' the console i/o can be
  * forced to serial port.
@@ -38,18 +40,10 @@
  * VIDEO_DATA_FORMAT	      - graphical data format GDF
  * VIDEO_FB_ADRS	      - start of video memory
  *
- * CONFIG_I8042_KBD	      - AT Keyboard driver for i8042
  * VIDEO_KBD_INIT_FCT	      - init function for keyboard
  * VIDEO_TSTC_FCT	      - keyboard_tstc function
  * VIDEO_GETC_FCT	      - keyboard_getc function
  *
- * CONFIG_CONSOLE_CURSOR      - on/off drawing cursor is done with
- *				delay loop in VIDEO_TSTC_FCT (i8042)
- *
- * CONFIG_SYS_CONSOLE_BLINK_COUNT - value for delay loop - blink rate
- * CONFIG_CONSOLE_TIME	      - display time/date in upper right
- *				corner, needs CONFIG_CMD_DATE and
- *				CONFIG_CONSOLE_CURSOR
  * CONFIG_VIDEO_LOGO	      - display Linux Logo in upper left corner.
  *				Use CONFIG_SPLASH_SCREEN_ALIGN with
  *				environment variable "splashpos" to place
@@ -123,7 +117,7 @@
 #define VIDEO_HW_BITBLT
 #endif
 
-#ifdef CONFIG_VIDEO_MXS
+#if defined(CONFIG_VIDEO_MXS) || defined(CONFIG_VIDEO_S3C)
 #define VIDEO_FB_16BPP_WORD_SWAP
 #endif
 
@@ -165,19 +159,6 @@
 #define VIDEO_FB_ADRS		(pGD->frameAdrs)
 
 /*
- * Console device defines with i8042 keyboard controller
- * Any other keyboard controller must change this section
- */
-
-#ifdef	CONFIG_I8042_KBD
-#include <i8042.h>
-
-#define VIDEO_KBD_INIT_FCT	i8042_kbd_init()
-#define VIDEO_TSTC_FCT		i8042_tstc
-#define VIDEO_GETC_FCT		i8042_getc
-#endif
-
-/*
  * Console device
  */
 
@@ -198,9 +179,6 @@
 
 /*
  * Cursor definition:
- * CONFIG_CONSOLE_CURSOR:  Uses a timer function (see drivers/input/i8042.c)
- *			   to let the cursor blink. Uses the macros
- *			   CURSOR_OFF and CURSOR_ON.
  * CONFIG_VIDEO_SW_CURSOR: Draws a cursor after the last character. No
  *			   blinking is provided. Uses the macros CURSOR_SET
  *			   and CURSOR_OFF.
@@ -210,42 +188,29 @@
  *			   must disable the hardware register of the graphic
  *			   chip. Otherwise a blinking field is displayed
  */
-#if !defined(CONFIG_CONSOLE_CURSOR) && \
-    !defined(CONFIG_VIDEO_SW_CURSOR) && \
-    !defined(CONFIG_VIDEO_HW_CURSOR)
+#if !defined(CONFIG_VIDEO_SW_CURSOR) && !defined(CONFIG_VIDEO_HW_CURSOR)
 /* no Cursor defined */
 #define CURSOR_ON
 #define CURSOR_OFF
 #define CURSOR_SET
 #endif
 
-#if defined(CONFIG_CONSOLE_CURSOR) || defined(CONFIG_VIDEO_SW_CURSOR)
-#if defined(CURSOR_ON) || \
-	(defined(CONFIG_CONSOLE_CURSOR) && defined(CONFIG_VIDEO_SW_CURSOR))
-#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
-	or CONFIG_VIDEO_HW_CURSOR can be defined
+#if defined(CONFIG_VIDEO_SW_CURSOR)
+#if defined(CONFIG_VIDEO_HW_CURSOR)
+#error	only one of CONFIG_VIDEO_SW_CURSOR or CONFIG_VIDEO_HW_CURSOR can be \
+	defined
 #endif
 void console_cursor(int state);
 
 #define CURSOR_ON  console_cursor(1)
 #define CURSOR_OFF console_cursor(0)
 #define CURSOR_SET video_set_cursor()
-#endif /* CONFIG_CONSOLE_CURSOR || CONFIG_VIDEO_SW_CURSOR */
-
-#ifdef	CONFIG_CONSOLE_CURSOR
-#ifndef	CONFIG_CONSOLE_TIME
-#error	CONFIG_CONSOLE_CURSOR must be defined for CONFIG_CONSOLE_TIME
-#endif
-#ifndef CONFIG_I8042_KBD
-#warning Cursor drawing on/off needs timer function s.a. drivers/input/i8042.c
-#endif
-#endif /* CONFIG_CONSOLE_CURSOR */
-
+#endif /* CONFIG_VIDEO_SW_CURSOR */
 
 #ifdef CONFIG_VIDEO_HW_CURSOR
 #ifdef	CURSOR_ON
-#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
-	or CONFIG_VIDEO_HW_CURSOR can be defined
+#error	only one of CONFIG_VIDEO_SW_CURSOR or CONFIG_VIDEO_HW_CURSOR can be \
+	defined
 #endif
 #define CURSOR_ON
 #define CURSOR_OFF
@@ -283,9 +248,10 @@ void console_cursor(int state);
 
 #define VIDEO_COLS		VIDEO_VISIBLE_COLS
 #define VIDEO_ROWS		VIDEO_VISIBLE_ROWS
-#define VIDEO_SIZE		(VIDEO_ROWS*VIDEO_COLS*VIDEO_PIXEL_SIZE)
-#define VIDEO_PIX_BLOCKS	(VIDEO_SIZE >> 2)
-#define VIDEO_LINE_LEN		(VIDEO_COLS*VIDEO_PIXEL_SIZE)
+#ifndef VIDEO_LINE_LEN
+#define VIDEO_LINE_LEN		(VIDEO_COLS * VIDEO_PIXEL_SIZE)
+#endif
+#define VIDEO_SIZE		(VIDEO_ROWS * VIDEO_LINE_LEN)
 #define VIDEO_BURST_LEN		(VIDEO_COLS/8)
 
 #ifdef	CONFIG_VIDEO_LOGO
@@ -625,7 +591,7 @@ static void video_putchar(int xx, int yy, unsigned char c)
 	video_drawchars(xx, yy + video_logo_height, &c, 1);
 }
 
-#if defined(CONFIG_CONSOLE_CURSOR) || defined(CONFIG_VIDEO_SW_CURSOR)
+#if defined(CONFIG_VIDEO_SW_CURSOR)
 static void video_set_cursor(void)
 {
 	if (cursor_state)
@@ -650,27 +616,6 @@ static void video_invertchar(int xx, int yy)
 
 void console_cursor(int state)
 {
-#ifdef CONFIG_CONSOLE_TIME
-	struct rtc_time tm;
-	char info[16];
-
-	/* time update only if cursor is on (faster scroll) */
-	if (state) {
-		rtc_get(&tm);
-
-		sprintf(info, " %02d:%02d:%02d ", tm.tm_hour, tm.tm_min,
-			tm.tm_sec);
-		video_drawstring(VIDEO_VISIBLE_COLS - 10 * VIDEO_FONT_WIDTH,
-				 VIDEO_INFO_Y, (uchar *) info);
-
-		sprintf(info, "%02d.%02d.%04d", tm.tm_mday, tm.tm_mon,
-			tm.tm_year);
-		video_drawstring(VIDEO_VISIBLE_COLS - 10 * VIDEO_FONT_WIDTH,
-				 VIDEO_INFO_Y + 1 * VIDEO_FONT_HEIGHT,
-				 (uchar *) info);
-	}
-#endif
-
 	if (cursor_state != state) {
 		if (cursor_state) {
 			/* turn off the cursor */
@@ -1306,7 +1251,7 @@ static int display_rle8_bitmap(struct bmp_image *img, int xoff, int yoff,
 	struct palette p[256];
 	struct bmp_color_table_entry cte;
 	int green_shift, red_off;
-	int limit = VIDEO_COLS * VIDEO_ROWS;
+	int limit = (VIDEO_LINE_LEN / VIDEO_PIXEL_SIZE) * VIDEO_ROWS;
 	int pixels = 0;
 
 	x = 0;
@@ -1314,7 +1259,8 @@ static int display_rle8_bitmap(struct bmp_image *img, int xoff, int yoff,
 	ncolors = __le32_to_cpu(img->header.colors_used);
 	bpp = VIDEO_PIXEL_SIZE;
 	fbp = (unsigned char *) ((unsigned int) video_fb_address +
-				 (((y + yoff) * VIDEO_COLS) + xoff) * bpp);
+				 (y + yoff) * VIDEO_LINE_LEN +
+				 xoff * bpp);
 
 	bm = (uchar *) img + __le32_to_cpu(img->header.data_offset);
 
@@ -1368,8 +1314,8 @@ static int display_rle8_bitmap(struct bmp_image *img, int xoff, int yoff,
 				y--;
 				fbp = (unsigned char *)
 					((unsigned int) video_fb_address +
-					 (((y + yoff) * VIDEO_COLS) +
-					  xoff) * bpp);
+					 (y + yoff) * VIDEO_LINE_LEN +
+					 xoff * bpp);
 				continue;
 			case 1:
 				/* end of bitmap data marker */
@@ -1381,8 +1327,8 @@ static int display_rle8_bitmap(struct bmp_image *img, int xoff, int yoff,
 				y -= bm[3];
 				fbp = (unsigned char *)
 					((unsigned int) video_fb_address +
-					 (((y + yoff) * VIDEO_COLS) +
-					  x + xoff) * bpp);
+					 (y + yoff) * VIDEO_LINE_LEN +
+					 xoff * bpp);
 				bm += 4;
 				break;
 			default:
@@ -1561,7 +1507,7 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 
 	bmap = (uchar *) bmp + le32_to_cpu(bmp->header.data_offset);
 	fb = (uchar *) (video_fb_address +
-			((y + height - 1) * VIDEO_COLS * VIDEO_PIXEL_SIZE) +
+			((y + height - 1) * VIDEO_LINE_LEN) +
 			x * VIDEO_PIXEL_SIZE);
 
 #ifdef CONFIG_VIDEO_BMP_RLE8
@@ -1597,7 +1543,7 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 							   cte.blue);
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
+				fb -= VIDEO_LINE_LEN + width *
 					VIDEO_PIXEL_SIZE;
 			}
 			break;
@@ -1628,8 +1574,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 					*fb++ = *bmap++;
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF__8BIT_332RGB:
@@ -1642,8 +1588,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 							 cte.blue);
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_15BIT_555RGB:
@@ -1666,8 +1612,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 #endif
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_16BIT_565RGB:
@@ -1680,8 +1626,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 							  cte.blue);
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_32BIT_X888RGB:
@@ -1694,8 +1640,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 							   cte.blue);
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_24BIT_888RGB:
@@ -1708,8 +1654,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 							  cte.blue);
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		}
@@ -1728,8 +1674,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 					bmap += 3;
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_15BIT_555RGB:
@@ -1751,8 +1697,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 					bmap += 3;
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_16BIT_565RGB:
@@ -1765,8 +1711,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 					bmap += 3;
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_32BIT_X888RGB:
@@ -1779,8 +1725,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 					bmap += 3;
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		case GDF_24BIT_888RGB:
@@ -1793,8 +1739,8 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 					bmap += 3;
 				}
 				bmap += padded_line;
-				fb -= (VIDEO_VISIBLE_COLS + width) *
-							VIDEO_PIXEL_SIZE;
+				fb -= VIDEO_LINE_LEN + width *
+					VIDEO_PIXEL_SIZE;
 			}
 			break;
 		default:
@@ -1826,20 +1772,16 @@ int video_display_bitmap(ulong bmp_image, int x, int y)
 static int video_logo_xpos;
 static int video_logo_ypos;
 
-static void plot_logo_or_black(void *screen, int width, int x, int y,	\
-			int black);
+static void plot_logo_or_black(void *screen, int x, int y, int black);
 
-static void logo_plot(void *screen, int width, int x, int y)
+static void logo_plot(void *screen, int x, int y)
 {
-	plot_logo_or_black(screen, width, x, y, 0);
+	plot_logo_or_black(screen, x, y, 0);
 }
 
 static void logo_black(void)
 {
-	plot_logo_or_black(video_fb_address, \
-			VIDEO_COLS, \
-			video_logo_xpos, \
-			video_logo_ypos, \
+	plot_logo_or_black(video_fb_address, video_logo_xpos, video_logo_ypos,
 			1);
 }
 
@@ -1858,11 +1800,11 @@ U_BOOT_CMD(
 	   " "
 	   );
 
-static void plot_logo_or_black(void *screen, int width, int x, int y, int black)
+static void plot_logo_or_black(void *screen, int x, int y, int black)
 {
 
 	int xcount, i;
-	int skip = (width - VIDEO_LOGO_WIDTH) * VIDEO_PIXEL_SIZE;
+	int skip = VIDEO_LINE_LEN - VIDEO_LOGO_WIDTH * VIDEO_PIXEL_SIZE;
 	int ycount = video_logo_height;
 	unsigned char r, g, b, *logo_red, *logo_blue, *logo_green;
 	unsigned char *source;
@@ -1880,7 +1822,7 @@ static void plot_logo_or_black(void *screen, int width, int x, int y, int black)
 		y = max(0, (int)(VIDEO_VISIBLE_ROWS - VIDEO_LOGO_HEIGHT + y + 1));
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 
-	dest = (unsigned char *)screen + (y * width  + x) * VIDEO_PIXEL_SIZE;
+	dest = (unsigned char *)screen + y * VIDEO_LINE_LEN + x * VIDEO_PIXEL_SIZE;
 
 #ifdef CONFIG_VIDEO_BMP_LOGO
 	source = bmp_logo_bitmap;
@@ -2009,8 +1951,7 @@ static void *video_logo(void)
 	}
 #endif /* CONFIG_SPLASH_SCREEN */
 
-	logo_plot(video_fb_address, VIDEO_COLS,
-		  video_logo_xpos, video_logo_ypos);
+	logo_plot(video_fb_address, video_logo_xpos, video_logo_ypos);
 
 #ifdef CONFIG_SPLASH_SCREEN_ALIGN
 	/*
@@ -2250,16 +2191,17 @@ __weak int board_video_skip(void)
 
 int drv_video_init(void)
 {
-	int skip_dev_init;
 	struct stdio_dev console_dev;
 	bool have_keyboard;
+	bool __maybe_unused keyboard_ok = false;
 
 	/* Check if video initialization should be skipped */
 	if (board_video_skip())
 		return 0;
 
 	/* Init video chip - returns with framebuffer cleared */
-	skip_dev_init = (video_init() == -1);
+	if (video_init() == -1)
+		return 0;
 
 	if (board_cfb_skip())
 		return 0;
@@ -2275,22 +2217,19 @@ int drv_video_init(void)
 	if (have_keyboard) {
 		debug("KBD: Keyboard init ...\n");
 #if !defined(CONFIG_VGA_AS_SINGLE_DEVICE)
-		skip_dev_init |= (VIDEO_KBD_INIT_FCT == -1);
+		keyboard_ok = !(VIDEO_KBD_INIT_FCT == -1);
 #endif
 	}
-	if (skip_dev_init)
-		return 0;
 
 	/* Init vga device */
 	memset(&console_dev, 0, sizeof(console_dev));
 	strcpy(console_dev.name, "vga");
-	console_dev.ext = DEV_EXT_VIDEO;	/* Video extensions */
-	console_dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_SYSTEM;
+	console_dev.flags = DEV_FLAGS_OUTPUT;
 	console_dev.putc = video_putc;	/* 'putc' function */
 	console_dev.puts = video_puts;	/* 'puts' function */
 
 #if !defined(CONFIG_VGA_AS_SINGLE_DEVICE)
-	if (have_keyboard) {
+	if (have_keyboard && keyboard_ok) {
 		/* Also init console device */
 		console_dev.flags |= DEV_FLAGS_INPUT;
 		console_dev.tstc = VIDEO_TSTC_FCT;	/* 'tstc' function */

@@ -21,7 +21,6 @@
 
 #define CONFIG_NAND_ECC_BCH
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 
 /* common KM defines */
@@ -46,8 +45,8 @@
 #define CONFIG_SYS_NUM_CPC		CONFIG_NUM_DDR_CONTROLLERS
 #define CONFIG_FSL_ELBC			/* Has Enhanced localbus controller */
 #define CONFIG_PCI			/* Enable PCI/PCIE */
-#define CONFIG_PCIE1			/* PCIE controler 1 */
-#define CONFIG_PCIE3			/* PCIE controler 3 */
+#define CONFIG_PCIE1			/* PCIE controller 1 */
+#define CONFIG_PCIE3			/* PCIE controller 3 */
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
@@ -245,7 +244,6 @@ unsigned long get_board_sys_clk(unsigned long dummy);
  * shorted - index 1
  */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(get_bus_freq(0)/2)
@@ -256,18 +254,6 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_NS16550_COM4	(CONFIG_SYS_CCSRBAR+0x11D600)
 
 #define CONFIG_KM_CONSOLE_TTY	"ttyS0"
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-#define CONFIG_OF_STDOUT_VIA_ALIAS
-
-/* new uImage format support */
-#define CONFIG_FIT
-#define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
 /* I2C */
 
@@ -298,11 +284,7 @@ int get_scl(void);
 /*
  * eSPI - Enhanced SPI
  */
-#define CONFIG_FSL_ESPI
 #define CONFIG_SPI_FLASH_BAR	/* 4 byte-addressing */
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_SPANSION
-#define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED         20000000
 #define CONFIG_SF_DEFAULT_MODE          0
 
@@ -375,7 +357,6 @@ int get_scl(void);
 
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_PCI_PNP			/* do pci plug-and-play */
-#define CONFIG_E1000
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #define CONFIG_DOS_PARTITION
@@ -425,6 +406,7 @@ int get_scl(void);
 #endif
 
 #define __USB_PHY_TYPE	utmi
+#define CONFIG_USB_EHCI_FSL
 
 /*
  * Environment Configuration
@@ -459,6 +441,7 @@ int get_scl(void);
 		"sf probe 0;sf erase 0 +${filesize};"			\
 		"sf write ${load_addr_r} 0 ${filesize};\0"		\
 	"set_fdthigh=true\0"						\
+	"checkfdt=true\0"						\
 	""
 
 #define CONFIG_HW_ENV_SETTINGS						\

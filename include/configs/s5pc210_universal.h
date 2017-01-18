@@ -12,9 +12,6 @@
 
 #include <configs/exynos4-common.h>
 
-#define CONFIG_SYS_PROMPT	"Universal # "	/* Monitor Command Prompt */
-
-
 #define CONFIG_TIZEN			/* TIZEN lib */
 
 /* Keep L2 Cache Disabled */
@@ -165,8 +162,6 @@
 #define CONFIG_SOFT_I2C_GPIO_SCL EXYNOS4_GPIO_B7
 #define CONFIG_SOFT_I2C_GPIO_SDA EXYNOS4_GPIO_B6
 
-#define CONFIG_CMD_I2C
-
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_SOFT		/* I2C bit-banged */
 #define CONFIG_SYS_I2C_SOFT_SPEED	50000
@@ -179,10 +174,7 @@
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_MAX8998
 
-#define CONFIG_USB_GADGET
-#define CONFIG_USB_GADGET_S3C_UDC_OTG
-#define CONFIG_USB_GADGET_S3C_UDC_OTG_PHY
-#define CONFIG_USB_GADGET_DUALSPEED
+#define CONFIG_USB_GADGET_DWC2_OTG_PHY
 
 /*
  * SPI Settings
@@ -225,9 +217,6 @@ int universal_spi_read(void);
 /*
  * LCD Settings
  */
-#define CONFIG_EXYNOS_FB
-#define CONFIG_LCD
-#define CONFIG_CMD_BMP
 #define CONFIG_BMP_16BPP
 #define CONFIG_LD9040
 #define CONFIG_VIDEO_BMP_GZIP

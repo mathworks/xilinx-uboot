@@ -14,16 +14,8 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DOS_PARTITION
 
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_GPIO
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SPI
 
 /* Memory configuration */
 #define CONFIG_NR_DRAM_BANKS		1		/* 1 bank of DRAM */
@@ -49,7 +41,6 @@
 
 /* SPI FLASH */
 #ifdef CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_SF_DEFAULT_BUS		2
 #define CONFIG_SF_DEFAULT_CS		0
 #define CONFIG_SF_DEFAULT_SPEED		40000000
@@ -64,7 +55,6 @@
 #endif
 
 /* Boot Linux */
-#define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_BOOTARGS		"console=ttyAMA0,115200"
 #define CONFIG_BOOTCOMMAND	"bootm"

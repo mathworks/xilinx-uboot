@@ -4,12 +4,7 @@
  * Copyright (C) 2008 Atmel Corporation
  * Copyright (C) 2013 Jagannadha Sutradharudu Teki, Xilinx Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _SPI_FLASH_H_
@@ -40,10 +35,10 @@ struct spi_slave;
  *
  * @spi:		SPI slave
  * @dev:		SPI flash device
- * @flags:		Indication of spi flash flags
  * @name:		Name of SPI flash
  * @dual_flash:		Indicates dual flash memories - dual stacked, parallel
  * @shift:		Flash shift useful in dual parallel
+ * @flags:		Indication of spi flash flags
  * @size:		Total flash size
  * @page_size:		Write (page) size
  * @sector_size:	Sector size
@@ -51,12 +46,14 @@ struct spi_slave;
  * @bank_read_cmd:	Bank read cmd
  * @bank_write_cmd:	Bank write cmd
  * @bank_curr:		Current flash bank
- * @poll_cmd:		Poll cmd - for flash erase/program
  * @erase_cmd:		Erase cmd 4K, 32K, 64K
  * @read_cmd:		Read cmd - Array Fast, Extn read and quad read.
  * @write_cmd:		Write cmd - page and quad program.
  * @dummy_byte:		Dummy cycles for read operation.
  * @memory_map:		Address of read-only SPI flash access
+ * @flash_lock:		lock a region of the SPI Flash
+ * @flash_unlock:	unlock a region of the SPI Flash
+ * @flash_is_locked:	check if a region of the SPI Flash is completely locked
  * @read:		Flash read ops: Read len bytes at offset into buf
  *			Supported cmds: Fast Array Read
  * @write:		Flash write ops: Write len bytes from buf into offset
@@ -69,11 +66,11 @@ struct spi_flash {
 	struct spi_slave *spi;
 #ifdef CONFIG_DM_SPI_FLASH
 	struct udevice *dev;
-	u16 flags;
 #endif
 	const char *name;
 	u8 dual_flash;
 	u8 shift;
+	u16 flags;
 
 	u32 size;
 	u32 page_size;
@@ -85,13 +82,16 @@ struct spi_flash {
 	u8 bank_curr;
 	u8 upage_prev;
 #endif
-	u8 poll_cmd;
 	u8 erase_cmd;
 	u8 read_cmd;
 	u8 write_cmd;
 	u8 dummy_byte;
 
 	void *memory_map;
+
+	int (*flash_lock)(struct spi_flash *flash, u32 ofs, size_t len);
+	int (*flash_unlock)(struct spi_flash *flash, u32 ofs, size_t len);
+	int (*flash_is_locked)(struct spi_flash *flash, u32 ofs, size_t len);
 #ifndef CONFIG_DM_SPI_FLASH
 	/*
 	 * These are not strictly needed for driver model, but keep them here
@@ -168,8 +168,6 @@ struct spi_flash *spi_flash_probe(unsigned int bus, unsigned int cs,
 /* Compatibility function - this is the old U-Boot API */
 void spi_flash_free(struct spi_flash *flash);
 
-int spi_flash_remove(struct udevice *flash);
-
 static inline int spi_flash_read(struct spi_flash *flash, u32 offset,
 				 size_t len, void *buf)
 {
@@ -231,6 +229,18 @@ static inline int spi_flash_erase(struct spi_flash *flash, u32 offset,
 	return flash->erase(flash, offset, len);
 }
 #endif
+
+static inline int spi_flash_protect(struct spi_flash *flash, u32 ofs, u32 len,
+					bool prot)
+{
+	if (!flash->flash_lock || !flash->flash_unlock)
+		return -EOPNOTSUPP;
+
+	if (prot)
+		return flash->flash_lock(flash, ofs, len);
+	else
+		return flash->flash_unlock(flash, ofs, len);
+}
 
 void spi_boot(void) __noreturn;
 void spi_spl_load_image(uint32_t offs, unsigned int size, void *vdst);

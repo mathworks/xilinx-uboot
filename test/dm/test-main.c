@@ -6,9 +6,11 @@
 
 #include <common.h>
 #include <command.h>
+#include <console.h>
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
+#include <asm/state.h>
 #include <dm/test.h>
 #include <dm/root.h>
 #include <dm/uclass-internal.h>
@@ -74,8 +76,12 @@ static int dm_test_main(const char *test_name)
 	struct unit_test *tests = ll_entry_start(struct unit_test, dm_test);
 	const int n_ents = ll_entry_count(struct unit_test, dm_test);
 	struct unit_test_state *uts = &global_dm_test_state;
+	struct sandbox_state *state = state_get_current();
 	uts->priv = &_global_priv_dm_test_state;
 	struct unit_test *test;
+	int run_count;
+
+	uts->fail_count = 0;
 
 	/*
 	 * If we have no device tree, or it only has a root node, then these
@@ -90,10 +96,17 @@ static int dm_test_main(const char *test_name)
 	if (!test_name)
 		printf("Running %d driver model tests\n", n_ents);
 
+	run_count = 0;
 	for (test = tests; test < tests + n_ents; test++) {
-		if (test_name && strcmp(test_name, test->name))
+		const char *name = test->name;
+
+		/* All tests have this prefix */
+		if (!strncmp(name, "dm_test_", 8))
+			name += 8;
+		if (test_name && strcmp(test_name, name))
 			continue;
 		printf("Test: %s\n", test->name);
+		run_count++;
 		ut_assertok(dm_test_init(uts));
 
 		uts->start = mallinfo();
@@ -104,12 +117,24 @@ static int dm_test_main(const char *test_name)
 		if (test->flags & DM_TESTF_SCAN_FDT)
 			ut_assertok(dm_scan_fdt(gd->fdt_blob, false));
 
+		/*
+		 * Silence the console and rely on console reocrding to get
+		 * our output.
+		 */
+		console_record_reset();
+		if (!state->show_test_output)
+			gd->flags |= GD_FLG_SILENT;
 		test->func(uts);
+		gd->flags &= ~GD_FLG_SILENT;
+		state_set_skip_delays(false);
 
 		ut_assertok(dm_test_destroy(uts));
 	}
 
-	printf("Failures: %d\n", uts->fail_count);
+	if (test_name && !run_count)
+		printf("Test '%s' not found\n", test_name);
+	else
+		printf("Failures: %d\n", uts->fail_count);
 
 	gd->dm_root = NULL;
 	ut_assertok(dm_init());

@@ -18,6 +18,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_DISPLAY_BOARDINFO
+
 /* High Level Configuration Options */
 #define CONFIG_BOOKE		1	/* BOOKE */
 #define CONFIG_E500		1	/* BOOKE e500 family */
@@ -62,7 +64,6 @@
 #ifndef CONFIG_SYS_CLK_FREQ
 #define CONFIG_SYS_CLK_FREQ	33000000
 #endif
-
 
 /*
  * These can be toggled for performance analysis, otherwise use default.
@@ -134,7 +135,6 @@
 
 #undef CONFIG_CLOCKS_IN_MHZ
 
-
 /*
  * Local Bus Definitions
  */
@@ -199,7 +199,6 @@
 #define CONFIG_SYS_LBC_LSDMR_4	(CONFIG_SYS_LBC_LSDMR_COMMON | LSDMR_OP_MRW)
 #define CONFIG_SYS_LBC_LSDMR_5	(CONFIG_SYS_LBC_LSDMR_COMMON | LSDMR_OP_NORMAL)
 
-
 /*
  * 32KB, 8-bit wide for ADS config reg
  */
@@ -219,7 +218,6 @@
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX     1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -229,16 +227,6 @@
 
 #define CONFIG_SYS_NS16550_COM1        (CONFIG_SYS_CCSRBAR+0x4500)
 #define CONFIG_SYS_NS16550_COM2        (CONFIG_SYS_CCSRBAR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-#ifdef  CONFIG_SYS_HUSH_PARSER
-#endif
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_OF_BOARD_SETUP		1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * I2C
@@ -287,7 +275,6 @@
 
 #endif	/* CONFIG_PCI */
 
-
 #if defined(CONFIG_TSEC_ENET)
 
 #define CONFIG_MII		1	/* MII PHY management */
@@ -302,7 +289,6 @@
 #define TSEC1_FLAGS		TSEC_GIGABIT
 #define TSEC2_FLAGS		TSEC_GIGABIT
 
-
 #if CONFIG_HAS_FEC
 #define CONFIG_MPC85XX_FEC	1
 #define CONFIG_MPC85XX_FEC_NAME		"FEC"
@@ -315,7 +301,6 @@
 #define CONFIG_ETHPRIME		"TSEC0"
 
 #endif	/* CONFIG_TSEC_ENET */
-
 
 /*
  * Environment
@@ -335,7 +320,6 @@
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
 
-
 /*
  * BOOTP options
  */
@@ -344,13 +328,9 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
-
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IRQ
 
 #if defined(CONFIG_PCI)
@@ -389,7 +369,6 @@
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
 #endif
 
-
 /*
  * Environment Configuration
  */
@@ -413,7 +392,6 @@
 
 #define CONFIG_LOADADDR  200000	/* default location for tftp and bootm */
 
-#define CONFIG_BOOTDELAY 10	/* -1 disables auto-boot */
 #undef  CONFIG_BOOTARGS		/* the boot command will set bootargs */
 
 #define CONFIG_BAUDRATE	115200

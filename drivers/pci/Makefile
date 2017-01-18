@@ -6,14 +6,16 @@
 #
 
 ifneq ($(CONFIG_DM_PCI),)
-obj-$(CONFIG_PCI) += pci-uclass.o pci_compat.o
+obj-y += pci_rom.o
+obj-$(CONFIG_PCI) += pci-uclass.o pci_auto.o
+obj-$(CONFIG_DM_PCI_COMPAT) += pci_compat.o
 obj-$(CONFIG_PCI_SANDBOX) += pci_sandbox.o
 obj-$(CONFIG_SANDBOX) += pci-emul-uclass.o
 obj-$(CONFIG_X86) += pci_x86.o
 else
-obj-$(CONFIG_PCI) += pci.o
+obj-$(CONFIG_PCI) += pci.o pci_auto_old.o
 endif
-obj-$(CONFIG_PCI) += pci_common.o pci_auto.o pci_rom.o
+obj-$(CONFIG_PCI) += pci_auto_common.o pci_common.o
 
 obj-$(CONFIG_FSL_PCI_INIT) += fsl_pci_init.o
 obj-$(CONFIG_PCI_INDIRECT_BRIDGE) += pci_indirect.o
@@ -21,6 +23,7 @@ obj-$(CONFIG_PCI_GT64120) += pci_gt64120.o
 obj-$(CONFIG_PCI_MSC01) += pci_msc01.o
 obj-$(CONFIG_PCIE_IMX) += pcie_imx.o
 obj-$(CONFIG_FTPCI100) += pci_ftpci100.o
+obj-$(CONFIG_PCI_MVEBU) += pci_mvebu.o
 obj-$(CONFIG_SH4_PCI) += pci_sh4.o
 obj-$(CONFIG_SH7751_PCI) +=pci_sh7751.o
 obj-$(CONFIG_SH7780_PCI) +=pci_sh7780.o

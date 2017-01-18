@@ -3,6 +3,7 @@
  *
  * Copyright 2014 Freescale Semiconductor, Inc.
  *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_SEC_H
@@ -32,10 +33,20 @@
 /* RNG4 TRNG test registers */
 struct rng4tst {
 #define RTMCTL_PRGM 0x00010000	/* 1 -> program mode, 0 -> run mode */
+#define RTMCTL_SAMP_MODE_VON_NEUMANN_ES_SC     0 /* use von Neumann data in
+						    both entropy shifter and
+						    statistical checker */
+#define RTMCTL_SAMP_MODE_RAW_ES_SC             1 /* use raw data in both
+						    entropy shifter and
+						    statistical checker */
+#define RTMCTL_SAMP_MODE_VON_NEUMANN_ES_RAW_SC 2 /* use von Neumann data in
+						    entropy shifter, raw data
+						    in statistical checker */
+#define RTMCTL_SAMP_MODE_INVALID               3 /* invalid combination */
 	u32 rtmctl;		/* misc. control register */
 	u32 rtscmisc;		/* statistical check misc. register */
 	u32 rtpkrrng;		/* poker range register */
-#define RTSDCTL_ENT_DLY_MIN	1200
+#define RTSDCTL_ENT_DLY_MIN	3200
 #define RTSDCTL_ENT_DLY_MAX	12800
 	union {
 		u32 rtpkrmax;	/* PRGM=1: poker max. limit register */
@@ -49,6 +60,7 @@ struct rng4tst {
 		u32 rttotsam;	/* PRGM=0: total samples register */
 	};
 	u32 rtfreqmin;		/* frequency count min. limit register */
+#define RTFRQMAX_DISABLE       (1 << 20)
 	union {
 		u32 rtfreqmax;	/* PRGM=1: freq. count max. limit register */
 		u32 rtfreqcnt;	/* PRGM=0: freq. count register */
@@ -85,19 +97,20 @@ typedef struct ccsr_sec {
 	u32	drr;		/* DECO Reset Register */
 	u8	res5[0x4d8];
 	struct rng4tst rng;	/* RNG Registers */
-	u8	res11[0x8a0];
+	u8	res6[0x8a0];
 	u32	crnr_ms;	/* CHA Revision Number Register, MS */
 	u32	crnr_ls;	/* CHA Revision Number Register, LS */
 	u32	ctpr_ms;	/* Compile Time Parameters Register, MS */
 	u32	ctpr_ls;	/* Compile Time Parameters Register, LS */
-	u8	res6[0x10];
+	u8	res7[0x10];
 	u32	far_ms;		/* Fault Address Register, MS */
 	u32	far_ls;		/* Fault Address Register, LS */
 	u32	falr;		/* Fault Address LIODN Register */
 	u32	fadr;		/* Fault Address Detail Register */
-	u8	res7[0x4];
+	u8	res8[0x4];
 	u32	csta;		/* CAAM Status Register */
-	u8	res8[0x8];
+	u32	smpart;		/* Secure Memory Partition Parameters */
+	u32	smvid;		/* Secure Memory Version ID */
 	u32	rvid;		/* Run Time Integrity Checking Version ID Reg.*/
 	u32	ccbvid;		/* CHA Cluster Block Version ID Register */
 	u32	chavid_ms;	/* CHA Version ID Register, MS */
@@ -135,7 +148,8 @@ typedef struct ccsr_sec {
 #define CONFIG_JRSTARTR_JR0		0x00000001
 
 struct jr_regs {
-#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_MX6)
+#if defined(CONFIG_SYS_FSL_SEC_LE) && \
+	!(defined(CONFIG_MX6) || defined(CONFIG_MX7))
 	u32 irba_l;
 	u32 irba_h;
 #else
@@ -148,7 +162,8 @@ struct jr_regs {
 	u32 irsa;
 	u32 rsvd3;
 	u32 irja;
-#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_MX6)
+#if defined(CONFIG_SYS_FSL_SEC_LE) && \
+	!(defined(CONFIG_MX6) || defined(CONFIG_MX7))
 	u32 orba_l;
 	u32 orba_h;
 #else
@@ -180,13 +195,12 @@ struct jr_regs {
  * related information
  */
 struct sg_entry {
-#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_MX6)
+#if defined(CONFIG_SYS_FSL_SEC_LE) && \
+	!(defined(CONFIG_MX6) || defined(CONFIG_MX7))
 	uint32_t addr_lo;	/* Memory Address - lo */
-	uint16_t addr_hi;	/* Memory Address of start of buffer - hi */
-	uint16_t reserved_zero;
+	uint32_t addr_hi;	/* Memory Address of start of buffer - hi */
 #else
-	uint16_t reserved_zero;
-	uint16_t addr_hi;	/* Memory Address of start of buffer - hi */
+	uint32_t addr_hi;	/* Memory Address of start of buffer - hi */
 	uint32_t addr_lo;	/* Memory Address - lo */
 #endif
 
@@ -201,26 +215,43 @@ struct sg_entry {
 #define SG_ENTRY_OFFSET_SHIFT	0
 };
 
-#ifdef CONFIG_MX6
+#if defined(CONFIG_MX6) || defined(CONFIG_MX7)
+/* Job Ring Base Address */
+#define JR_BASE_ADDR(x) (CONFIG_SYS_FSL_SEC_ADDR + 0x1000 * (x + 1))
+/* Secure Memory Offset varies accross versions */
+#define SM_V1_OFFSET 0x0f4
+#define SM_V2_OFFSET 0xa00
+/*Secure Memory Versioning */
+#define SMVID_V2 0x20105
+#define SM_VERSION(x)  (x < SMVID_V2 ? 1 : 2)
+#define SM_OFFSET(x)  (x == 1 ? SM_V1_OFFSET : SM_V2_OFFSET)
 /* CAAM Job Ring 0 Registers */
 /* Secure Memory Partition Owner register */
 #define SMCSJR_PO		(3 << 6)
 /* JR Allocation Error */
 #define SMCSJR_AERR		(3 << 12)
 /* Secure memory partition 0 page 0 owner register */
-#define CAAM_SMPO_0		CONFIG_SYS_FSL_SEC_ADDR + 0x1FBC
+#define CAAM_SMPO_0	    (CONFIG_SYS_FSL_SEC_ADDR + 0x1FBC)
 /* Secure memory command register */
-#define CAAM_SMCJR0		CONFIG_SYS_FSL_SEC_ADDR + 0x10f4
+#define CAAM_SMCJR(v, jr)   (JR_BASE_ADDR(jr) + SM_OFFSET(v) + SM_CMD(v))
 /* Secure memory command status register */
-#define CAAM_SMCSJR0		CONFIG_SYS_FSL_SEC_ADDR + 0x10fc
+#define CAAM_SMCSJR(v, jr)  (JR_BASE_ADDR(jr) + SM_OFFSET(v) + SM_STATUS(v))
 /* Secure memory access permissions register */
-#define CAAM_SMAPJR0(y)	(CONFIG_SYS_FSL_SEC_ADDR + 0x1104 + y*16)
+#define CAAM_SMAPJR(v, jr, y) \
+	(JR_BASE_ADDR(jr) + SM_OFFSET(v) + SM_PERM(v) + y * 16)
 /* Secure memory access group 2 register */
-#define CAAM_SMAG2JR0(y)	(CONFIG_SYS_FSL_SEC_ADDR + 0x1108 + y*16)
+#define CAAM_SMAG2JR(v, jr, y) \
+	(JR_BASE_ADDR(jr) + SM_OFFSET(v) + SM_GROUP2(v) + y * 16)
 /* Secure memory access group 1 register */
-#define CAAM_SMAG1JR0(y)	(CONFIG_SYS_FSL_SEC_ADDR + 0x110C + y*16)
+#define CAAM_SMAG1JR(v, jr, y)  \
+	(JR_BASE_ADDR(jr) + SM_OFFSET(v) + SM_GROUP1(v) + y * 16)
 
 /* Commands and macros for secure memory */
+#define SM_CMD(v)		(v == 1 ? 0x0 : 0x1E4)
+#define SM_STATUS(v)		(v == 1 ? 0x8 : 0x1EC)
+#define SM_PERM(v)		(v == 1 ?  0x10 : 0x4)
+#define SM_GROUP2(v)		(v == 1 ? 0x14 : 0x8)
+#define SM_GROUP1(v)		(v == 1 ? 0x18 : 0xC)
 #define CMD_PAGE_ALLOC		0x1
 #define CMD_PAGE_DEALLOC	0x2
 #define CMD_PART_DEALLOC	0x3
@@ -263,8 +294,6 @@ struct sg_entry {
 
 #endif
 
-int sec_init(void);
-
 /* blob_dek:
  * Encapsulates the src in a secure blob and stores it dst
  * @src: reference to the plaintext
@@ -274,6 +303,10 @@ int sec_init(void);
  */
 int blob_dek(const u8 *src, u8 *dst, u8 len);
 
+#if defined(CONFIG_PPC_C29X)
+int sec_init_idx(uint8_t);
+#endif
+int sec_init(void);
 #endif
 
 #endif /* __FSL_SEC_H */

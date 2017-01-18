@@ -12,8 +12,6 @@
 #ifndef _CONFIG_DOCKSTAR_H
 #define _CONFIG_DOCKSTAR_H
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 /*
  * Version number information
  */
@@ -31,20 +29,13 @@
  * Commands configuration
  */
 #define CONFIG_SYS_NO_FLASH		/* Declare no flash (NOR/SPI) */
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_ENV
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_USB
 /*
  * mv-common.h should be defined after CMD configs since it used them
  * to enable certain macros
  */
 #include "mv-common.h"
-
-#undef CONFIG_SYS_PROMPT	/* previously defined in mv-common.h */
-#define CONFIG_SYS_PROMPT	"DockStar> "	/* Command Prompt */
 
 /*
  *  Environment variables configurations
@@ -60,8 +51,8 @@
  * it has to be rounded to sector size
  */
 #define CONFIG_ENV_SIZE			0x20000	/* 128k */
-#define CONFIG_ENV_ADDR			0x60000
-#define CONFIG_ENV_OFFSET		0x60000	/* env starts here */
+#define CONFIG_ENV_ADDR			0x80000
+#define CONFIG_ENV_OFFSET		0x80000	/* env starts here */
 
 /*
  * Default environment variables
@@ -95,8 +86,6 @@
 /*
  * File system
  */
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
 #define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS

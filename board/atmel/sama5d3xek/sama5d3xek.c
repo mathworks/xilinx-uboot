@@ -10,11 +10,11 @@
 #include <asm/io.h>
 #include <asm/arch/sama5d3_smc.h>
 #include <asm/arch/at91_common.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/clk.h>
 #include <lcd.h>
+#include <linux/ctype.h>
 #include <atmel_hlcdc.h>
 #include <atmel_mci.h>
 #include <phy.h>
@@ -207,7 +207,7 @@ void lcd_show_board_info(void)
 	nand_size = 0;
 #ifdef CONFIG_NAND_ATMEL
 	for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++)
-		nand_size += nand_info[i].size;
+		nand_size += nand_info[i]->size;
 #endif
 	lcd_printf("%ld MB SDRAM, %lld MB NAND\n",
 		   dram_size >> 20, nand_size >> 20);
@@ -369,6 +369,25 @@ void spi_cs_deactivate(struct spi_slave *slave)
 }
 #endif /* CONFIG_ATMEL_SPI */
 
+#ifdef CONFIG_BOARD_LATE_INIT
+int board_late_init(void)
+{
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	const int MAX_STR_LEN = 32;
+	char name[MAX_STR_LEN], *p;
+	int i;
+
+	strncpy(name, get_cpu_name(), MAX_STR_LEN);
+	for (i = 0, p = name; (*p) && (i < MAX_STR_LEN); p++, i++)
+		*p = tolower(*p);
+
+	strcat(name, "ek.dtb");
+	setenv("dtb_name", name);
+#endif
+	return 0;
+}
+#endif
+
 /* SPL */
 #ifdef CONFIG_SPL_BUILD
 void spl_board_init(void)
@@ -382,7 +401,7 @@ void spl_board_init(void)
 #endif
 }
 
-static void ddr2_conf(struct atmel_mpddr *ddr2)
+static void ddr2_conf(struct atmel_mpddrc_config *ddr2)
 {
 	ddr2->md = (ATMEL_MPDDRC_MD_DBW_32_BITS | ATMEL_MPDDRC_MD_DDR2_SDRAM);
 
@@ -423,22 +442,20 @@ static void ddr2_conf(struct atmel_mpddr *ddr2)
 
 void mem_init(void)
 {
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-	struct atmel_mpddr ddr2;
+	struct atmel_mpddrc_config ddr2;
 
 	ddr2_conf(&ddr2);
 
-	/* enable MPDDR clock */
+	/* Enable MPDDR clock */
 	at91_periph_clk_enable(ATMEL_ID_MPDDRC);
-	writel(0x4, &pmc->scer);
+	at91_system_clk_enable(AT91_PMC_DDR);
 
 	/* DDRAM2 Controller initialize */
-	ddr2_init(ATMEL_BASE_DDRCS, &ddr2);
+	ddr2_init(ATMEL_BASE_MPDDRC, ATMEL_BASE_DDRCS, &ddr2);
 }
 
 void at91_pmc_init(void)
 {
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
 	u32 tmp;
 
 	tmp = AT91_PMC_PLLAR_29 |
@@ -447,7 +464,7 @@ void at91_pmc_init(void)
 	      AT91_PMC_PLLXR_DIV(1);
 	at91_plla_init(tmp);
 
-	writel(0x3 << 8, &pmc->pllicpr);
+	at91_pllicpr_init(AT91_PMC_IPLL_PLLA(0x3));
 
 	tmp = AT91_PMC_MCKR_MDIV_4 |
 	      AT91_PMC_MCKR_CSS_PLLA;

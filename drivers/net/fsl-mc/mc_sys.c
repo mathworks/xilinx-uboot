@@ -14,7 +14,7 @@
 #include <asm/io.h>
 
 #define MC_CMD_HDR_READ_CMDID(_hdr) \
-	((uint16_t)u64_dec((_hdr), MC_CMD_HDR_CMDID_O, MC_CMD_HDR_CMDID_S))
+	((uint16_t)mc_dec((_hdr), MC_CMD_HDR_CMDID_O, MC_CMD_HDR_CMDID_S))
 
 /**
  * mc_send_command - Send MC command and wait for response
@@ -32,7 +32,7 @@ int mc_send_command(struct fsl_mc_io *mc_io,
 		    struct mc_command *cmd)
 {
 	enum mc_cmd_status status;
-	int timeout = 6000;
+	int timeout = 12000;
 
 	mc_write_command(mc_io->mmio_regs, cmd);
 

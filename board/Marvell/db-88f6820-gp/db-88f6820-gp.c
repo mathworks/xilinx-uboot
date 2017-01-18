@@ -7,13 +7,15 @@
 #include <common.h>
 #include <i2c.h>
 #include <miiphy.h>
+#include <netdev.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 
-DECLARE_GLOBAL_DATA_PTR;
+#include "../drivers/ddr/marvell/a38x/ddr3_a38x_topology.h"
+#include <../serdes/a38x/high_speed_env_spec.h>
 
-#define BIT(nr)				(1UL << (nr))
+DECLARE_GLOBAL_DATA_PTR;
 
 #define ETH_PHY_CTRL_REG		0
 #define ETH_PHY_CTRL_POWER_DOWN_BIT	11
@@ -53,6 +55,51 @@ static struct marvell_io_exp io_exp[] = {
 	{ 0x21, 2, 0x08 }, /* Output Data, register#0 */
 	{ 0x21, 3, 0xC0 }  /* Output Data, register#1 */
 };
+
+static struct serdes_map board_serdes_map[] = {
+	{PEX0, SERDES_SPEED_5_GBPS, PEX_ROOT_COMPLEX_X1, 0, 0},
+	{SATA0, SERDES_SPEED_3_GBPS, SERDES_DEFAULT_MODE, 0, 0},
+	{SATA1, SERDES_SPEED_3_GBPS, SERDES_DEFAULT_MODE, 0, 0},
+	{SATA3, SERDES_SPEED_3_GBPS, SERDES_DEFAULT_MODE, 0, 0},
+	{SATA2, SERDES_SPEED_3_GBPS, SERDES_DEFAULT_MODE, 0, 0},
+	{USB3_HOST1, SERDES_SPEED_5_GBPS, SERDES_DEFAULT_MODE, 0, 0}
+};
+
+int hws_board_topology_load(struct serdes_map **serdes_map_array, u8 *count)
+{
+	*serdes_map_array = board_serdes_map;
+	*count = ARRAY_SIZE(board_serdes_map);
+	return 0;
+}
+
+/*
+ * Define the DDR layout / topology here in the board file. This will
+ * be used by the DDR3 init code in the SPL U-Boot version to configure
+ * the DDR3 controller.
+ */
+static struct hws_topology_map board_topology_map = {
+	0x1, /* active interfaces */
+	/* cs_mask, mirror, dqs_swap, ck_swap X PUPs */
+	{ { { {0x1, 0, 0, 0},
+	      {0x1, 0, 0, 0},
+	      {0x1, 0, 0, 0},
+	      {0x1, 0, 0, 0},
+	      {0x1, 0, 0, 0} },
+	    SPEED_BIN_DDR_1866L,	/* speed_bin */
+	    BUS_WIDTH_8,		/* memory_width */
+	    MEM_4G,			/* mem_size */
+	    DDR_FREQ_800,		/* frequency */
+	    0, 0,			/* cas_l cas_wl */
+	    HWS_TEMP_LOW} },		/* temperature */
+	5,				/* Num Of Bus Per Interface*/
+	BUS_MASK_32BIT			/* Busses mask */
+};
+
+struct hws_topology_map *ddr3_get_topology_map(void)
+{
+	/* Return the board topology as defined in the board code */
+	return &board_topology_map;
+}
 
 int board_early_init_f(void)
 {
@@ -100,4 +147,10 @@ int checkboard(void)
 	puts("Board: Marvell DB-88F6820-GP\n");
 
 	return 0;
+}
+
+int board_eth_init(bd_t *bis)
+{
+	cpu_eth_init(bis); /* Built in controller(s) come first */
+	return pci_eth_init(bis);
 }

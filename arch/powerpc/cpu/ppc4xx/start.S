@@ -760,14 +760,13 @@ _start:
 #endif
 
 	bl	cpu_init_f	/* run low-level CPU init code	   (from Flash) */
-#ifdef CONFIG_SYS_GENERIC_BOARD
 	mr	r3, r1
-	bl	board_init_f_mem
+	bl	board_init_f_alloc_reserve
 	mr	r1, r3
+	bl	board_init_f_init_reserve
 	li	r0,0
 	stwu	r0, -4(r1)
 	stwu	r0, -4(r1)
-#endif
 	li	r3, 0
 	bl	board_init_f
 	/* NOTREACHED - board_init_f() does not return */
@@ -1036,13 +1035,12 @@ _start:
 	GET_GOT			/* initialize GOT access			*/
 
 	bl	cpu_init_f	/* run low-level CPU init code	   (from Flash) */
-#ifdef CONFIG_SYS_GENERIC_BOARD
 	mr	r3, r1
-	bl	board_init_f_mem
+	bl	board_init_f_alloc_reserve
 	mr	r1, r3
+	bl	board_init_f_init_reserve
 	stwu	r0, -4(r1)
 	stwu	r0, -4(r1)
-#endif
 	li	r3, 0
 	bl	board_init_f	/* run first part of init code (from Flash)	*/
 	/* NOTREACHED - board_init_f() does not return */
@@ -1795,48 +1793,10 @@ ppc405ep_init:
 ..no_pllset:
 #endif /* CONFIG_BUBINGA */
 
-#ifdef CONFIG_TAIHU
-	mfdcr	r4, CPC0_BOOT
-	andi.	r5, r4, CPC0_BOOT_SEP@l
-	bne	strap_1			/* serial eeprom present */
-	addis	r5,0,CPLD_REG0_ADDR@h
-	ori	r5,r5,CPLD_REG0_ADDR@l
-	andi.	r5, r5, 0x10
-	bne	_pci_66mhz
-#endif /* CONFIG_TAIHU */
-
-#if defined(CONFIG_ZEUS)
-	mfdcr	r4, CPC0_BOOT
-	andi.	r5, r4, CPC0_BOOT_SEP@l
-	bne	strap_1			/* serial eeprom present */
-	lis	r3,0x0000
-	addi	r3,r3,0x3030
-	lis	r4,0x8042
-	addi	r4,r4,0x223e
-	b	1f
-strap_1:
-	mfdcr	r3, CPC0_PLLMR0
-	mfdcr	r4, CPC0_PLLMR1
-	b	1f
-#endif
-
 	addis	r3,0,PLLMR0_DEFAULT@h	/* PLLMR0 default value */
 	ori	r3,r3,PLLMR0_DEFAULT@l	/* */
 	addis	r4,0,PLLMR1_DEFAULT@h	/* PLLMR1 default value */
 	ori	r4,r4,PLLMR1_DEFAULT@l	/* */
-
-#ifdef CONFIG_TAIHU
-	b	1f
-_pci_66mhz:
-	addis	r3,0,PLLMR0_DEFAULT_PCI66@h
-	ori	r3,r3,PLLMR0_DEFAULT_PCI66@l
-	addis	r4,0,PLLMR1_DEFAULT_PCI66@h
-	ori	r4,r4,PLLMR1_DEFAULT_PCI66@l
-	b	1f
-strap_1:
-	mfdcr	r3, CPC0_PLLMR0
-	mfdcr	r4, CPC0_PLLMR1
-#endif /* CONFIG_TAIHU */
 
 1:
 	b	pll_write		/* Write the CPC0_PLLMR with new value */

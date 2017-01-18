@@ -6,10 +6,12 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dt-bindings/gpio/gpio.h>
 #include <errno.h>
 #include <fdtdec.h>
 #include <malloc.h>
 #include <asm/gpio.h>
+#include <linux/bug.h>
 #include <linux/ctype.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -48,8 +50,7 @@ static int gpio_to_device(unsigned int gpio, struct gpio_desc *desc)
 	return ret ? ret : -ENOENT;
 }
 
-int gpio_lookup_name(const char *name, struct udevice **devp,
-		     unsigned int *offsetp, unsigned int *gpiop)
+int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc)
 {
 	struct gpio_dev_priv *uc_priv = NULL;
 	struct udevice *dev;
@@ -57,8 +58,6 @@ int gpio_lookup_name(const char *name, struct udevice **devp,
 	int numeric;
 	int ret;
 
-	if (devp)
-		*devp = NULL;
 	numeric = isdigit(*name) ? simple_strtoul(name, NULL, 10) : -1;
 	for (ret = uclass_first_device(UCLASS_GPIO, &dev);
 	     dev;
@@ -84,12 +83,51 @@ int gpio_lookup_name(const char *name, struct udevice **devp,
 	if (!dev)
 		return ret ? ret : -EINVAL;
 
+	desc->dev = dev;
+	desc->offset = offset;
+
+	return 0;
+}
+
+int gpio_lookup_name(const char *name, struct udevice **devp,
+		     unsigned int *offsetp, unsigned int *gpiop)
+{
+	struct gpio_desc desc;
+	int ret;
+
 	if (devp)
-		*devp = dev;
+		*devp = NULL;
+	ret = dm_gpio_lookup_name(name, &desc);
+	if (ret)
+		return ret;
+
+	if (devp)
+		*devp = desc.dev;
 	if (offsetp)
-		*offsetp = offset;
-	if (gpiop)
-		*gpiop = uc_priv->gpio_base + offset;
+		*offsetp = desc.offset;
+	if (gpiop) {
+		struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(desc.dev);
+
+		*gpiop = uc_priv->gpio_base + desc.offset;
+	}
+
+	return 0;
+}
+
+int gpio_xlate_offs_flags(struct udevice *dev,
+					 struct gpio_desc *desc,
+					 struct fdtdec_phandle_args *args)
+{
+	if (args->args_count < 1)
+		return -EINVAL;
+
+	desc->offset = args->args[0];
+
+	if (args->args_count < 2)
+		return 0;
+
+	if (args->args[1] & GPIO_ACTIVE_LOW)
+		desc->flags = GPIOD_ACTIVE_LOW;
 
 	return 0;
 }
@@ -99,17 +137,13 @@ static int gpio_find_and_xlate(struct gpio_desc *desc,
 {
 	struct dm_gpio_ops *ops = gpio_get_ops(desc->dev);
 
-	/* Use the first argument as the offset by default */
-	if (args->args_count > 0)
-		desc->offset = args->args[0];
+	if (ops->xlate)
+		return ops->xlate(desc->dev, desc, args);
 	else
-		desc->offset = -1;
-	desc->flags = 0;
-
-	return ops->xlate ? ops->xlate(desc->dev, desc, args) : 0;
+		return gpio_xlate_offs_flags(desc->dev, desc, args);
 }
 
-static int dm_gpio_request(struct gpio_desc *desc, const char *label)
+int dm_gpio_request(struct gpio_desc *desc, const char *label)
 {
 	struct udevice *dev = desc->dev;
 	struct gpio_dev_priv *uc_priv;
@@ -136,6 +170,7 @@ static int dm_gpio_request(struct gpio_desc *desc, const char *label)
 
 static int dm_gpio_requestf(struct gpio_desc *desc, const char *fmt, ...)
 {
+#if !defined(CONFIG_SPL_BUILD) || !defined(CONFIG_USE_TINY_PRINTF)
 	va_list args;
 	char buf[40];
 
@@ -143,6 +178,9 @@ static int dm_gpio_requestf(struct gpio_desc *desc, const char *fmt, ...)
 	vscnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 	return dm_gpio_request(desc, buf);
+#else
+	return dm_gpio_request(desc, fmt);
+#endif
 }
 
 /**
@@ -181,6 +219,7 @@ int gpio_request(unsigned gpio, const char *label)
  */
 int gpio_requestf(unsigned gpio, const char *fmt, ...)
 {
+#if !defined(CONFIG_SPL_BUILD) || !defined(CONFIG_USE_TINY_PRINTF)
 	va_list args;
 	char buf[40];
 
@@ -188,6 +227,9 @@ int gpio_requestf(unsigned gpio, const char *fmt, ...)
 	vscnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 	return gpio_request(gpio, buf);
+#else
+	return gpio_request(gpio, fmt);
+#endif
 }
 
 int _dm_gpio_free(struct udevice *dev, uint offset)
@@ -230,10 +272,14 @@ int gpio_free(unsigned gpio)
 	return _dm_gpio_free(desc.dev, desc.offset);
 }
 
-static int check_reserved(struct gpio_desc *desc, const char *func)
+static int check_reserved(const struct gpio_desc *desc, const char *func)
 {
-	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(desc->dev);
+	struct gpio_dev_priv *uc_priv;
 
+	if (!dm_gpio_is_valid(desc))
+		return -ENOENT;
+
+	uc_priv = dev_get_uclass_priv(desc->dev);
 	if (!uc_priv->name[desc->offset]) {
 		printf("%s: %s: error: gpio %s%d not reserved\n",
 		       desc->dev->name, func,
@@ -293,7 +339,7 @@ int gpio_direction_output(unsigned gpio, int value)
 							desc.offset, value);
 }
 
-int dm_gpio_get_value(struct gpio_desc *desc)
+int dm_gpio_get_value(const struct gpio_desc *desc)
 {
 	int value;
 	int ret;
@@ -307,7 +353,7 @@ int dm_gpio_get_value(struct gpio_desc *desc)
 	return desc->flags & GPIOD_ACTIVE_LOW ? !value : value;
 }
 
-int dm_gpio_set_value(struct gpio_desc *desc, int value)
+int dm_gpio_set_value(const struct gpio_desc *desc, int value)
 {
 	int ret;
 
@@ -319,6 +365,38 @@ int dm_gpio_set_value(struct gpio_desc *desc, int value)
 		value = !value;
 	gpio_get_ops(desc->dev)->set_value(desc->dev, desc->offset, value);
 	return 0;
+}
+
+int dm_gpio_get_open_drain(struct gpio_desc *desc)
+{
+	struct dm_gpio_ops *ops = gpio_get_ops(desc->dev);
+	int ret;
+
+	ret = check_reserved(desc, "get_open_drain");
+	if (ret)
+		return ret;
+
+	if (ops->set_open_drain)
+		return ops->get_open_drain(desc->dev, desc->offset);
+	else
+		return -ENOSYS;
+}
+
+int dm_gpio_set_open_drain(struct gpio_desc *desc, int value)
+{
+	struct dm_gpio_ops *ops = gpio_get_ops(desc->dev);
+	int ret;
+
+	ret = check_reserved(desc, "set_open_drain");
+	if (ret)
+		return ret;
+
+	if (ops->set_open_drain)
+		ret = ops->set_open_drain(desc->dev, desc->offset, value);
+	else
+		return 0; /* feature not supported -> ignore setting */
+
+	return ret;
 }
 
 int dm_gpio_set_dir_flags(struct gpio_desc *desc, ulong flags)
@@ -546,6 +624,24 @@ int gpio_get_values_as_int(const int *gpio_list)
 	return vector;
 }
 
+int dm_gpio_get_values_as_int(const struct gpio_desc *desc_list, int count)
+{
+	unsigned bitmask = 1;
+	unsigned vector = 0;
+	int ret, i;
+
+	for (i = 0; i < count; i++) {
+		ret = dm_gpio_get_value(&desc_list[i]);
+		if (ret < 0)
+			return ret;
+		else if (ret)
+			vector |= bitmask;
+		bitmask <<= 1;
+	}
+
+	return vector;
+}
+
 static int _gpio_request_by_name_nodev(const void *blob, int node,
 				       const char *list_name, int index,
 				       struct gpio_desc *desc, int flags,
@@ -556,6 +652,7 @@ static int _gpio_request_by_name_nodev(const void *blob, int node,
 
 	desc->dev = NULL;
 	desc->offset = 0;
+	desc->flags = 0;
 	ret = fdtdec_parse_phandle_with_args(blob, node, list_name,
 					     "#gpio-cells", 0, index, &args);
 	if (ret) {
@@ -717,7 +814,7 @@ static int gpio_renumber(struct udevice *removed_dev)
 	return 0;
 }
 
-int gpio_get_number(struct gpio_desc *desc)
+int gpio_get_number(const struct gpio_desc *desc)
 {
 	struct udevice *dev = desc->dev;
 	struct gpio_dev_priv *uc_priv;

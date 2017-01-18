@@ -22,8 +22,6 @@
  */
 #include <asm/hardware.h>
 
-#define CONFIG_SYS_GENERIC_BOARD
-
 #define CONFIG_PM9G45		1	/* It's an Ronetix PM9G45 */
 #define CONFIG_SYS_AT91_CPU_NAME	"AT91SAM9G45"
 
@@ -59,7 +57,6 @@
 #define CONFIG_RED_LED		GPIO_PIN_PD(31) /* this is the user1 led */
 #define CONFIG_GREEN_LED	GPIO_PIN_PD(0)  /* this is the user2 led */
 
-#define CONFIG_BOOTDELAY	3
 
 /*
  * BOOTP options
@@ -72,11 +69,7 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_PING		1
-#define CONFIG_CMD_DHCP		1
 #define CONFIG_CMD_NAND		1
-#define CONFIG_CMD_USB		1
 
 #define CONFIG_CMD_JFFS2		1
 #define CONFIG_JFFS2_CMDLINE		1
@@ -149,7 +142,6 @@
 
 #define CONFIG_BAUDRATE			115200
 
-#define CONFIG_SYS_PROMPT		"U-Boot> "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
@@ -157,7 +149,6 @@
 #define CONFIG_SYS_LONGHELP		1
 #define CONFIG_CMDLINE_EDITING		1
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
 
 /*
  * Size of malloc() pool

@@ -54,13 +54,8 @@
  */
 #define CONFIG_SYS_NO_FLASH		/* Declare no flash (NOR/SPI) */
 #define CONFIG_CMD_ENV
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_I2C
 #define CONFIG_CMD_IDE
 #ifndef CONFIG_NETSPACE_MINI_V2 /* No USB ports on Network Space v2 Mini */
-#define CONFIG_CMD_USB
 #endif
 
 /*
@@ -94,17 +89,7 @@
 #undef CONFIG_ENV_SPI_MAX_HZ
 #undef CONFIG_SYS_IDE_MAXBUS
 #undef CONFIG_SYS_IDE_MAXDEVICE
-#undef CONFIG_SYS_PROMPT
 #define CONFIG_ENV_SPI_MAX_HZ           20000000 /* 20Mhz */
-#define CONFIG_SYS_IDE_MAXBUS           1
-#define CONFIG_SYS_IDE_MAXDEVICE        1
-#if defined(CONFIG_D2NET_V2)
-#define CONFIG_SYS_PROMPT		"d2v2> "
-#elif defined(CONFIG_NET2BIG_V2)
-#define CONFIG_SYS_PROMPT		"2big2> "
-#else
-#define CONFIG_SYS_PROMPT		"ns2> "
-#endif
 
 /*
  * Enable platform initialisation via misc_init_r() function
@@ -127,6 +112,11 @@
 #if defined(CONFIG_NETSPACE_MAX_V2) || defined(CONFIG_D2NET_V2) || \
 	defined(CONFIG_NET2BIG_V2)
 #define CONFIG_SYS_ATA_IDE1_OFFSET      MV_SATA_PORT1_OFFSET
+#define CONFIG_SYS_IDE_MAXBUS           2
+#define CONFIG_SYS_IDE_MAXDEVICE        2
+#else
+#define CONFIG_SYS_IDE_MAXBUS           1
+#define CONFIG_SYS_IDE_MAXDEVICE        1
 #endif
 #endif /* CONFIG_MVSATA_IDE */
 
@@ -158,24 +148,12 @@
 /*
  * File systems support
  */
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-
-/*
- * Use the HUSH parser
- */
-#define CONFIG_SYS_HUSH_PARSER
 
 /*
  * Console configuration
  */
 #define CONFIG_CONSOLE_MUX
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV
-
-/*
- * Enable device tree support
- */
-#define CONFIG_OF_LIBFDT
 
 /*
  * Environment variables configurations

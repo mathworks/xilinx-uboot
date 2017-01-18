@@ -12,7 +12,6 @@
 #include "tegra20-common.h"
 
 /* High-level configuration options */
-#define V_PROMPT		"Tegra20 (TrimSlice) # "
 #define CONFIG_TEGRA_BOARD_STRING	"Compulab Trimslice"
 
 /* Board-specific serial config */
@@ -23,21 +22,15 @@
 #define CONFIG_MACH_TYPE		MACH_TYPE_TRIMSLICE
 
 /* SPI */
-#define CONFIG_TEGRA20_SFLASH
-#define CONFIG_SPI_FLASH_WINBOND
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
 
 /* I2C */
 #define CONFIG_SYS_I2C_TEGRA
-#define CONFIG_CMD_I2C
 
 /* SD/MMC */
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_TEGRA_MMC
-#define CONFIG_CMD_MMC
 
 /* Environment in SPI */
 #define CONFIG_ENV_IS_IN_SPI_FLASH
@@ -47,11 +40,9 @@
 #define CONFIG_ENV_OFFSET		(512 * 1024)
 
 /* USB Host support */
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 3
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_TEGRA
 #define CONFIG_USB_STORAGE
-#define CONFIG_CMD_USB
 
 /* USB networking support */
 #define CONFIG_USB_HOST_ETHER
@@ -59,16 +50,10 @@
 
 /* PCI host support */
 #define CONFIG_PCI
-#define CONFIG_PCI_TEGRA
 #define CONFIG_PCI_PNP
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PCI_ENUM
-
-/* PCI networking support */
-#define CONFIG_RTL8169
 
 /* General networking support */
-#define CONFIG_CMD_DHCP
 
 #include "tegra-common-post.h"
 

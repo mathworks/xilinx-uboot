@@ -15,26 +15,12 @@
 
 #define CONFIG_SYS_MONITOR_LEN		(1 << 20)
 #define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_ARCH_EARLY_INIT_R
 #define CONFIG_ARCH_MISC_INIT
-
-#define CONFIG_X86_SERIAL
 
 /* ns16550 UART is memory-mapped in Quark SoC */
 #undef  CONFIG_SYS_NS16550_PORT_MAPPED
 
-#define CONFIG_PCI_MEM_BUS		0x90000000
-#define CONFIG_PCI_MEM_PHYS		CONFIG_PCI_MEM_BUS
-#define CONFIG_PCI_MEM_SIZE		0x20000000
-
-#define CONFIG_PCI_PREF_BUS		0xb0000000
-#define CONFIG_PCI_PREF_PHYS		CONFIG_PCI_PREF_BUS
-#define CONFIG_PCI_PREF_SIZE		0x20000000
-
-#define CONFIG_PCI_IO_BUS		0x2000
-#define CONFIG_PCI_IO_PHYS		CONFIG_PCI_IO_BUS
-#define CONFIG_PCI_IO_SIZE		0xe000
-
-#define CONFIG_SYS_EARLY_PCI_INIT
 #define CONFIG_PCI_PNP
 
 #define CONFIG_STD_DEVICES_SETTINGS	"stdin=serial\0" \
@@ -43,7 +29,7 @@
 
 /* SATA is not supported in Quark SoC */
 #undef CONFIG_SCSI_AHCI
-#undef CONFIG_CMD_SCSI
+#undef CONFIG_SCSI
 
 /* Video is not supported in Quark SoC */
 #undef CONFIG_VIDEO
@@ -54,12 +40,10 @@
 #define CONFIG_SDHCI
 #define CONFIG_GENERIC_MMC
 #define CONFIG_MMC_SDMA
-#define CONFIG_CMD_MMC
 
 /* 10/100M Ethernet support */
 #define CONFIG_DESIGNWARE_ETH
 #define CONFIG_DW_ALTDESCRIPTOR
-#define CONFIG_PHYLIB
 
 /* Environment configuration */
 #define CONFIG_ENV_SECT_SIZE		0x1000

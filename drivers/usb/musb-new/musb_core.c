@@ -5,31 +5,7 @@
  * Copyright (C) 2005-2006 by Texas Instruments
  * Copyright (C) 2006-2007 Nokia Corporation
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN
- * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 /*
@@ -283,7 +259,7 @@ void musb_write_fifo(struct musb_hw_ep *hw_ep, u16 len, const u8 *src)
 	}
 }
 
-#if !defined(CONFIG_USB_MUSB_AM35X)
+#if !defined(CONFIG_USB_MUSB_AM35X) && !defined(CONFIG_USB_MUSB_PIC32)
 /*
  * Unload an endpoint's FIFO
  */
@@ -926,10 +902,17 @@ b_host:
 /*
 * Program the HDRC to start (enable interrupts, dma, etc.).
 */
+#ifndef __UBOOT__
 void musb_start(struct musb *musb)
+#else
+int musb_start(struct musb *musb)
+#endif
 {
 	void __iomem	*regs = musb->mregs;
 	u8		devctl = musb_readb(regs, MUSB_DEVCTL);
+#ifdef __UBOOT__
+	int ret;
+#endif
 
 	dev_dbg(musb->controller, "<== devctl %02x\n", devctl);
 
@@ -972,8 +955,21 @@ void musb_start(struct musb *musb)
 		if ((devctl & MUSB_DEVCTL_VBUS) == MUSB_DEVCTL_VBUS)
 			musb->is_active = 1;
 	}
+
+#ifndef __UBOOT__
 	musb_platform_enable(musb);
+#else
+	ret = musb_platform_enable(musb);
+	if (ret) {
+		musb->is_active = 0;
+		return ret;
+	}
+#endif
 	musb_writeb(regs, MUSB_DEVCTL, devctl);
+
+#ifdef __UBOOT__
+	return 0;
+#endif
 }
 
 
@@ -1417,7 +1413,7 @@ static int __devinit musb_core_init(u16 musb_type, struct musb *musb)
 		strcat(aInfo, ", dyn FIFOs");
 		musb->dyn_fifo = true;
 	}
-#ifndef CONFIG_MUSB_DISABLE_BULK_COMBINE_SPLIT
+#ifndef CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
 	if (reg & MUSB_CONFIGDATA_MPRXE) {
 		strcat(aInfo, ", bulk combine");
 		musb->bulk_combine = true;
@@ -1530,7 +1526,7 @@ static int __devinit musb_core_init(u16 musb_type, struct musb *musb)
 /*-------------------------------------------------------------------------*/
 
 #if defined(CONFIG_SOC_OMAP2430) || defined(CONFIG_SOC_OMAP3430) || \
-	defined(CONFIG_ARCH_OMAP4) || defined(CONFIG_ARCH_U8500)
+	defined(CONFIG_ARCH_OMAP4)
 
 static irqreturn_t generic_interrupt(int irq, void *__hci)
 {
@@ -1642,7 +1638,7 @@ irqreturn_t musb_interrupt(struct musb *musb)
 }
 EXPORT_SYMBOL_GPL(musb_interrupt);
 
-#ifndef CONFIG_MUSB_PIO_ONLY
+#ifndef CONFIG_USB_MUSB_PIO_ONLY
 static bool __devinitdata use_dma = 1;
 
 /* "modprobe ... use_dma=0" etc */
@@ -1991,7 +1987,7 @@ musb_init_controller(struct musb_hdrc_platform_data *plat, struct device *dev,
 
 	pm_runtime_get_sync(musb->controller);
 
-#ifndef CONFIG_MUSB_PIO_ONLY
+#ifndef CONFIG_USB_MUSB_PIO_ONLY
 	if (use_dma && dev->dma_mask) {
 		struct dma_controller	*c;
 
@@ -2174,7 +2170,7 @@ fail0:
  * bridge to a platform device; this driver then suffices.
  */
 
-#ifndef CONFIG_MUSB_PIO_ONLY
+#ifndef CONFIG_USB_MUSB_PIO_ONLY
 static u64	*orig_dma_mask;
 #endif
 
@@ -2197,7 +2193,7 @@ static int __devinit musb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-#ifndef CONFIG_MUSB_PIO_ONLY
+#ifndef CONFIG_USB_MUSB_PIO_ONLY
 	/* clobbered by use_dma=n */
 	orig_dma_mask = dev->dma_mask;
 #endif
@@ -2224,7 +2220,7 @@ static int __devexit musb_remove(struct platform_device *pdev)
 	musb_free(musb);
 	iounmap(ctrl_base);
 	device_init_wakeup(&pdev->dev, 0);
-#ifndef CONFIG_MUSB_PIO_ONLY
+#ifndef CONFIG_USB_MUSB_PIO_ONLY
 	pdev->dev.dma_mask = orig_dma_mask;
 #endif
 	return 0;

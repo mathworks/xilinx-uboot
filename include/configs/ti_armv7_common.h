@@ -17,11 +17,6 @@
 #ifndef __CONFIG_TI_ARMV7_COMMON_H__
 #define __CONFIG_TI_ARMV7_COMMON_H__
 
-/* Common define for many platforms. */
-#define CONFIG_OMAP
-#define CONFIG_OMAP_COMMON
-#define CONFIG_SYS_GENERIC_BOARD
-
 /*
  * We typically do not contain NOR flash.  In the cases where we do, we
  * undefine this later.
@@ -29,7 +24,6 @@
 #define CONFIG_SYS_NO_FLASH
 
 /* Support both device trees and ATAGs. */
-#define CONFIG_OF_LIBFDT
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
@@ -58,12 +52,41 @@
 	"fdt_addr_r=0x88000000\0" \
 	"rdaddr=0x88080000\0" \
 	"ramdisk_addr_r=0x88080000\0" \
+	"scriptaddr=0x80000000\0" \
+	"pxefile_addr_r=0x80100000\0" \
 	"bootm_size=0x10000000\0"
 
-/*
- * Default to a quick boot delay.
- */
-#define CONFIG_BOOTDELAY		1
+#define DEFAULT_MMC_TI_ARGS \
+	"mmcdev=0\0" \
+	"mmcrootfstype=ext4 rootwait\0" \
+	"finduuid=part uuid mmc ${bootpart} uuid\0" \
+	"args_mmc=run finduuid;setenv bootargs console=${console} " \
+		"${optargs} " \
+		"root=PARTUUID=${uuid} rw " \
+		"rootfstype=${mmcrootfstype}\0" \
+	"loadbootscript=load mmc ${mmcdev} ${loadaddr} boot.scr\0" \
+	"bootscript=echo Running bootscript from mmc${mmcdev} ...; " \
+		"source ${loadaddr}\0" \
+	"bootenvfile=uEnv.txt\0" \
+	"importbootenv=echo Importing environment from mmc${mmcdev} ...; " \
+		"env import -t ${loadaddr} ${filesize}\0" \
+	"loadbootenv=fatload mmc ${mmcdev} ${loadaddr} ${bootenvfile}\0" \
+	"envboot=mmc dev ${mmcdev}; " \
+		"if mmc rescan; then " \
+			"echo SD/MMC found on device ${mmcdev};" \
+			"if run loadbootscript; then " \
+				"run bootscript;" \
+			"else " \
+				"if run loadbootenv; then " \
+					"echo Loaded env from ${bootenvfile};" \
+					"run importbootenv;" \
+				"fi;" \
+				"if test -n $uenvcmd; then " \
+					"echo Running uenvcmd ...;" \
+					"run uenvcmd;" \
+				"fi;" \
+			"fi;" \
+		"fi;\0" \
 
 /*
  * DDR information.  If the CONFIG_NR_DRAM_BANKS is not defined,
@@ -76,47 +99,27 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #endif
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
+
+#ifndef CONFIG_SYS_INIT_SP_ADDR
 #define CONFIG_SYS_INIT_SP_ADDR         (NON_SECURE_SRAM_END - \
 						GENERATED_GBL_DATA_SIZE)
+#endif
 
 /* Timer information. */
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
 /* I2C IP block */
 #define CONFIG_I2C
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
-#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
-#define CONFIG_SYS_I2C_OMAP24XX
 
 /* MMC/SD IP block */
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
-#define CONFIG_OMAP_HSMMC
-#define CONFIG_CMD_MMC
 
 /* McSPI IP block */
 #define CONFIG_SPI
-#define CONFIG_OMAP3_SPI
-#define CONFIG_CMD_SPI
 
 /* GPIO block */
-#define CONFIG_OMAP_GPIO
-#define CONFIG_CMD_GPIO
-
-/*
- * GPMC NAND block.  We support 1 device and the physical address to
- * access CS0 at is 0x8000000.
- */
-#ifdef CONFIG_NAND
-#define CONFIG_NAND_OMAP_GPMC
-#ifndef CONFIG_SYS_NAND_BASE
-#define CONFIG_SYS_NAND_BASE		0x8000000
-#endif
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define CONFIG_CMD_NAND
-#endif
 
 /*
  * The following are general good-enough settings for U-Boot.  We set a
@@ -132,8 +135,6 @@
 #else
 #define CONFIG_SYS_MALLOC_LEN	(16 << 20)
 #endif
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT		"U-Boot# "
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
 #define CONFIG_BAUDRATE			115200
 #define CONFIG_ENV_VARS_UBOOT_CONFIG	/* Strongly encouraged */
@@ -161,13 +162,11 @@
  * mtdparts, both for ease of use in U-Boot and for passing information
  * on to the Linux kernel.
  */
-#if defined(CONFIG_SPI_BOOT) || defined(CONFIG_NOR) || defined(CONFIG_NAND)
+#if defined(CONFIG_SPI_BOOT) || defined(CONFIG_NOR) || defined(CONFIG_NAND) || defined(CONFIG_NAND_DAVINCI)
 #define CONFIG_MTD_DEVICE		/* Required for mtdparts */
 #define CONFIG_CMD_MTDPARTS
 #endif
 
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_BOOTZ
 #define CONFIG_SUPPORT_RAW_INITRD
 
 /*
@@ -176,11 +175,7 @@
  */
 #if defined(CONFIG_MMC) || defined(CONFIG_USB_STORAGE)
 #define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_FS_GENERIC
 #define CONFIG_PARTITION_UUIDS
 #define CONFIG_CMD_PART
 #endif
@@ -252,15 +247,14 @@
 #define CONFIG_SPL_EXT_SUPPORT
 #endif
 
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_THUMB_BUILD	/* Thumbs mode to save space in SPL */
-#endif
+#define CONFIG_SYS_THUMB_BUILD
 
 /* General parts of the framework, required. */
 #define CONFIG_SPL_I2C_SUPPORT
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_POWER_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 #define CONFIG_SPL_BOARD_INIT
 
@@ -299,5 +293,7 @@
 #else
 #define NETARGS ""
 #endif
+
+#include <config_distro_defaults.h>
 
 #endif	/* __CONFIG_TI_ARMV7_COMMON_H__ */

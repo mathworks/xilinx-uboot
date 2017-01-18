@@ -16,12 +16,12 @@
  /* High Level Configuration Options */
 #define CONFIG_MX35
 #define CONFIG_MX35_HCLK_FREQ	24000000
+#define CONFIG_SYS_FSL_CLK
 
 #define CONFIG_SYS_DCACHE_OFF
 #define CONFIG_SYS_CACHELINE_SIZE	32
 
 #define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* Only in case the value is not present in mach-types.h */
 #ifndef MACH_TYPE_FLEA3
@@ -47,6 +47,8 @@
  */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_SPD_BUS_NUM		0
 #define CONFIG_MXC_SPI
@@ -59,7 +61,6 @@
 #define CONFIG_POWER_FSL_MC13892
 #define CONFIG_SYS_FSL_PMIC_I2C_ADDR	0x8
 #define CONFIG_RTC_MC13XXX
-
 
 /* mmc driver */
 #define CONFIG_MMC
@@ -82,35 +83,22 @@
 /*
  * Command definition
  */
-#define CONFIG_CMD_PING
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
 #define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_DNS
 
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_CACHE
 
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_MII
-
-#define CONFIG_CMD_MMC
 #define CONFIG_DOS_PARTITION
 #define CONFIG_EFI_PARTITION
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
 
-#define CONFIG_CMD_GPIO
 #define CONFIG_MXC_GPIO
 
 #define CONFIG_NET_RETRY_COUNT	100
 
-#define CONFIG_BOOTDELAY	3
 
 #define CONFIG_LOADADDR		0x80800000	/* loadaddr env var */
-
 
 /*
  * Ethernet on SOC (FEC)
@@ -130,9 +118,7 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define CONFIG_SYS_PROMPT	"woodburn U-Boot > "
 #define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_HUSH_PARSER	/* Use the HUSH parser */
 
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */

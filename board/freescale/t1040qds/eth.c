@@ -17,7 +17,7 @@
 #include <fm_eth.h>
 #include <fsl_mdio.h>
 #include <malloc.h>
-#include <asm/fsl_dtsec.h>
+#include <fsl_dtsec.h>
 #include <vsc9953.h>
 
 #include "../common/fman.h"
@@ -162,7 +162,7 @@ static int t1040_qds_mdio_init(char *realbusname, u8 muxval)
 	bus->read = t1040_qds_mdio_read;
 	bus->write = t1040_qds_mdio_write;
 	bus->reset = t1040_qds_mdio_reset;
-	sprintf(bus->name, t1040_qds_mdio_name_for_muxval(muxval));
+	strcpy(bus->name, t1040_qds_mdio_name_for_muxval(muxval));
 
 	pmdio->realbus = miiphy_get_dev_by_name(realbusname);
 
