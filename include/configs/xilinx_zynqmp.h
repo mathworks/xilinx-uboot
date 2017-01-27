@@ -180,6 +180,29 @@
 # define PARTS_DEFAULT
 #endif
 
+/* 
+ * Initialize environment:
+ * Run the saveenv command on the first boot to initialize the env
+ * storage.
+ */
+#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ENV_IS_IN_MMC)
+# define ENV_CMD_PRE_SAVEENV		"mmc rescan;"
+#else
+# define ENV_CMD_PRE_SAVEENV		""
+#endif
+
+#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ZYNQMP_INIT_ENV)
+# define ENV_CMD_INIT_ENV_ONCE \
+	"uenv_init=" \
+		"echo Storing default uboot environment...;" \
+		"env set uenv_init true;" \
+		ENV_CMD_PRE_SAVEENV \
+		"saveenv\0"
+#else
+# define ENV_CMD_INIT_ENV_ONCE \
+	"uenv_init=true \0"
+#endif
+
 /* Initial environment variables */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -234,7 +257,9 @@
 		"if run sd_bitstream_existence_test; then " \
 			"run mmc_loadbit;" \
 		"fi; \0" \
+	ENV_CMD_INIT_ENV_ONCE \
 	"sdboot=if mmc dev $sdbootdev && mmcinfo; then " \
+			"run uenv_init; " \
 			"run uenvboot; " \
 			"run sd_boot_loadbit; " \
 			"echo Copying Linux from SD to RAM... && " \
