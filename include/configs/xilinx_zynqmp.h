@@ -184,10 +184,15 @@
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"kernel_addr=0x80000\0" \
-	"initrd_addr=0xa00000\0" \
+	"initrd_addr=0x2000000\0" \
+	"initrd_high=0x10000000\0" \
 	"initrd_size=0x2000000\0" \
+	"initrd_image=uramdisk.image.gz\0"	\
 	"fdt_addr=4000000\0" \
 	"fdt_high=0x10000000\0" \
+	"fdt_image=devicetree.dtb\0"	\
+	"bitstream_addr=0x1000000\0"	\
+	"bitstream_image=system.bit\0"	\
 	"loadbootenv_addr=0x100000\0" \
 	"sdbootdev=0\0"\
 	"kernel_offset=0x180000\0" \
@@ -220,10 +225,27 @@
 			"echo Running uenvcmd ...; " \
 			"run uenvcmd; " \
 		"fi\0" \
-	"sdboot=mmc dev $sdbootdev && mmcinfo && run uenvboot || run sdroot$sdbootdev; " \
-		"load mmc $sdbootdev:$partid $fdt_addr system.dtb && " \
-		"load mmc $sdbootdev:$partid $kernel_addr Image && " \
-		"booti $kernel_addr - $fdt_addr\0" \
+	"mmc_loadbit=echo Loading bitstream from SD/MMC/eMMC to RAM.. && " \
+		"mmcinfo && " \
+		"load mmc $sdbootdev:$partid ${bitstream_addr} ${bitstream_image} && " \
+		"fpga loadb $sdbootdev:$partid ${bitstream_addr} ${filesize}\0" \
+	"sd_bitstream_existence_test=test -e mmc $sdbootdev:$partid /${bitstream_image}\0" \
+	"sd_boot_loadbit=" \
+		"if run sd_bitstream_existence_test; then " \
+			"run mmc_loadbit;" \
+		"fi; \0" \
+	"sdboot=if mmc dev $sdbootdev && mmcinfo; then " \
+			"run uenvboot; " \
+			"run sd_boot_loadbit; " \
+			"echo Copying Linux from SD to RAM... && " \
+			"load mmc $sdbootdev:$partid $kernel_addr Image && " \
+			"load mmc $sdbootdev:$partid $fdt_addr $fdt_image && " \
+			"if load mmc 0 ${initrd_addr} ${initrd_image}; then " \
+				"booti ${kernel_addr} ${initrd_addr} ${fdt_addr}; " \
+			"else " \
+				"booti ${kernel_addr} - ${fdt_addr}; " \
+			"fi &&" \
+		"fi\0" \
 	"nandboot=nand info && nand read $fdt_addr $fdt_offset $fdt_size && " \
 		  "nand read $kernel_addr $kernel_offset $kernel_size && " \
 		  "booti $kernel_addr - $fdt_addr\0" \
