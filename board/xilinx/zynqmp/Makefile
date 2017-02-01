@@ -18,6 +18,8 @@ init-objs := psu_init_gpl.o
 $(if $(CONFIG_SPL_BUILD),\
 $(warning Put custom psu_init_gpl.c/h to board/xilinx/zynqmp/custom_hw_platform/))
 endif
+else
+init-objs += xil_io.o
 endif
 
 obj-$(CONFIG_SPL_BUILD) += $(init-objs)
@@ -27,6 +29,7 @@ CFLAGS_REMOVE_psu_init_gpl.o := -Wstrict-prototypes
 
 # To include xil_io.h
 CFLAGS_psu_init_gpl.o := -I$(srctree)/$(src)
+CFLAGS_xil_io.o := -I$(srctree)/$(src)
 
 # To suppress "warning: cast to pointer from integer of different size"
 CFLAGS_psu_init_gpl.o += -Wno-int-to-pointer-cast
