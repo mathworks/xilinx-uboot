@@ -19,10 +19,18 @@ config SYS_CONFIG_NAME
 
 config BOOT_INIT_FILE
 	string "boot.bin init register filename"
+	depends on SPL
 	default ""
 	help
 	  Add register writes to boot.bin format (max 256 pairs).
 	  Expect a table of register-value pairs, e.g. "0x12345678 0x4321"
+
+config PMUFW_INIT_FILE
+	string "PMU firwmare"
+	depends on SPL
+	default ""
+	help
+	  Include PMUFW to boot.bin.
 
 config ZYNQMP_QSPI
 	bool "Configure ZynqMP QSPI"
@@ -48,6 +56,8 @@ config SPL_ZYNQMP_ALT_BOOTMODE
 	default 0x5 if SD_MODE1
 	default 0x6 if EMMC_MODE
 	default 0x7 if USB_MODE
+	default 0xa if SW_USBHOST_MODE
+	default 0xb if SW_SATA_MODE
 
 choice
 	prompt "Boot mode"
@@ -77,6 +87,12 @@ config EMMC_MODE
 
 config USB_MODE
 	bool "USB"
+
+config SW_USBHOST_MODE
+	bool "SW USBHOST_MODE"
+
+config SW_SATA_MODE
+	bool "SW SATA_MODE"
 
 endchoice
 
