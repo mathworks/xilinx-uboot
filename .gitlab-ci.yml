@@ -92,10 +92,10 @@ buildroot_trigger_job:
                 curl -X POST
                 -F token=${CONFIG_BR_BUILD_TOKEN}
                 -F ref=${CONFIG_BR_BUILD_REF}
-                -F variables[CONFIG_ZYNQ_UBOOT_URL]=${CI_PROJECT_URL}.git
-                -F variables[CONFIG_ZYNQ_UBOOT_VER]=${CI_BUILD_REF_NAME}
-                -F variables[CONFIG_ZYNQMP_UBOOT_URL]=${CI_PROJECT_URL}.git
-                -F variables[CONFIG_ZYNQMP_UBOOT_VER]=${CI_BUILD_REF_NAME}
+                -F variables[CONFIG_ZYNQ_UBOOT_URL]=${CI_REPOSITORY_URL}
+                -F variables[CONFIG_ZYNQ_UBOOT_VER]=${CI_COMMIT_REF_NAME}
+                -F variables[CONFIG_ZYNQMP_UBOOT_URL]=${CI_REPOSITORY_URL}
+                -F variables[CONFIG_ZYNQMP_UBOOT_VER]=${CI_COMMIT_REF_NAME}
                 -F variables[CONFIG_SOCFPGA_SKIP]=1
                 ${CONFIG_BR_TRIGGER_URL};
             fi;'
