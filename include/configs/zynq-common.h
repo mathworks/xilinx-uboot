@@ -200,28 +200,7 @@
 # endif
 #endif
 
-/* 
- * Initialize environment:
- * Run the saveenv command on the first boot to initialize the env
- * storage.
- */
-#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ENV_IS_IN_MMC)
-# define CONFIG_CMD_PRE_SAVEENV		"mmc rescan;"
-#else
-# define CONFIG_CMD_PRE_SAVEENV		""
-#endif
-
-#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ZYNQ_INIT_ENV)
-# define CONFIG_INIT_ENV_ONCE \
-	"uenv_init=" \
-		"echo Storing default uboot environment...;" \
-		"env set uenv_init true;" \
-		CONFIG_CMD_PRE_SAVEENV \
-		"saveenv\0"
-#else
-# define CONFIG_INIT_ENV_ONCE \
-	"uenv_init=true \0"
-#endif
+#include <configs/mw_xilinx_common.h>
 
 /* enable preboot to be loaded before CONFIG_BOOTDELAY */
 #define CONFIG_PREBOOT
@@ -265,7 +244,7 @@
 		"if run sd_bitstream_existence_test; then " \
 			"run mmc_loadbit;" \
 		"fi; \0" \
-	CONFIG_INIT_ENV_ONCE \
+	ENV_CMD_INIT_ENV_ONCE \
 	"norboot=echo Copying Linux from NOR flash to RAM... && " \
 		"cp.b 0xE2100000 ${kernel_load_address} ${kernel_size} && " \
 		"cp.b 0xE2600000 ${devicetree_load_address} ${devicetree_size} && " \
