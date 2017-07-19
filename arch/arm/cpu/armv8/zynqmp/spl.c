@@ -83,6 +83,7 @@ u32 spl_boot_device(void)
 	case JTAG_MODE:
 		return BOOT_DEVICE_RAM;
 #ifdef CONFIG_SPL_MMC_SUPPORT
+	case SD1_LSHFT_MODE:
 	case EMMC_MODE:
 	case SD_MODE:
 	case SD_MODE1:
@@ -91,6 +92,15 @@ u32 spl_boot_device(void)
 #ifdef CONFIG_SPL_DFU_SUPPORT
 	case USB_MODE:
 		return BOOT_DEVICE_DFU;
+#endif
+#ifdef CONFIG_SPL_SATA_SUPPORT
+	case SW_SATA_MODE:
+		return BOOT_DEVICE_SATA;
+#endif
+#ifdef CONFIG_SPL_SPI_SUPPORT
+	case QSPI_MODE_24BIT:
+	case QSPI_MODE_32BIT:
+		return BOOT_DEVICE_SPI;
 #endif
 	default:
 		printf("Invalid Boot Mode:0x%x\n", bootmode);
@@ -124,6 +134,8 @@ __weak void psu_init(void)
 #ifdef CONFIG_SPL_OS_BOOT
 int spl_start_uboot(void)
 {
+	handoff_setup();
+
 	return 0;
 }
 #endif

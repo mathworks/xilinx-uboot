@@ -1,5 +1,29 @@
 if ARCH_ZYNQMP
 
+config SPL_FAT_SUPPORT
+	default y
+
+config SPL_LIBCOMMON_SUPPORT
+	default y
+
+config SPL_LIBDISK_SUPPORT
+	default y
+
+config SPL_LIBGENERIC_SUPPORT
+	default y
+
+config SPL_MMC_SUPPORT
+	default y
+
+config SPL_SERIAL_SUPPORT
+	default y
+
+config SPL_SPI_FLASH_SUPPORT
+	default y if ZYNQ_QSPI
+
+config SPL_SPI_SUPPORT
+	default y if ZYNQ_QSPI
+
 config SYS_BOARD
 	default "zynqmp"
 
@@ -39,6 +63,9 @@ config ZYNQMP_QSPI
 config ZYNQMP_USB
 	bool "Configure ZynqMP USB"
 
+config SYS_MALLOC_F_LEN
+	default 0x600
+
 config SPL_ZYNQMP_ALT_BOOTMODE_ENABLED
 	bool "Overwrite SPL bootmode"
 	depends on SPL
@@ -58,6 +85,7 @@ config SPL_ZYNQMP_ALT_BOOTMODE
 	default 0x7 if USB_MODE
 	default 0xa if SW_USBHOST_MODE
 	default 0xb if SW_SATA_MODE
+	default 0xe if SD1_LSHFT_MODE
 
 choice
 	prompt "Boot mode"
@@ -94,6 +122,28 @@ config SW_USBHOST_MODE
 config SW_SATA_MODE
 	bool "SW SATA_MODE"
 
+config SD1_LSHFT_MODE
+	bool "SD1_LSHFT_MODE"
+
 endchoice
+
+# Temporary Kconfig options which needs to be fixed
+config MINI_EMMC
+	bool
+
+config MINI_QSPI
+	bool
+
+config MINI_NAND
+	bool
+
+config SPI_GENERIC
+	bool
+
+config ZYNQ_I2C0
+	bool "Xilinx I2C0 controller"
+
+config ZYNQ_I2C1
+	bool "Xilinx I2C1 controller"
 
 endif

@@ -20,9 +20,6 @@ int Xil_In32(unsigned long addr);
 void prog_reg(unsigned long addr, unsigned long mask,
 		     unsigned long shift, unsigned long value);
 
-void mask_delay(u32 delay);
 void usleep(u32 sleep);
-int mask_poll(u32 add, u32 mask);
-int mask_pollOnValue(u32 add, u32 mask, u32 value);
 
 #endif /* XIL_IO_H */

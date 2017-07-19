@@ -34,13 +34,6 @@
 /* Have release address at the end of 256MB for now */
 #define CPU_RELEASE_ADDR	0xFFFFFF0
 
-/* Cache Definitions */
-#define CONFIG_SYS_CACHELINE_SIZE	64
-
-#if !defined(CONFIG_IDENT_STRING)
-# define CONFIG_IDENT_STRING		" Xilinx ZynqMP"
-#endif
-
 #define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
 
 /* Generic Timer Definitions - setup in EL3. Setup by ATF for other cases */
@@ -87,10 +80,6 @@
 #endif
 #define CONFIG_AUTO_COMPLETE
 
-/* PXE */
-#define CONFIG_CMD_PXE
-#define CONFIG_MENU
-
 #ifdef CONFIG_ZYNQMP_QSPI
 # define CONFIG_SPI_GENERIC
 # define CONFIG_SF_DEFAULT_SPEED	30000000
@@ -99,10 +88,8 @@
 #endif
 
 #if defined(CONFIG_ZYNQ_SDHCI)
-# define CONFIG_MMC
 # define CONFIG_GENERIC_MMC
 # define CONFIG_SUPPORT_EMMC_BOOT
-# define CONFIG_SDHCI
 # ifndef CONFIG_ZYNQ_SDHCI_MAX_FREQ
 #  define CONFIG_ZYNQ_SDHCI_MAX_FREQ	200000000
 # endif
@@ -124,18 +111,33 @@
 # define CONFIG_MTD_DEVICE
 #endif
 
+#if !defined(CONFIG_SPL_BUILD)
+#define CONFIG_CMD_UBI
+#define CONFIG_RBTREE
+#define CONFIG_CMD_UBIFS
+#define CONFIG_LZO
+
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITIONS
+
+#define CONFIG_MTD_UBI_WL_THRESHOLD 4096
+#define CONFIG_MTD_UBI_BEB_LIMIT 0
+
+#if defined(CONFIG_ZYNQMP_QSPI)
+/* SPI layer registers with MTD */
+#define CONFIG_SPI_FLASH_MTD
+#endif
+#endif
+
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LOAD_ADDR		0x8000000
 
 #if defined(CONFIG_ZYNQMP_USB)
-#define CONFIG_USB_MAX_CONTROLLER_COUNT         2
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS      2
-#define CONFIG_USB_XHCI_ZYNQMP
 
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x1800000
 #define DFU_DEFAULT_POLL_TIMEOUT	300
-#define CONFIG_USB_FUNCTION_DFU
-#define CONFIG_DFU_RAM
 #define CONFIG_USB_CABLE_CHECK
 #define CONFIG_CMD_THOR_DOWNLOAD
 #define CONFIG_USB_FUNCTION_THOR
@@ -180,28 +182,7 @@
 # define PARTS_DEFAULT
 #endif
 
-/* 
- * Initialize environment:
- * Run the saveenv command on the first boot to initialize the env
- * storage.
- */
-#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ENV_IS_IN_MMC)
-# define ENV_CMD_PRE_SAVEENV		"mmc rescan;"
-#else
-# define ENV_CMD_PRE_SAVEENV		""
-#endif
-
-#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ZYNQMP_INIT_ENV)
-# define ENV_CMD_INIT_ENV_ONCE \
-	"uenv_init=" \
-		"echo Storing default uboot environment...;" \
-		"env set uenv_init true;" \
-		ENV_CMD_PRE_SAVEENV \
-		"saveenv\0"
-#else
-# define ENV_CMD_INIT_ENV_ONCE \
-	"uenv_init=true \0"
-#endif
+#include <configs/mw_xilinx_common.h>
 
 /* Initial environment variables */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
@@ -223,6 +204,7 @@
 	"kernel_size=0x1e00000\0" \
 	"fdt_size=0x80000\0" \
 	"bootenv=uEnv.txt\0" \
+	"bootargs=earlycon clk_ignore_unused\0" \
 	"loadbootenv=load mmc $sdbootdev:$partid ${loadbootenv_addr} ${bootenv}\0" \
 	"importbootenv=echo Importing environment from SD ...; " \
 		"env import -t ${loadbootenv_addr} $filesize\0" \
@@ -274,14 +256,14 @@
 	"nandboot=nand info && nand read $fdt_addr $fdt_offset $fdt_size && " \
 		  "nand read $kernel_addr $kernel_offset $kernel_size && " \
 		  "booti $kernel_addr - $fdt_addr\0" \
-	"xen_prepare_dt=fdt addr $fdt_addr && fdt resize && " \
+	"xen_prepare_dt=fdt addr $fdt_addr && fdt resize 128 && " \
 		"fdt set /chosen \\\\#address-cells <1> && " \
 		"fdt set /chosen \\\\#size-cells <1> && " \
 		"fdt mknod /chosen dom0 && " \
 		"fdt set /chosen/dom0 compatible \"xen,linux-zimage\" \"xen,multiboot-module\" && " \
 		"fdt set /chosen/dom0 reg <0x80000 0x$filesize> && " \
 		"fdt set /chosen xen,xen-bootargs \"console=dtuart dtuart=serial0 dom0_mem=512M bootscrub=0 maxcpus=1 timer_slop=0\" && " \
-		"fdt set /chosen xen,dom0-bootargs \"console=serial0 earlycon=xen earlyprintk=xen maxcpus=1\"\0" \
+		"fdt set /chosen xen,dom0-bootargs \"console=serial0 earlycon=xen earlyprintk=xen maxcpus=1 clk_ignore_unused\"\0" \
 	"xen_prepare_dt_qemu=run xen_prepare_dt && " \
 		"fdt set /cpus/cpu@1 device_type \"none\" && " \
 		"fdt set /cpus/cpu@2 device_type \"none\" && " \
@@ -332,6 +314,7 @@
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
+#define CONFIG_PANIC_HANG
 #define CONFIG_SYS_MAXARGS		64
 
 /* Ethernet driver */
@@ -366,10 +349,8 @@
 #endif
 
 #ifdef CONFIG_SATA_CEVA
-#define CONFIG_AHCI
 #define CONFIG_LIBATA
 #define CONFIG_SCSI_AHCI
-#define CONFIG_SCSI_AHCI_PLAT
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	2
 #define CONFIG_SYS_SCSI_MAX_LUN		1
 #define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
@@ -377,19 +358,13 @@
 #define CONFIG_SCSI
 #endif
 
-#define CONFIG_ARM_SMC
-
-#define CONFIG_FPGA_ZYNQMPPL
-#define CONFIG_FPGA_XILINX
-#define CONFIG_FPGA
-
 #define CONFIG_SYS_BOOTM_LEN	(60 * 1024 * 1024)
 
-#define CONFIG_CMD_BOOTI
 #define CONFIG_CMD_UNZIP
 
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_CLOCKS
+#define CONFIG_CMD_CLK
 
 #define ENV_MEM_LAYOUT_SETTINGS \
 	"fdt_high=10000000\0" \
@@ -455,13 +430,18 @@
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_RAM_DEVICE
 
-#define CONFIG_SPL_OS_BOOT
+#if defined(CONFIG_SPL_SPI_FLASH_SUPPORT)
+# define CONFIG_SPL_SPI_LOAD
+# define CONFIG_SYS_SPI_KERNEL_OFFS	0x80000
+# define CONFIG_SYS_SPI_ARGS_OFFS	0xa0000
+# define CONFIG_SYS_SPI_ARGS_SIZE	0xa0000
+
+# define CONFIG_SYS_SPI_U_BOOT_OFFS	0x170000
+#endif
+
 /* u-boot is like dtb */
 #define CONFIG_SPL_FS_LOAD_ARGS_NAME	"u-boot.bin"
 #define CONFIG_SYS_SPL_ARGS_ADDR	0x8000000
@@ -474,13 +454,10 @@
 
 /* MMC support */
 #ifdef CONFIG_ZYNQ_SDHCI
-# define CONFIG_SPL_MMC_SUPPORT
 # define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 # define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR	0 /* unused */
 # define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	0 /* unused */
 # define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	0 /* unused */
-# define CONFIG_SPL_LIBDISK_SUPPORT
-# define CONFIG_SPL_FAT_SUPPORT
 # define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME	"u-boot.img"
 #endif
 
@@ -497,5 +474,7 @@
 # error "Disable CONFIG_SPL_SYS_MALLOC_SIMPLE. Full malloc needs to be used"
 #endif
 #endif
+
+#define CONFIG_BOARD_EARLY_INIT_F
 
 #endif /* __XILINX_ZYNQMP_H */

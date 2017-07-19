@@ -16,8 +16,6 @@
 #endif
 
 /* Cache options */
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
 #define CONFIG_SYS_L2CACHE_OFF
 #ifndef CONFIG_SYS_L2CACHE_OFF
 # define CONFIG_SYS_L2_PL310
@@ -75,25 +73,26 @@
 # define CONFIG_FLASH_CFI_DRIVER
 # undef CONFIG_SYS_FLASH_PROTECTION
 # define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
-# define CONFIG_ZYNQ_M29EW_WB_HACK
+#endif
+
+#ifdef CONFIG_NAND_ZYNQ
+#define CONFIG_CMD_NAND_LOCK_UNLOCK
+#define CONFIG_SYS_MAX_NAND_DEVICE	1
+#define CONFIG_SYS_NAND_ONFI_DETECTION
+#define CONFIG_MTD_DEVICE
 #endif
 
 /* MMC */
 #if defined(CONFIG_ZYNQ_SDHCI)
-# define CONFIG_MMC
 # define CONFIG_GENERIC_MMC
-# define CONFIG_SDHCI
 # define CONFIG_ZYNQ_SDHCI_MAX_FREQ	52000000
 #endif
 
 #ifdef CONFIG_USB_EHCI_ZYNQ
 # define CONFIG_EHCI_IS_TDI
-# define CONFIG_USB_MAX_CONTROLLER_COUNT	2
 
 # define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x600000
 # define DFU_DEFAULT_POLL_TIMEOUT	300
-# define CONFIG_USB_FUNCTION_DFU
-# define CONFIG_DFU_RAM
 # define CONFIG_USB_CABLE_CHECK
 # define CONFIG_CMD_THOR_DOWNLOAD
 # define CONFIG_THOR_RESET_OFF
@@ -108,7 +107,6 @@
 	"thor_ram=run dfu_ram_info && thordown 0 ram 0\0"
 
 # if defined(CONFIG_ZYNQ_SDHCI)
-#  define CONFIG_DFU_MMC
 #  define DFU_ALT_INFO_MMC \
 	"dfu_mmc_info=" \
 	"set dfu_alt_info " \
@@ -139,10 +137,8 @@
 
 /* NAND */
 #ifdef CONFIG_NAND_ZYNQ
-# define CONFIG_CMD_NAND
 # define CONFIG_CMD_NAND_LOCK_UNLOCK
 # define CONFIG_SYS_MAX_NAND_DEVICE 1
-# define CONFIG_SYS_NAND_SELF_INIT
 # define CONFIG_SYS_NAND_ONFI_DETECTION
 # define CONFIG_MTD_DEVICE
 #endif
@@ -197,33 +193,14 @@
 # endif
 
 # define CONFIG_ENV_SECT_SIZE		CONFIG_ENV_SIZE
+
+/* cc108 requires to be 0xF00000 to have boot.bin with bitstream included */
 # ifndef CONFIG_ENV_OFFSET
 #  define CONFIG_ENV_OFFSET		0xE0000
 # endif
 #endif
 
-/* 
- * Initialize environment:
- * Run the saveenv command on the first boot to initialize the env
- * storage.
- */
-#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ENV_IS_IN_MMC)
-# define CONFIG_CMD_PRE_SAVEENV		"mmc rescan;"
-#else
-# define CONFIG_CMD_PRE_SAVEENV		""
-#endif
-
-#if defined(CONFIG_ENV_IS_IN_FAT) || defined(CONFIG_ZYNQ_INIT_ENV)
-# define CONFIG_INIT_ENV_ONCE \
-	"uenv_init=" \
-		"echo Storing default uboot environment...;" \
-		"env set uenv_init true;" \
-		CONFIG_CMD_PRE_SAVEENV \
-		"saveenv\0"
-#else
-# define CONFIG_INIT_ENV_ONCE \
-	"uenv_init=true \0"
-#endif
+#include <configs/mw_xilinx_common.h>
 
 /* enable preboot to be loaded before CONFIG_BOOTDELAY */
 #define CONFIG_PREBOOT
@@ -267,7 +244,7 @@
 		"if run sd_bitstream_existence_test; then " \
 			"run mmc_loadbit;" \
 		"fi; \0" \
-	CONFIG_INIT_ENV_ONCE \
+	ENV_CMD_INIT_ENV_ONCE \
 	"norboot=echo Copying Linux from NOR flash to RAM... && " \
 		"cp.b 0xE2100000 ${kernel_load_address} ${kernel_size} && " \
 		"cp.b 0xE2600000 ${devicetree_load_address} ${devicetree_size} && " \
@@ -359,7 +336,6 @@
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_BOARD_LATE_INIT
-#define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CLOCKS
 #define CONFIG_CMD_CLK
@@ -369,11 +345,7 @@
 					sizeof(CONFIG_SYS_PROMPT) + 16)
 
 /* Physical Memory map */
-#if defined(CONFIG_CSE_QSPI) || defined(CONFIG_CSE_NOR)
-# define CONFIG_SYS_TEXT_BASE		0xFFFC0000
-#elif defined(CONFIG_CSE_NAND)
-# define CONFIG_SYS_TEXT_BASE		0x00100000
-#elif defined(CONFIG_ZYNQ_OCM)
+#if defined(CONFIG_ZYNQ_OCM)
 # define CONFIG_SYS_TEXT_BASE		0xFFFC0000
 #else
 # define CONFIG_SYS_TEXT_BASE		0x4000000
@@ -419,13 +391,9 @@
 
 /* Commands */
 #if defined(CONFIG_CMD_ZYNQ_RSA)
-# ifndef CONFIG_RSA
-#  define CONFIG_RSA
-# endif
 #define CONFIG_SHA256
 #endif
 
-#define CONFIG_CMD_BOOTZ
 #undef CONFIG_BOOTM_NETBSD
 
 #define CONFIG_SYS_HZ			1000
@@ -439,9 +407,6 @@
 /* SPL part */
 #define CONFIG_CMD_SPL
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_RAM_DEVICE
 
@@ -459,12 +424,7 @@
 
 /* MMC support */
 #ifdef CONFIG_ZYNQ_SDHCI
-#define CONFIG_SPL_MMC_SUPPORT
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR 0x300 /* address 0x60000 */
-#define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS      0x200 /* 256 KB */
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
-#define CONFIG_SPL_LIBDISK_SUPPORT
-#define CONFIG_SPL_FAT_SUPPORT
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
 #endif
 
@@ -487,9 +447,7 @@
 
 /* qspi mode is working fine */
 #ifdef CONFIG_ZYNQ_QSPI
-#define CONFIG_SPL_SPI_SUPPORT
 #define CONFIG_SPL_SPI_LOAD
-#define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x100000
 #define CONFIG_SYS_SPI_ARGS_OFFS	0x200000
 #define CONFIG_SYS_SPI_ARGS_SIZE	0x80000
@@ -507,7 +465,6 @@
 #endif
 
 /* for booting directly linux */
-#define CONFIG_SPL_OS_BOOT
 
 /* SP location before relocation, must use scratch RAM */
 #define CONFIG_SPL_TEXT_BASE	0x0

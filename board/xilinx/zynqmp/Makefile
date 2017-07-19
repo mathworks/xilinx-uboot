@@ -22,6 +22,7 @@ else
 init-objs += xil_io.o
 endif
 
+obj-$(CONFIG_ZYNQ_SDHCI) += tap_delays.o
 obj-$(CONFIG_SPL_BUILD) += $(init-objs)
 
 # Suppress "warning: function declaration isn't a prototype"

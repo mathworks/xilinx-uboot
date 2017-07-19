@@ -608,7 +608,7 @@ static int flash_full_status_check (flash_info_t * info, flash_sect_t sector,
 	case CFI_CMDSET_INTEL_EXTENDED:
 	case CFI_CMDSET_INTEL_STANDARD:
 		if ((retcode == ERR_OK)
-		    && !flash_isequal (info, sector, 0, FLASH_STATUS_DONE)) {
+		    && !flash_isset(info, sector, 0, FLASH_STATUS_DONE)) {
 			retcode = ERR_INVAL;
 			printf ("Flash %s error at address %lx\n", prompt,
 				info->start[sector]);
@@ -1456,8 +1456,8 @@ static int cfi_protect_bugfix(flash_info_t *info, long sector, int prot)
 				cmd = FLASH_CMD_PROTECT_SET;
 			else
 				cmd = FLASH_CMD_PROTECT_CLEAR;
-				flash_write_cmd(info, sector, 0,
-					  FLASH_CMD_PROTECT);
+
+			flash_write_cmd(info, sector, 0, FLASH_CMD_PROTECT);
 			flash_write_cmd(info, sector, 0, cmd);
 			/* re-enable interrupts if necessary */
 			if (flag)
@@ -2237,10 +2237,6 @@ ulong flash_get_size (phys_addr_t base, int banknum)
 		}
 
 		info->sector_count = sect_cnt;
-		/* FIXME */
-#ifdef CONFIG_ZYNQ_M29EW_WB_HACK
-		qry.max_buf_write_size = 0x8;
-#endif
 		info->buffer_size = 1 << le16_to_cpu(qry.max_buf_write_size);
 		tmp = 1 << qry.block_erase_timeout_typ;
 		info->erase_blk_tout = tmp *

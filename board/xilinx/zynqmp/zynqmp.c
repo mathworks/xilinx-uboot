@@ -6,6 +6,8 @@
  */
 
 #include <common.h>
+#include <aes.h>
+#include <rsa.h>
 #include <sata.h>
 #include <ahci.h>
 #include <scsi.h>
@@ -113,6 +115,14 @@ static char *zynqmp_get_silicon_idcode_name(void)
 }
 #endif
 
+int board_early_init_f(void)
+{
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_CLK_ZYNQMP)
+	zynqmp_pmufw_version();
+#endif
+	return 0;
+}
+
 #define ZYNQMP_VERSION_SIZE	9
 
 int board_init(void)
@@ -154,12 +164,6 @@ int board_early_init_r(void)
 		writel(ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_EN,
 		       &iou_scntr_secure->counter_control_register);
 	}
-	/* Program freq register in System counter and enable system counter */
-	writel(gd->cpu_clk, &iou_scntr->base_frequency_id_register);
-	writel(ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_HDBG |
-	       ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_EN,
-	       &iou_scntr->counter_control_register);
-
 	return 0;
 }
 
@@ -205,23 +209,13 @@ void reset_cpu(ulong addr)
 {
 }
 
-#ifdef CONFIG_SCSI_AHCI_PLAT
-void scsi_init(void)
-{
-#if defined(CONFIG_SATA_CEVA)
-	init_sata(0);
-#endif
-	ahci_init((void __iomem *)ZYNQMP_SATA_BASEADDR);
-	scsi_scan(1);
-}
-#endif
-
 int board_late_init(void)
 {
 	u32 ver, reg = 0;
 	u8 bootmode;
 	const char *mode;
 	char *new_targets;
+	int ret;
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
@@ -242,7 +236,10 @@ int board_late_init(void)
 		setenv("setup", "setenv partid 0");
 	}
 
-	reg = readl(&crlapb_base->boot_mode);
+	ret = zynqmp_mmio_read((ulong)&crlapb_base->boot_mode, &reg);
+	if (ret)
+		return -EINVAL;
+
 	if (reg >> BOOT_MODE_ALT_SHIFT)
 		reg >>= BOOT_MODE_ALT_SHIFT;
 
@@ -313,59 +310,82 @@ int board_late_init(void)
 	return 0;
 }
 
+#if defined(CONFIG_AES) || defined(CONFIG_CMD_RSA)
+#define ZYNQMP_SIP_SVC_PM_SECURE_LOAD	0xC2000019
+#endif
+
+#if defined(CONFIG_AES)
+
+#define KEY_LEN				64
+#define IV_LEN				24
+#define ZYNQMP_PM_SECURE_AES		0x1
+
+int aes_decrypt_hw(u8 *key_ptr, u8 *src_ptr, u8 *dst_ptr, u32 len)
+{
+	int ret;
+	u32 src_lo, src_hi, wlen;
+	u32 ret_payload[PAYLOAD_ARG_CNT];
+
+	if ((ulong)src_ptr != ALIGN((ulong)src_ptr,
+				    CONFIG_SYS_CACHELINE_SIZE)) {
+		debug("FAIL: Source address not aligned:%p\n", src_ptr);
+		return -EINVAL;
+	}
+
+	src_lo = (u32)(ulong)src_ptr;
+	src_hi = upper_32_bits((ulong)src_ptr);
+	wlen = DIV_ROUND_UP(len, 4);
+
+	memcpy(src_ptr + len, key_ptr, KEY_LEN + IV_LEN);
+	len = ROUND(len + KEY_LEN + IV_LEN, CONFIG_SYS_CACHELINE_SIZE);
+	flush_dcache_range((ulong)src_ptr, (ulong)(src_ptr + len));
+
+	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_LOAD, src_lo, src_hi, wlen,
+			 ZYNQMP_PM_SECURE_AES, ret_payload);
+	if (ret)
+		debug("aes_decrypt_hw fail\n");
+
+	return ret;
+}
+#endif
+
+#if defined(CONFIG_CMD_RSA)
+
+#define SIGNATURE_PPK_LEN	1028
+#define ZYNQMP_PM_SECURE_RSA		0x2
+
+int rsa_hw(u8 *key_ptr, u8 *src_ptr, u32 len)
+{
+	int ret;
+	u32 src_lo, src_hi, img_len;
+	u32 ret_payload[PAYLOAD_ARG_CNT];
+
+	if ((ulong)src_ptr != ALIGN((ulong)src_ptr,
+				    CONFIG_SYS_CACHELINE_SIZE)) {
+		debug("FAIL: Source address not aligned:%p\n", src_ptr);
+		return -EINVAL;
+	}
+
+	src_lo = (u32)(ulong)src_ptr;
+	src_hi = upper_32_bits((ulong)src_ptr);
+	img_len = len;
+	len = DIV_ROUND_UP(len, 4) * 4;
+
+	memcpy(src_ptr + len, key_ptr, SIGNATURE_PPK_LEN);
+	len = ROUND(len + SIGNATURE_PPK_LEN, CONFIG_SYS_CACHELINE_SIZE);
+	flush_dcache_range((ulong)src_ptr, (ulong)(src_ptr + len));
+
+	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_LOAD, src_lo, src_hi, img_len,
+			 ZYNQMP_PM_SECURE_RSA, ret_payload);
+	if (ret)
+		debug("rsa_hw fail\n");
+
+	return ret;
+}
+#endif
+
 int checkboard(void)
 {
 	puts("Board: Xilinx ZynqMP\n");
 	return 0;
-}
-
-#ifdef CONFIG_USB_DWC3
-static struct dwc3_device dwc3_device_data0 = {
-	.maximum_speed = USB_SPEED_HIGH,
-	.base = ZYNQMP_USB0_XHCI_BASEADDR,
-	.dr_mode = USB_DR_MODE_PERIPHERAL,
-	.index = 0,
-};
-
-static struct dwc3_device dwc3_device_data1 = {
-	.maximum_speed = USB_SPEED_HIGH,
-	.base = ZYNQMP_USB1_XHCI_BASEADDR,
-	.dr_mode = USB_DR_MODE_PERIPHERAL,
-	.index = 1,
-};
-
-int usb_gadget_handle_interrupts(int index)
-{
-	dwc3_uboot_handle_interrupt(index);
-	return 0;
-}
-
-int board_usb_init(int index, enum usb_init_type init)
-{
-	debug("%s: index %x\n", __func__, index);
-
-#if defined(CONFIG_USB_GADGET_DOWNLOAD)
-	g_dnl_set_serialnumber(CONFIG_SYS_CONFIG_NAME);
-#endif
-
-	switch (index) {
-	case 0:
-		return dwc3_uboot_init(&dwc3_device_data0);
-	case 1:
-		return dwc3_uboot_init(&dwc3_device_data1);
-	};
-
-	return -1;
-}
-
-int board_usb_cleanup(int index, enum usb_init_type init)
-{
-	dwc3_uboot_exit(index);
-	return 0;
-}
-#endif
-
-void reset_misc(void)
-{
-	psci_system_reset(true);
 }

@@ -11,7 +11,7 @@
 /dts-v1/;
 
 #include "zynqmp.dtsi"
-#include "zynqmp-clk.dtsi"
+#include "zynqmp-clk-ccf.dtsi"
 
 / {
 	model = "ZynqMP zc1751-xm017-dc3 RevA";
@@ -85,7 +85,6 @@
 
 &gem0 {
 	status = "okay";
-	local-mac-address = [00 0a 35 00 02 90];
 	phy-handle = <&phy0>;
 	phy-mode = "rgmii-id";
 	phy0: phy@0 { /* VSC8211 */
