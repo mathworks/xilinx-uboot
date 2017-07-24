@@ -26,3 +26,24 @@
 	u-boot,dm-pre-reloc;
 	status = "okay";
 };
+
+&gem0 {
+               status = "okay";
+               phy-mode = "rgmii-id";
+               phy-handle = <&ethernet_phy>;
+
+               ethernet_phy: ethernet-phy@0 {
+                       reg = <0>;
+               };
+};
+
+&qspi {
+               u-boot,dm-pre-reloc;
+              status = "okay";
+};
+
+&sdhci0 {
+               u-boot,dm-pre-reloc;
+               status = "okay";
+};
+
