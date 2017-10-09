@@ -17,8 +17,6 @@ void Xil_ICacheDisable(void);
 void Xil_DCacheDisable(void);
 void Xil_Out32(unsigned long addr, unsigned long val);
 int Xil_In32(unsigned long addr);
-void prog_reg(unsigned long addr, unsigned long mask,
-		     unsigned long shift, unsigned long value);
 
 void usleep(u32 sleep);
 
