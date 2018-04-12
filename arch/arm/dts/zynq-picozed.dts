@@ -1,7 +1,7 @@
 /*
- * Avnet PicoZED SDR2 board DTS
+ * Avnet PicoZed board DTS
  *
- * Copyright (C) 2015 Analog Devices Inc.
+ * Copyright (C) 2015 Xilinx, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
