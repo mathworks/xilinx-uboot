@@ -31,9 +31,6 @@
 #define CONFIG_SYS_MEMTEST_START	0
 #define CONFIG_SYS_MEMTEST_END		1000
 
-/* Have release address at the end of 256MB for now */
-#define CPU_RELEASE_ADDR	0xFFFFFF0
-
 #define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
 
 /* Generic Timer Definitions - setup in EL3. Setup by ATF for other cases */
@@ -61,7 +58,6 @@
 #ifndef CONFIG_SPL_BUILD
 # define CONFIG_ISO_PARTITION
 #endif
-#define CONFIG_MP
 
 /* BOOTP options */
 #define CONFIG_BOOTP_BOOTFILESIZE
@@ -253,6 +249,7 @@
 				"booti ${kernel_addr} - ${fdt_addr}; " \
 			"fi &&" \
 		"fi\0" \
+	"emmcboot=run sdboot\0" \
 	"nandboot=nand info && nand read $fdt_addr $fdt_offset $fdt_size && " \
 		  "nand read $kernel_addr $kernel_offset $kernel_size && " \
 		  "booti $kernel_addr - $fdt_addr\0" \
