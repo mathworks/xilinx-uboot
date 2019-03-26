@@ -67,6 +67,10 @@ struct zynq_i2c_registers {
 #define ZYNQ_I2C_FIFO_DEPTH		16
 #define ZYNQ_I2C_TRANSFERT_SIZE_MAX	255 /* Controller transfer limit */
 
+#define ZYNQ_I2C_DIVA_MAX	4
+#define ZYNQ_I2C_DIVB_MAX	64
+#define ZYNQ_I2C_DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+
 static struct zynq_i2c_registers *i2c_select(struct i2c_adapter *adap)
 {
 	return adap->hwadapnr ?
@@ -74,21 +78,6 @@ static struct zynq_i2c_registers *i2c_select(struct i2c_adapter *adap)
 		(struct zynq_i2c_registers *)ZYNQ_I2C_BASEADDR1 :
 		/* Zynq PS I2C0 */
 		(struct zynq_i2c_registers *)ZYNQ_I2C_BASEADDR0;
-}
-
-/* I2C init called by cmd_i2c when doing 'i2c reset'. */
-static void zynq_i2c_init(struct i2c_adapter *adap, int requested_speed,
-			  int slaveadd)
-{
-	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
-
-	/* 111MHz / ( (3 * 17) * 22 ) = ~100KHz */
-	writel((16 << ZYNQ_I2C_CONTROL_DIV_B_SHIFT) |
-		(2 << ZYNQ_I2C_CONTROL_DIV_A_SHIFT), &zynq_i2c->control);
-
-	/* Enable master mode, ack, and 7-bit addressing */
-	setbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_MS |
-		ZYNQ_I2C_CONTROL_ACKEN | ZYNQ_I2C_CONTROL_NEA);
 }
 
 #ifdef DEBUG
@@ -132,6 +121,75 @@ static void zynq_i2c_debug_status(struct zynq_i2c_registers *zynq_i2c)
 	}
 }
 #endif
+
+/*
+ * zynq_i2c_calc_divs - Calculate clock dividers
+ * @f:		I2C clock frequency
+ * @input_clk:	Input clock frequency
+ * @a:		First divider (return value)
+ * @b:		Second divider (return value)
+ *
+ * f is used as input and output variable. As input it is used as target I2C
+ * frequency. On function exit f holds the actually resulting I2C frequency.
+ *
+ * Return: 0 on success, negative errno otherwise.
+ */
+static int zynq_i2c_calc_divs(unsigned long *f, unsigned long input_clk,
+		unsigned int *a, unsigned int *b)
+{
+	unsigned long fscl = *f, best_fscl = *f, actual_fscl, temp;
+	unsigned int div_a, div_b, calc_div_a = 0, calc_div_b = 0;
+	unsigned int last_error, current_error;
+
+	/* calculate (divisor_a+1) x (divisor_b+1) */
+	temp = input_clk / (22 * fscl);
+
+	/*
+	 * If the calculated value is negative or 0, the fscl input is out of
+	 * range. Return error.
+	 */
+	if (!temp || (temp > (ZYNQ_I2C_DIVA_MAX * ZYNQ_I2C_DIVB_MAX)))
+		return -EINVAL;
+
+	last_error = -1;
+	for (div_a = 0; div_a < ZYNQ_I2C_DIVA_MAX; div_a++) {
+		div_b = ZYNQ_I2C_DIV_ROUND_UP(input_clk, 22 * fscl * (div_a + 1));
+
+		if ((div_b < 1) || (div_b > ZYNQ_I2C_DIVB_MAX))
+			continue;
+		div_b--;
+
+		actual_fscl = input_clk / (22 * (div_a + 1) * (div_b + 1));
+
+		if (actual_fscl > fscl)
+			continue;
+
+		current_error = ((actual_fscl > fscl) ? (actual_fscl - fscl) :
+							(fscl - actual_fscl));
+
+		if (last_error > current_error) {
+			calc_div_a = div_a;
+			calc_div_b = div_b;
+			best_fscl = actual_fscl;
+			last_error = current_error;
+		}
+	}
+
+	*a = calc_div_a;
+	*b = calc_div_b;
+	*f = best_fscl;
+
+	return 0;
+}
+
+static void zynq_i2c_setup_master_mode(struct i2c_adapter *adap)
+{
+	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
+	
+	/* Enable master mode, ack, and 7-bit addressing */
+	setbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_MS |
+		ZYNQ_I2C_CONTROL_ACKEN | ZYNQ_I2C_CONTROL_NEA);
+}
 
 /* Wait for an interrupt */
 static u32 zynq_i2c_wait(struct zynq_i2c_registers *zynq_i2c, u32 mask)
@@ -294,10 +352,37 @@ static int zynq_i2c_write(struct i2c_adapter *adap, u8 dev, uint addr,
 static unsigned int zynq_i2c_set_bus_speed(struct i2c_adapter *adap,
 			unsigned int speed)
 {
-	if (speed != 1000000)
+	unsigned int div_a, div_b;
+	unsigned long fscl = speed;
+	struct zynq_i2c_registers *zynq_i2c = i2c_select(adap);
+
+	/* Supported speed grades are 100 kHz, 400 kHz, 1 MHz */
+	if ((speed != 100000) && (speed != 400000) && (speed != 1000000)) {
+		debug("%s: Unsupported i2c clock speed: %u\n",__func__, speed);
 		return -EINVAL;
+	}
+
+	if (zynq_i2c_calc_divs(&fscl, CONFIG_SYS_I2C_ZYNQ_INPUT_CLK_SPEED, &div_a, &div_b)) {
+		debug("%s: Error when calculating clock divisors, using default values.\n",__func__);
+		div_a = 2;
+		div_b = 16;
+	}
+	
+	debug("%s: i2c clock speed = %lu (a=%u, b=%u)\n",__func__,fscl,div_a,div_b);
+
+	/* Write the clock divisors to set the i2c clock speed*/
+	writel((div_b << ZYNQ_I2C_CONTROL_DIV_B_SHIFT) |
+			(div_a << ZYNQ_I2C_CONTROL_DIV_A_SHIFT), &zynq_i2c->control);
 
 	return 0;
+}
+
+/* I2C init called by cmd_i2c when doing 'i2c reset'. */
+static void zynq_i2c_init(struct i2c_adapter *adap, int requested_speed,
+			  int slaveadd)
+{
+	zynq_i2c_set_bus_speed(adap, CONFIG_SYS_I2C_ZYNQ_SPEED); // ignore requested speed, use config value
+	zynq_i2c_setup_master_mode(adap);
 }
 
 #ifdef CONFIG_ZYNQ_I2C0
