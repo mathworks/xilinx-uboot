@@ -251,11 +251,6 @@ static int zynq_i2c_read(struct i2c_adapter *adap, u8 dev, uint addr,
 	/* Write the register address */
 	setbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_CLR_FIFO |
 		ZYNQ_I2C_CONTROL_HOLD);
-	/*
-	 * Temporarily disable restart (by clearing hold)
-	 * It doesn't seem to work.
-	 */
-	clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_HOLD);
 	writel(0xFF, &zynq_i2c->interrupt_status);
 	if (alen) {
 		clrbits_le32(&zynq_i2c->control, ZYNQ_I2C_CONTROL_RW);
