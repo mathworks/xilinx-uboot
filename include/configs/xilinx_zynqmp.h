@@ -181,8 +181,8 @@
 #include <configs/mw_xilinx_common.h>
 
 /* Initial environment variables */
-#ifndef CONFIG_EXTRA_ENV_SETTINGS
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#ifndef EXTRA_ENV_SETTINGS
+#define EXTRA_ENV_SETTINGS \
 	"kernel_addr=0x80000\0" \
 	"initrd_addr=0x2000000\0" \
 	"initrd_high=0x10000000\0" \
@@ -290,6 +290,11 @@
 		     "booti $kernel_addr - $fdt_addr\0" \
 	PARTS_DEFAULT \
 	DFU_ALT_INFO
+#endif
+
+#ifndef CONFIG_EXTRA_ENV_SETTINGS
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	EXTRA_ENV_SETTINGS
 #endif
 
 #define CONFIG_PREBOOT		"run setup"
