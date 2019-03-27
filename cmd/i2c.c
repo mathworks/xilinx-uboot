@@ -691,6 +691,95 @@ static int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 }
 
 /**
+ * do_i2c_mt() - Handle the "i2c mt" command-line command
+ * @cmdtp:	Command data struct pointer
+ * @flag:	Command flag
+ * @argc:	Command-line argument count
+ * @argv:	Array of command-line arguments
+ *
+ * Returns zero on success, CMD_RET_USAGE in case of misuse and negative
+ * on error.
+ *
+ * Syntax:
+ *	i2c mt {i2c_chip} {addr}{.0, .1, .2} {data} [b, w]
+ */
+static int do_i2c_mt ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	uint	chip;
+	ulong	addr;
+	int	alen;
+	uint	data;
+	int	count;
+	int ret;
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
+#endif
+
+	if ((argc < 4) || (argc > 5))
+		return CMD_RET_USAGE;
+
+	/*
+	 * Chip is always specified.
+	 */
+	chip = simple_strtoul(argv[1], NULL, 16);
+
+	/*
+	 * Address is always specified.
+	 */
+	addr = simple_strtoul(argv[2], NULL, 16);
+	alen = get_alen(argv[2], DEFAULT_ADDR_LEN);
+	if (alen > 3)
+		return CMD_RET_USAGE;
+
+#ifdef CONFIG_DM_I2C
+	ret = i2c_get_cur_bus_chip(chip, &dev);
+	if (!ret && alen != -1)
+		ret = i2c_set_chip_offset_len(dev, alen);
+	if (ret)
+		return i2c_report_err(ret, I2C_ERR_WRITE);
+#endif
+	/*
+	 * Value to write is always specified.
+	 */
+	data = simple_strtoul(argv[3], NULL, 16);
+
+	/*
+	 * Optional byte/word specifier
+	 */
+	if (argc == 5) {
+		if (argv[4][0] == 'b') {
+			count = 1;
+		} else if (argv[4][0] == 'w') {
+			count = 2;
+		} else {
+			return CMD_RET_USAGE;
+		}
+	} else {
+		count = 1;
+	}		
+
+#ifdef CONFIG_DM_I2C
+	ret = dm_i2c_write(dev, addr (uchar*)&data, count);
+#else
+	ret = i2c_write(chip, addr, alen, (uchar*)&data, count);
+#endif
+	if (ret)
+		return i2c_report_err(ret, I2C_ERR_WRITE);
+	/*
+	 * Wait for the write to complete.  The write can take
+	 * up to 10mSec (we allow a little more time).
+	 */
+/*
+ * No write delay with FRAM devices.
+ */
+#if !defined(CONFIG_SYS_I2C_FRAM)
+	udelay(11000);
+#endif
+
+	return 0;
+}
+
+/**
  * do_i2c_crc() - Handle the "i2c crc32" command-line command
  * @cmdtp:	Command data struct pointer
  * @flag:	Command flag
@@ -1941,6 +2030,7 @@ static cmd_tbl_t cmd_i2c_sub[] = {
 #endif  /* CONFIG_I2C_EDID */
 	U_BOOT_CMD_MKENT(loop, 3, 1, do_i2c_loop, "", ""),
 	U_BOOT_CMD_MKENT(md, 3, 1, do_i2c_md, "", ""),
+	U_BOOT_CMD_MKENT(mt, 3, 1, do_i2c_mt, "", ""),
 	U_BOOT_CMD_MKENT(mm, 2, 1, do_i2c_mm, "", ""),
 	U_BOOT_CMD_MKENT(mw, 3, 1, do_i2c_mw, "", ""),
 	U_BOOT_CMD_MKENT(nm, 2, 1, do_i2c_nm, "", ""),
@@ -2017,6 +2107,7 @@ static char i2c_help_text[] =
 #endif  /* CONFIG_I2C_EDID */
 	"i2c loop chip address[.0, .1, .2] [# of objects] - looping read of device\n"
 	"i2c md chip address[.0, .1, .2] [# of objects] - read from I2C device\n"
+	"i2c mt chip address[.0, .1, .2] - value [b, w] - write byte/word to I2C device\n"
 	"i2c mm chip address[.0, .1, .2] - write to I2C device (auto-incrementing)\n"
 	"i2c mw chip address[.0, .1, .2] value [count] - write to I2C device (fill)\n"
 	"i2c nm chip address[.0, .1, .2] - write to I2C device (constant address)\n"
