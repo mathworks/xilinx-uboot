@@ -192,6 +192,7 @@
 	BOOT_TARGET_DEVICES_DHCP(func)
 
 #include <config_distro_bootcmd.h>
+#include <configs/mw_xilinx_common.h>
 
 /* Initial environment variables */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
