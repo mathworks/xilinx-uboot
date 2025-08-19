@@ -41,10 +41,6 @@
 #define CONFIG_CMD_PCA953X
 #define CONFIG_CMD_PCA953X_INFO
 
-#define CONFIG_SATA_CEVA
-
-#define CONFIG_ZYNQMP_XHCI_LIST {ZYNQMP_USB0_XHCI_BASEADDR}
-
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	1
 #define CONFIG_CMD_EEPROM
 #define CONFIG_ZYNQ_EEPROM_BUS		5
@@ -52,5 +48,17 @@
 #define CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET	0x20
 
 #include <configs/xilinx_zynqmp.h>
+
+/* Fix for FMC voltage being set to 0.0V by system controller */
+#undef CONFIG_EXTRA_ENV_SETTINGS
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	EXTRA_ENV_SETTINGS \
+	"zcu102_set_vadj_fmc=i2c dev 3 && " \
+		"i2c mt 18 02 10 b && " \
+		"i2c mt 18 21 1ccf w && " \
+		"i2c mt 18 02 00 b\0"
+
+#undef  CONFIG_PREBOOT
+#define CONFIG_PREBOOT		"run setup && run zcu102_set_vadj_fmc"
 
 #endif /* __CONFIG_ZYNQMP_ZCU102_H */

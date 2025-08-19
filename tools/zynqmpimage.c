@@ -6,7 +6,7 @@
  *
  * The following Boot Header format/structures and values are defined in the
  * following documents:
- *   * ug1085 ZynqMP TRM (Chapter 9, Table 9-3)
+ *   * ug1085 ZynqMP TRM doc v1.4 (Chapter 11, Table 11-4)
  *
  * Expected Header Size = 0x9C0
  * Forced as 'little' endian, 32-bit words
@@ -300,11 +300,15 @@ static void zynqmpimage_parse_initparams(struct zynqmp_header *zynqhdr,
 	}
 
 	err = fstat(fileno(fp), &path_stat);
-	if (err)
+	if (err) {
+		fclose(fp);
 		return;
+	}
 
-	if (!S_ISREG(path_stat.st_mode))
+	if (!S_ISREG(path_stat.st_mode)) {
+		fclose(fp);
 		return;
+	}
 
 	do {
 		r = fscanf(fp, "%x %x", &reginit.address, &reginit.data);

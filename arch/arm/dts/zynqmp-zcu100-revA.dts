@@ -12,7 +12,7 @@
 /dts-v1/;
 
 #include "zynqmp.dtsi"
-#include "zynqmp-clk.dtsi"
+#include "zynqmp-clk-ccf.dtsi"
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/phy/phy.h>
@@ -123,13 +123,6 @@
 		compatible = "mmc-pwrseq-simple";
 		reset-gpios = <&max3107 1 GPIO_ACTIVE_LOW>; /* WIFI_EN */
 	};
-
-	dp_clk_wiz: dp_clk_wiz {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <267439000>;
-		clock-accuracy = <0x64>;
-	};
 };
 
 &dcc {
@@ -187,34 +180,20 @@
 		i2csw_4: i2c@4 { /* i2c mw 75 0 10 */
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x5e>;
-
-			/* Also RTC, GPIO and regulators */
-			/*
-			CONFIG_GPIO_TPS6586X
-			CONFIG_MFD_TPS6586X
-			CONFIG_REGULATOR_TPS6586X
-			CONFIG_RTC_DRV_TPS6586X -- not sure about it
-				 - max addr is 0xcd
-			*/
-			/* rtc0 = "/i2c@7000d000/tps6586x@34"; */
-
-			/* also super fast mode 1M supported */
+			reg = <0x4>;
 
 			/* Comment it out because will be pre-programmed
 			   at the factory */
-			/*
-			pmu: tps6586x@34 { // Custom TI PMIC u33
-				compatible = "ti,tps6586x";
-				reg = <0x34>;
-				interrupt-parent = <&gpio>;
-				interrupts = <39 GPIO_ACTIVE_LOW>; shared with gpio switch
 
+			pmic: tps65086x@5e { // Custom TI PMIC u33
+				compatible = "ti,tps65086";
+				reg = <0x5e>;
+				interrupt-parent = <&gpio>;
+				interrupts = <39 GPIO_ACTIVE_LOW>; /* shared with pmic IRQ */
 				#gpio-cells = <2>;
 				gpio-controller;
 
-				ti,system-power-controller;
-
+/*
 				sys-supply = <&some_reg>;
 				// spec 12V
 
@@ -224,8 +203,6 @@
 				buck4 3V3
 				buck5 1V2
 				buck6 VCC_PSAUX 1V8
-
-
 
 				vin-sm0-supply = <&some_reg>;
 				vin-sm1-supply = <&some_reg>;
@@ -323,9 +300,8 @@
 						regulator-always-on;
 					};
 				};
-	       		};
-			*/
-
+				*/
+			};
 		};
 		i2csw_5: i2c@5 { /* i2c mw 75 0 20 */
 			#address-cells = <1>;
@@ -459,6 +435,7 @@
 	dr_mode = "peripheral";
 /*	phy-names = "usb3-phy";
 	phys = <&lane2 PHY_TYPE_USB3 0 0 26000000>; */
+	maximum-speed = "high-speed"; /* super-speed */
 };
 
 /* ULPI SMSC USB3320 */
@@ -471,11 +448,11 @@
 	dr_mode = "host";
 /*	phy-names = "usb3-phy";
 	phys = <&lane3 PHY_TYPE_USB3 1 0 26000000>; */
+	maximum-speed = "high-speed"; /* super-speed */
 };
 
 &xilinx_drm {
 	status = "okay";
-	clocks = <&dp_clk_wiz>;
 };
 
 &xlnx_dp {

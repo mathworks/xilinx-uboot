@@ -1,9 +1,34 @@
 if ARCH_ZYNQMP
 
+config SPL_FAT_SUPPORT
+	default y
+
+config SPL_LIBCOMMON_SUPPORT
+	default y
+
+config SPL_LIBDISK_SUPPORT
+	default y
+
+config SPL_LIBGENERIC_SUPPORT
+	default y
+
+config SPL_MMC_SUPPORT
+	default y
+
+config SPL_SERIAL_SUPPORT
+	default y
+
+config SPL_SPI_FLASH_SUPPORT
+	default y if ZYNQ_QSPI
+
+config SPL_SPI_SUPPORT
+	default y if ZYNQ_QSPI
+
 config SYS_BOARD
 	default "zynqmp"
 
 config SYS_VENDOR
+	string "Vendor name"
 	default "xilinx"
 
 config SYS_SOC
@@ -17,6 +42,13 @@ config SYS_CONFIG_NAME
 	  Based on this option include/configs/<CONFIG_SYS_CONFIG_NAME>.h header
 	  will be used for board configuration.
 
+config SYS_MEM_RSVD_FOR_MMU
+	bool "Reserve memory for MMU Table"
+	help
+	  If defined this option is used to setup different space for
+	  MMU table than the one which will be allocated during
+	  relocation.
+
 config BOOT_INIT_FILE
 	string "boot.bin init register filename"
 	depends on SPL
@@ -26,7 +58,7 @@ config BOOT_INIT_FILE
 	  Expect a table of register-value pairs, e.g. "0x12345678 0x4321"
 
 config PMUFW_INIT_FILE
-	string "PMU firwmare"
+	string "PMU firmware"
 	depends on SPL
 	default ""
 	help
@@ -38,6 +70,21 @@ config ZYNQMP_QSPI
 
 config ZYNQMP_USB
 	bool "Configure ZynqMP USB"
+
+config SYS_MALLOC_F_LEN
+	default 0x600
+
+config DEFINE_TCM_OCM_MMAP
+	bool "Define TCM and OCM memory in MMU Table"
+	default y if MP
+	help
+	  This option if enabled defines the TCM and OCM memory and its
+	  memory attributes in MMU table entry.
+
+config ZYNQMP_PSU_INIT_ENABLED
+	bool "Include psu_init"
+	help
+	  Include psu_init to full u-boot. SPL include psu_init by default.
 
 config SPL_ZYNQMP_ALT_BOOTMODE_ENABLED
 	bool "Overwrite SPL bootmode"
@@ -58,6 +105,7 @@ config SPL_ZYNQMP_ALT_BOOTMODE
 	default 0x7 if USB_MODE
 	default 0xa if SW_USBHOST_MODE
 	default 0xb if SW_SATA_MODE
+	default 0xe if SD1_LSHFT_MODE
 
 choice
 	prompt "Boot mode"
@@ -94,6 +142,28 @@ config SW_USBHOST_MODE
 config SW_SATA_MODE
 	bool "SW SATA_MODE"
 
+config SD1_LSHFT_MODE
+	bool "SD1_LSHFT_MODE"
+
 endchoice
+
+# Temporary Kconfig options which needs to be fixed
+config MINI_EMMC
+	bool
+
+config MINI_QSPI
+	bool
+
+config MINI_NAND
+	bool
+
+config SPI_GENERIC
+	bool
+
+config ZYNQ_I2C0
+	bool "Xilinx I2C0 controller"
+
+config ZYNQ_I2C1
+	bool "Xilinx I2C1 controller"
 
 endif

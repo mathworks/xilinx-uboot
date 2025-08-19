@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2013 Xilinx.
+ * (C) Copyright 2013 - 2017 Xilinx.
  *
  * Configuration settings for the Xilinx Zynq CSE board.
  * See zynq-common.h for Zynq common configs
@@ -10,22 +10,12 @@
 #ifndef __CONFIG_ZYNQ_CSE_H
 #define __CONFIG_ZYNQ_CSE_H
 
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_ZYNQ_DCC
 #define _CONFIG_CMD_DEFAULT_H
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_SYS_DCACHE_OFF
 #define CONFIG_SYS_ICACHE_OFF
 #define CONFIG_FIT_DISABLE_SHA256
-
-#if defined(CONFIG_CSE_NAND)
-# define CONFIG_NAND_ZYNQ
-
-#elif defined(CONFIG_CSE_NOR)
-#undef CONFIG_SYS_NO_FLASH
-
-#endif
 
 #include <configs/zynq-common.h>
 
@@ -43,8 +33,6 @@
 #undef CONFIG_BOOTCOMMAND
 #undef CONFIG_SYS_HUSH_PARSER
 #undef CONFIG_SYS_PROMPT_HUSH_PS2
-#undef CONFIG_BOOTDELAY
-#undef CONFIG_SYS_MALLOC_LEN
 #undef CONFIG_ENV_SIZE
 #undef CONFIG_CMDLINE_EDITING
 #undef CONFIG_AUTO_COMPLETE
@@ -63,27 +51,20 @@
 #undef CONFIG_CMD_CLK
 #undef CONFIG_CMD_CACHE
 #undef CONFIG_SYS_CBSIZE
+#undef CONFIG_BOOTM_VXWORKS
+#undef CONFIG_BOOTM_LINUX
+#undef CONFIG_ZYNQ_SERIAL
 
-/* Define needed configs */
-#define CONFIG_BOOTDELAY	-1 /* -1 to Disable autoboot */
-#define CONFIG_SYS_MALLOC_LEN	0x1000
 #define CONFIG_SYS_CBSIZE	1024
 
-#if defined(CONFIG_CSE_QSPI)
-# define CONFIG_SYS_SDRAM_SIZE		(256 * 1024)
-# define CONFIG_SYS_SDRAM_BASE		0xFFFC0000
-# define CONFIG_ENV_SIZE		400
-
-#elif defined(CONFIG_CSE_NAND)
-# define CONFIG_SYS_SDRAM_SIZE		(4 * 1024 * 1024)
-# define CONFIG_SYS_SDRAM_BASE		0
-# define CONFIG_ENV_SIZE		0x10000
-
-#elif defined(CONFIG_CSE_NOR)
-# define CONFIG_SYS_SDRAM_SIZE		(256 * 1024)
-# define CONFIG_SYS_SDRAM_BASE		0xFFFD0000
-# define CONFIG_ENV_SIZE		1400
-
-#endif
+#define CONFIG_ENV_SIZE		400
+#undef CONFIG_SYS_INIT_RAM_ADDR
+#undef CONFIG_SYS_INIT_RAM_SIZE
+#define CONFIG_SYS_INIT_RAM_ADDR	0xFFFDE000
+#define CONFIG_SYS_INIT_RAM_SIZE	0x1000
+#undef CONFIG_SPL_BSS_START_ADDR
+#undef CONFIG_SPL_BSS_MAX_SIZE
+#define CONFIG_SPL_BSS_START_ADDR	0x20000
+#define CONFIG_SPL_BSS_MAX_SIZE		0x8000
 
 #endif /* __CONFIG_ZYNQ_CSE_H */

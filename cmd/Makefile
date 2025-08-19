@@ -26,6 +26,8 @@ obj-$(CONFIG_CMD_BOOTEFI) += bootefi.o
 obj-$(CONFIG_CMD_BOOTMENU) += bootmenu.o
 obj-$(CONFIG_CMD_BOOTLDR) += bootldr.o
 obj-$(CONFIG_CMD_BOOTSTAGE) += bootstage.o
+obj-$(CONFIG_CMD_BOOTZ) += bootz.o
+obj-$(CONFIG_CMD_BOOTI) += booti.o
 obj-$(CONFIG_CMD_CACHE) += cache.o
 obj-$(CONFIG_CMD_CBFS) += cbfs.o
 obj-$(CONFIG_CMD_CLK) += clk.o
@@ -68,7 +70,7 @@ obj-$(CONFIG_CMD_GPIO) += gpio.o
 obj-$(CONFIG_CMD_I2C) += i2c.o
 obj-$(CONFIG_CMD_IOTRACE) += iotrace.o
 obj-$(CONFIG_CMD_HASH) += hash.o
-obj-$(CONFIG_CMD_IDE) += ide.o
+obj-$(CONFIG_CMD_IDE) += ide.o disk.o
 obj-$(CONFIG_CMD_IMMAP) += immap.o
 obj-$(CONFIG_CMD_INI) += ini.o
 obj-$(CONFIG_CMD_IRQ) += irq.o
@@ -113,7 +115,7 @@ obj-$(CONFIG_CMD_REMOTEPROC) += remoteproc.o
 obj-$(CONFIG_SANDBOX) += host.o
 obj-$(CONFIG_CMD_SATA) += sata.o
 obj-$(CONFIG_CMD_SF) += sf.o
-obj-$(CONFIG_SCSI) += scsi.o
+obj-$(CONFIG_SCSI) += scsi.o disk.o
 obj-$(CONFIG_CMD_SHA1SUM) += sha1sum.o
 obj-$(CONFIG_CMD_SETEXPR) += setexpr.o
 obj-$(CONFIG_CMD_SOFTSWITCH) += softswitch.o
@@ -126,6 +128,7 @@ obj-$(CONFIG_CMD_TRACE) += trace.o
 obj-$(CONFIG_HUSH_PARSER) += test.o
 obj-$(CONFIG_CMD_TPM) += tpm.o
 obj-$(CONFIG_CMD_TPM_TEST) += tpm_test.o
+obj-$(CONFIG_CMD_CROS_EC) += cros_ec.o
 obj-$(CONFIG_CMD_TSI148) += tsi148.o
 obj-$(CONFIG_CMD_UBI) += ubi.o
 obj-$(CONFIG_CMD_UBIFS) += ubifs.o
@@ -135,7 +138,7 @@ ifdef CONFIG_LZMA
 obj-$(CONFIG_CMD_LZMADEC) += lzmadec.o
 endif
 
-obj-$(CONFIG_CMD_USB) += usb.o
+obj-$(CONFIG_CMD_USB) += usb.o disk.o
 obj-$(CONFIG_CMD_FASTBOOT) += fastboot.o
 obj-$(CONFIG_CMD_FS_UUID) += fs_uuid.o
 
@@ -161,4 +164,5 @@ obj-$(CONFIG_CMD_BLOB) += blob.o
 
 # core command
 obj-y += nvedit.o
-obj-y += disk.o
+
+obj-$(CONFIG_ARCH_MVEBU) += mvebu/
